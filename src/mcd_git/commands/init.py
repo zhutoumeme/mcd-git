@@ -90,6 +90,7 @@ def _apply_remote(ctx: Context, remote: Dict[str, Any]) -> Dict[str, Any]:
         reset = getattr(ctx.client, "reset", None)
         if callable(reset):
             reset()
+        ctx.ledger.reset()  # demo 账本也从头来：下次读取时重新播种
         ctx.state = empty_state()
     elif old and not same_scope(old, remote) and ctx.state.get("index"):
         ctx.state["index"] = []

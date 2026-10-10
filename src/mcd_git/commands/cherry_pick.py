@@ -37,7 +37,7 @@ def _source(ctx: Context, target: str) -> Dict[str, Any]:
         local = [c for cid, c in state.get("commits", {}).items() if cid.startswith(text.lower())]
         if len(local) == 1:
             return {"commit": local[0], "label": local[0]["message"], "hash": local[0]["id"]}
-    rows = history.find(history.build(state, ctx.api().order_list()), text)
+    rows = history.find(history.build(state, ctx.order_list()), text)
     if len(rows) != 1:
         raise GitMcdError(f"bad revision '{target}'", fatal=True, hint="git mcd log --oneline 看看有哪些")
     row = rows[0]

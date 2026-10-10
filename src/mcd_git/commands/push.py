@@ -12,7 +12,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from .. import gate
+from .. import gate, ledger
 from .. import render as R
 from ..api import scope_args
 from ..cart import items_of, summary
@@ -295,6 +295,7 @@ def _place(ctx: Context, head: Dict[str, Any], args_: Dict[str, Any], s: Dict[st
     head["pushed"] = {"orderId": order_id, "time": record["time"]}
     ctx.state.setdefault("orders", []).append(record)
     ctx.save()
+    ctx.remember([ledger.from_push(head, s, record, order_id)])  # 本机账本：这一单和 push 它的 commit 关联上
     first = head["lines"][0]["name"] if head["lines"] else "order"
     ref = first + (f" 等 {len(head['lines'])} 样" if len(head["lines"]) > 1 else "")
     pay_url = created.get("payH5Url")

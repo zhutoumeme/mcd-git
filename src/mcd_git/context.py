@@ -1,15 +1,16 @@
-"""一条命令的运行上下文：输出、状态、时钟、MCP 客户端（按需创建，不需要的命令不读 Token）。"""
+"""一条命令的运行上下文：输出、状态、本机订单账本、时钟、MCP 客户端（按需创建，不需要的命令不读 Token）。"""
 from __future__ import annotations
 
 import copy
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Callable, Dict, Mapping, Optional
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional
 
 from rich.console import Console
 
 from .api import MODES, McdApi, normalize_store
 from .errors import GitMcdError
+from .ledger import Ledger, from_history
 from .state import BRANCH_LABELS, StateStore, meal_branch, state_root
 from .state import now as current_time
 
@@ -46,6 +47,7 @@ class Context:
         self.now = now if now is not None else current_time(demo, env)  # now 只给测试注入
         self._api: Optional[McdApi] = None
         self._client: Any = None
+        self._ledger: Optional[Ledger] = None
 
     # -- MCP
 
@@ -72,6 +74,27 @@ class Context:
     @property
     def mcp_calls(self) -> Dict[str, int]:
         return dict(self._api.calls) if self._api is not None else {}
+
+    def order_list(self) -> List[Dict[str, Any]]:
+        """order-list（最近 10 单），顺手合并进本机账本。"""
+        orders = self.api().order_list()
+        self.remember([from_history(o) for o in orders if o.get("orderId")])
+        return orders
+
+    # -- 本机订单账本
+
+    @property
+    def ledger(self) -> Ledger:
+        if self._ledger is None:
+            self._ledger = Ledger(self.store.root, demo=self.demo)
+        return self._ledger
+
+    def remember(self, entries: Iterable[Dict[str, Any]], *, create: bool = True) -> None:
+        """账本只给统计用，尽力而为：写不进去（文件坏了、磁盘满了）也不影响当前命令的输出和退出码。"""
+        try:
+            self.ledger.upsert(entries, create=create)
+        except (GitMcdError, OSError, ValueError, TypeError):
+            pass
 
     # -- 状态
 

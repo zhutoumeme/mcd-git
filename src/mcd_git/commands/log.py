@@ -7,7 +7,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.text import Text
 
-from .. import history
+from .. import history, ledger
 from .. import render as R
 from ..cart import summary
 from ..context import Context, Result
@@ -105,7 +105,7 @@ def _entry_line(e: Dict[str, Any]) -> Text:
 def run_log(ctx: Context, args: Any) -> Result:
     warning = None
     try:
-        remote_orders: Optional[List[Dict[str, Any]]] = ctx.api().order_list()
+        remote_orders: Optional[List[Dict[str, Any]]] = ctx.order_list()
     except McdError as err:
         remote_orders, warning = None, f"order-list 查询失败，只显示本地记录：{err.message}"
     rows = history.build(ctx.state, remote_orders)[: max(1, args.max_count)]
@@ -186,7 +186,7 @@ def _resolve(ctx: Context, target: str) -> Dict[str, Any]:
         head = head_commit(state)
         if head:
             return {"commit": head, "orderId": (head.get("pushed") or {}).get("orderId")}
-        rows = history.build(state, ctx.api().order_list())
+        rows = history.build(state, ctx.order_list())
         if not rows:
             raise GitMcdError("还没有订单", fatal=True)
         return {"commit": None, "orderId": rows[0].get("orderId"), "entry": rows[0]}
@@ -198,7 +198,7 @@ def _resolve(ctx: Context, target: str) -> Dict[str, Any]:
     local = [c for cid, c in state.get("commits", {}).items() if cid.startswith(text.lower())]
     if len(local) == 1:
         return {"commit": local[0], "orderId": (local[0].get("pushed") or {}).get("orderId")}
-    rows = history.find(history.build(state, ctx.api().order_list()), text)
+    rows = history.find(history.build(state, ctx.order_list()), text)
     if len(rows) == 1:
         return {"commit": None, "orderId": rows[0].get("orderId"), "entry": rows[0]}
     raise GitMcdError(f"ambiguous argument '{target}': unknown revision", fatal=True, hint="git mcd log --oneline 看看有哪些")
@@ -215,6 +215,7 @@ def run_show(ctx: Context, args: Any) -> Result:
     if commit is not None and not order_id:
         return _show_commit(ctx, commit, decor)
     order = ctx.api().query_order(order_id)
+    ctx.remember([ledger.from_query(order_id, order)])  # 顺手补上 order-list 不给的原价和优惠
     record = order_record(ctx.state, order_id)
     if record is not None:
         record["statusLabel"], record["state"] = order["statusLabel"], order["state"]

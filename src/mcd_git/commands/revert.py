@@ -8,7 +8,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from .. import gate
+from .. import gate, ledger
 from .. import render as R
 from ..context import Context, Result
 from ..errors import GitMcdError, McdError
@@ -163,6 +163,7 @@ def _cancel(ctx: Context, order_id: str, record: Optional[Dict[str, Any]], cance
         record["statusLabel"], record["state"] = "已取消", "cancelled"
     commit = next((c for c in ctx.state.get("commits", {}).values() if (c.get("pushed") or {}).get("orderId") == order_id), None)
     ctx.save()
+    ctx.remember([{"key": ledger.key_of(order_id), "state": "cancelled", "status": "已取消"}], create=False)
 
     def draw(console: Console) -> None:
         if commit is not None:
