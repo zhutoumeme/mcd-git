@@ -1,0 +1,156 @@
+"""--demo 端到端：init → status → add → diff → rebase → commit → push → log --graph → show → cherry-pick HEAD。"""
+from __future__ import annotations
+
+import os
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+from mcd_git.commands.log import graph
+from mcd_git import history
+
+from .conftest import Runner
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def test_full_demo_flow(runner: Runner) -> None:
+    code, out = runner.run("--demo", "status")
+    assert code == 0
+    assert "On branch lunch" in out and "mcd.cn:演示·代码港店" in out and "No commits yet" in out
+
+    code, out = runner.run("--demo", "init")
+    assert code == 0 and "init --pick" in out
+    code, out = runner.run("--demo", "init", "--pick", "1")
+    assert code == 0 and "Reinitialized demo playground" in out
+
+    code, out = runner.run("--demo", "add", "巨无霸", "中薯条", "中可乐", "--no-pickle")
+    assert code == 0 and "add '巨无霸' x1" in out and "去酸黄瓜" in out
+
+    code, out = runner.run("--demo", "diff")
+    assert code == 0
+    assert "--- a/菜单价  ¥47.50" in out and "+++ b/应付  ¥45.50" in out
+    assert re.search(r"^-  中可乐 .*¥10\.00", out, re.M) and re.search(r"^\+  中可乐 .*¥8\.00", out, re.M)
+
+    code, out = runner.run("--demo", "rebase")
+    assert code == 0 and "Successfully rebased and updated refs/heads/lunch." in out
+    assert "¥45.50 → ¥33.50（省 ¥12.00）" in out
+
+    code, out = runner.run("--demo", "diff")
+    assert "a/不用券" in out and "b/用券后" in out and "券：示例·巨无霸套餐立减 5 元" in out
+
+    code, out = runner.run("--demo", "commit", "-m", "发版前的午饭")
+    assert code == 0 and re.search(r"\[lunch \(root-commit\) [0-9a-f]{7}\] 发版前的午饭", out)
+
+    code, data = runner.json("--demo", "push", "--at", "12:20", "--locker", "--no-tableware")
+    assert code == 0 and data["data"]["status"] == "confirmation_required"
+    short = data["data"]["confirm"]
+    # 给 Agent 的下一步命令原样带上 --demo 和 --json，照抄不会误下到真实账户
+    assert data["data"]["next"] == f"git mcd --demo push --at '2026-10-24 12:20' --locker --no-tableware --confirm {short} --json"
+    code, out = runner.run("--demo", "push", "--at", "12:20", "--locker", "--no-tableware", "--confirm", short)
+    assert code == 0
+    assert "To mcd.cn:演示·代码港店" in out and "* [new order]      lunch -> 巨无霸套餐" in out
+    assert "请在 12:05 前付款" in out and "https://example.com/mcd-git-demo/pay?orderId=1024" in out
+    assert "▀" in out or "█" in out  # 终端二维码
+
+    code, out = runner.run("--demo", "status")
+    assert "待支付，请在 12:05 前付款" in out
+
+    code, out = runner.run("--demo", "log", "--graph")
+    assert code == 0
+    lines = out.splitlines()
+    assert lines[0].startswith("* " + short) and "(HEAD -> lunch, origin/lunch)" in lines[0]
+    assert any(line.startswith("| * ") and "(breakfast)" in line for line in lines)
+    assert "|/" in lines
+
+    code, out = runner.run("--demo", "show")
+    assert code == 0 and "配餐中" in out and "取餐码" in out and "10241" in out
+    assert "密码 2048" in out and "预约:    2026-10-24 12:20" in out
+
+    code, out = runner.run("--demo", "cherry-pick", "HEAD")
+    assert code == 0 and "cherry-pick " + short in out
+    code, data = runner.json("--demo", "status")
+    staged = data["data"]["index"]
+    assert [x["name"] for x in staged] == ["巨无霸套餐"] and "coupon" not in staged[0]  # 券不跟着拣回来
+
+    code, out = runner.run("--demo", "cherry-pick", "HEAD")
+    assert code == 1 and "would be overwritten" in out
+
+    # 再 commit 一次：HEAD 变成还没 push 的新 commit，show 显示快照，并指回最近一次 push 的订单
+    code, out = runner.run("--demo", "commit", "-m", "再来一单")
+    assert code == 0
+    code, data = runner.json("--demo", "status")
+    assert data["data"]["ahead"] == 1
+    code, out = runner.run("--demo", "show")
+    assert code == 0 and "commit 时核价" in out and "git mcd show 1024" in out
+
+
+def test_push_to_closed_store_fails_like_git(runner: Runner) -> None:
+    runner.run("--demo", "add", "巨无霸")
+    runner.run("--demo", "commit", "-m", "夜里")
+    code, out = runner.run("--demo", "push", "--at", "23:30")  # 演示·代码港店 23:00 打烊
+    assert code == 1
+    assert "remote: 门店已打烊（code 600031" in out
+    assert "error: failed to push some refs: 门店已打烊" in out
+    code, data = runner.json("--demo", "status")
+    assert data["data"]["ahead"] == 1 and data["data"]["pendingPayment"] is None
+
+
+def test_cherry_pick_reports_conflicts(runner: Runner) -> None:
+    code, out = runner.run("--demo", "cherry-pick", "1024202610230812000000000003")
+    assert code == 0
+    assert "CONFLICT (not on menu): 猪柳蛋麦满分" in out and "add '热拿铁' x1" in out
+
+
+def test_every_command_speaks_json(runner: Runner) -> None:
+    runner.run("--demo", "add", "热拿铁")
+    for argv in (["status"], ["ls-remote", "薯条"], ["diff"], ["rebase"], ["log", "--oneline"], ["fetch"], ["show", "1024202610221205000000000002"]):
+        code, data = runner.json("--demo", *argv)
+        assert code == 0 and data["ok"] is True and data["demo"] is True, argv
+    code, data = runner.json("--demo", "fetch")
+    assert len(data["data"]["claimable"]) == 3
+    code, data = runner.json("--demo", "show", "nope!")
+    assert code == 128 and data["ok"] is False and data["error"]["type"] == "fatal"
+
+
+def test_help_table_everywhere(runner: Runner) -> None:
+    for argv in ([], ["help"], ["-h"], ["--help"]):
+        code, out = runner.run(*argv)
+        assert code == 0 and "cherry-pick HEAD" in out and "git mcd help" in out, argv
+    code, data = runner.json("help")
+    assert any(c["writesAccount"] for c in data["data"]["commands"])
+    code, out = runner.run("help", "nope")
+    assert code == 1
+
+
+def test_real_mode_without_token_or_remote(runner: Runner) -> None:
+    code, out = runner.run("status")
+    assert code == 128 and "git mcd init" in out
+    code, out = runner.run("init")
+    assert code == 128 and "Token" in out and "--demo" in out
+
+
+def test_graph_lanes() -> None:
+    rows = [
+        {"hash": "a" * 40, "branch": "lunch", "head": True},
+        {"hash": "b" * 40, "branch": "lunch"},
+        {"hash": "c" * 40, "branch": "breakfast"},
+        {"hash": "d" * 40, "branch": "lunch"},
+    ]
+    drawn = [(prefix.plain, connector.plain if connector else None) for prefix, connector in graph(rows)]
+    assert drawn == [("* ", None), ("* ", None), ("| * ", "|/"), ("* ", None)]
+    assert history.order_hash("1") == history.order_hash("1") != history.order_hash("2")
+
+
+def test_entry_points_declared() -> None:
+    text = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    assert re.search(r'^git-mcd = "mcd_git\.cli:main"$', text, re.M)
+    assert re.search(r'^mcd-git = "mcd_git\.cli:main"$', text, re.M)
+
+
+def test_python_module_entry(tmp_path: Path) -> None:
+    env = dict(os.environ, MCD_GIT_HOME=str(tmp_path / "cfg"), COLUMNS="100")
+    proc = subprocess.run([sys.executable, "-m", "mcd_git", "--demo", "status"], capture_output=True, text=True, env=env, timeout=60, stdin=subprocess.DEVNULL)
+    assert proc.returncode == 0, proc.stderr
+    assert "On branch lunch" in proc.stdout
