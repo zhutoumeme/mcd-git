@@ -6,7 +6,12 @@
 from __future__ import annotations
 
 import copy
-from typing import Any, Dict, List
+import hashlib
+from datetime import date, timedelta
+from typing import Any, Dict, List, Tuple
+
+from ..api import order_state
+from ..money import yuan_to_fen
 
 DEMO_LINK = "https://example.com/mcd-git-demo"
 
@@ -460,3 +465,124 @@ HISTORY: List[Dict[str, Any]] = [
         "couponList": [],
     },
 ]
+
+
+def history_entries() -> List[Dict[str, Any]]:
+    """HISTORY 那 5 单换成本机账本的样子（原价按商品价加总、优惠按券加总），demo 账本播种用。"""
+    out = []
+    for h in HISTORY:
+        label, state = order_state(h.get("orderStatus"), h.get("status"))
+        products = h.get("orderProductList") or []
+        out.append(
+            {
+                "orderId": h["orderId"],
+                "time": h["createTime"],
+                "state": state,
+                "status": label,
+                "items": [{"name": p["productName"], "qty": int(p.get("quantity") or 1)} for p in products],
+                "original": sum(yuan_to_fen(p.get("price")) or 0 for p in products),
+                "discount": sum(yuan_to_fen(c.get("discountAmount")) or 0 for c in h.get("couponList") or []),
+                "paid": yuan_to_fen(h.get("realTotalAmount")),
+                "way": "到店自取 · " + h["takeWay"],
+                "source": "demo",
+            }
+        )
+    return out
+
+
+# ---------------------------------------------------------------- 一年的合成订单（card 的格子用）
+
+_YEAR_START = date(2025, 10, 20)  # DEMO_NOW 往前 52 周那周的周一；最后一周是 2026-10-12 那周，之后是 HISTORY
+_YEAR_WEEKS = 52
+_BREAK_WEEKS = ("2026-02-16", "2026-07-27")  # 春节、暑假各歇一周
+_MUFFIN = ("猪柳蛋麦满分", 1300)  # 早餐单品：价格同 HISTORY 里那一单（演示菜单没有它）
+_COMBO_WEIGHTS = (("9900001001", 0.40), ("9900001002", 0.25), ("9900001004", 0.20), ("9900001003", 0.15))
+_SLOT_WINDOWS = {"breakfast": (7 * 60 + 50, 60), "lunch": (11 * 60 + 40, 70), "tea": (15 * 60, 60), "dinner": (18 * 60, 90)}
+
+
+def _roll(tag: str, key: str) -> float:
+    """确定性的掷点 [0, 1)：sha1 跨 Python 版本稳定（random 的部分实现在 3.12 变过），贡献图快照才能逐字节一致。"""
+    digest = hashlib.sha1(f"{tag}:{key}".encode("utf-8")).digest()
+    return int.from_bytes(digest[:8], "big") / 2.0**64
+
+
+def _item(name: str) -> Dict[str, Any]:
+    return {"name": name, "qty": 1}
+
+
+def _meal(slot: str, day: str) -> Tuple[List[Dict[str, Any]], int, int]:
+    """一单吃什么：返回 (餐品, 原价, 用券优惠)，金额单位分。"""
+    if slot == "breakfast":
+        coffee = SINGLES["4001"] if _roll("coffee", day) < 0.6 else SINGLES["4002"]
+        discount = 1600 - 990 if coffee["name"] == "热拿铁" and _roll("latte-coupon", day) < 0.3 else 0  # 热拿铁 9.9 元券
+        return [_item(_MUFFIN[0]), _item(coffee["name"])], _MUFFIN[1] + coffee["price"], discount
+    if slot == "tea":
+        if _roll("tea", day) < 0.6:
+            return [_item(SINGLES["3003"]["name"]), _item(SINGLES["2201"]["name"])], SINGLES["3003"]["price"] + SINGLES["2201"]["price"], 0
+        return [_item(SINGLES["4001"]["name"])], SINGLES["4001"]["price"], 0
+    roll, acc, code = _roll(f"combo-{slot}", day), 0.0, _COMBO_WEIGHTS[-1][0]
+    for candidate, weight in _COMBO_WEIGHTS:
+        acc += weight
+        if roll < acc:
+            code = candidate
+            break
+    combo = COMBOS[code]
+    items, original = [_item(combo["name"])], combo["price"]
+    discount = 500 if code == "9900001001" and _roll(f"bigmac-coupon-{slot}", day) < 0.5 else 0  # 巨无霸套餐立减 5 元
+    if _roll(f"pie-{slot}", day) < 0.15:
+        items.append(_item(SINGLES["2201"]["name"]))
+        original += SINGLES["2201"]["price"]
+    return items, original, discount
+
+
+def _slot(day: str) -> str:
+    roll = _roll("slot", day)
+    if roll < 0.68:
+        return "lunch"
+    if roll < 0.80:
+        return "breakfast"
+    if roll < 0.88:
+        return "tea"
+    return "dinner"
+
+
+def year_orders() -> List[Dict[str, Any]]:
+    """2025-10-20 那周到 2026-10-12 那周的合成订单：每周 1～3 单（平均 2 单）、只在工作日、以午饭为主，
+    偶尔同一天早饭加午饭；不生成夜宵。返回本机账本的样子（带 orderId，播种时换成哈希）；价格、券、订单号全是编的。"""
+    orders: List[Dict[str, Any]] = []
+    seq = 100  # 订单号序号从 100 起，避开 HISTORY
+    for week in range(_YEAR_WEEKS):
+        monday = _YEAR_START + timedelta(weeks=week)
+        if monday.isoformat() in _BREAK_WEEKS:
+            continue
+        roll = _roll("week", monday.isoformat())
+        count = 1 if roll < 0.25 else (2 if roll < 0.75 else 3)
+        weekdays = sorted((monday + timedelta(days=i) for i in range(5)), key=lambda d: _roll("day", d.isoformat()))
+        for day in sorted(weekdays[:count]):
+            iso = day.isoformat()
+            slots = [_slot(iso)]
+            if count < 3 and slots[0] == "lunch" and _roll("extra-breakfast", iso) < 0.12:
+                slots.insert(0, "breakfast")  # 同一天早饭加午饭；一周最多还是 3 单
+            for slot in slots:
+                start, span = _SLOT_WINDOWS[slot]
+                minute = start + int(_roll(f"minute-{slot}", iso) * span)
+                time = f"{iso} {minute // 60:02d}:{minute % 60:02d}:00"
+                items, original, discount = _meal(slot, iso)
+                cancelled = _roll("cancel", f"{iso} {slot}") < 0.03
+                dine_in = slot in ("lunch", "dinner") and _roll("way", iso) < 0.7
+                orders.append(
+                    {
+                        "orderId": "1024" + iso.replace("-", "") + time[11:].replace(":", "") + f"{seq:010d}",
+                        "time": time,
+                        "state": "cancelled" if cancelled else "completed",
+                        "status": "订单已取消" if cancelled else "订单已完成",
+                        "items": items,
+                        "original": original,
+                        "discount": discount,
+                        "paid": original - discount,
+                        "way": "到店自取 · " + ("堂食" if dine_in else "外带"),
+                        "source": "demo",
+                    }
+                )
+                seq += 1
+    return orders

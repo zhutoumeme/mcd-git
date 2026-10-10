@@ -13,7 +13,7 @@ from rich.text import Text
 
 from . import __version__
 from . import render as R
-from .commands import cherry_pick, commit, diff, fetch, init, log, push, rebase, revert, stage, status
+from .commands import card, cherry_pick, commit, diff, fetch, init, log, push, rebase, revert, stage, status
 from .commands import help as help_cmd
 from .context import Context
 from .errors import GitMcdError, McdError, UsageError
@@ -39,7 +39,7 @@ def build_parser() -> Any:
     sub = parser.add_subparsers(dest="command", metavar="<command>", parser_class=Parser)
     p = sub.add_parser("help", parents=[common], help="git 命令 ↔ 点餐动作对照表")
     p.add_argument("topic", nargs="?", metavar="<command>")
-    for module in (init, status, stage, diff, rebase, commit, push, log, cherry_pick, revert, fetch):
+    for module in (init, status, stage, diff, rebase, commit, push, log, cherry_pick, revert, fetch, card):
         module.register(sub, common)
     return parser, sub
 

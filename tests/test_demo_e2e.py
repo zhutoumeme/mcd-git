@@ -232,9 +232,10 @@ def test_cherry_pick_reports_conflicts(runner: Runner) -> None:
     assert "CONFLICT (not on menu): 猪柳蛋麦满分" in out and "add '热拿铁' x1" in out
 
 
-def test_every_command_speaks_json(runner: Runner) -> None:
+def test_every_command_speaks_json(runner: Runner, tmp_path: Path) -> None:
     runner.run("--demo", "add", "热拿铁")
-    for argv in (["status"], ["ls-remote", "薯条"], ["diff"], ["rebase"], ["log", "--oneline"], ["fetch"], ["show", "1024202610221205000000000002"]):
+    commands = (["status"], ["ls-remote", "薯条"], ["diff"], ["rebase"], ["log", "--oneline"], ["fetch"], ["show", "1024202610221205000000000002"], ["card", "-o", str(tmp_path / "c.svg")])
+    for argv in commands:
         code, data = runner.json("--demo", *argv)
         assert code == 0 and data["ok"] is True and data["demo"] is True, argv
     code, data = runner.json("--demo", "fetch")
@@ -246,7 +247,7 @@ def test_every_command_speaks_json(runner: Runner) -> None:
 def test_help_table_everywhere(runner: Runner) -> None:
     for argv in ([], ["help"], ["-h"], ["--help"]):
         code, out = runner.run(*argv)
-        assert code == 0 and "cherry-pick HEAD" in out and "git mcd help" in out, argv
+        assert code == 0 and "cherry-pick HEAD" in out and "git mcd help" in out and "card [-o 文件]" in out, argv
     code, data = runner.json("help")
     assert any(c["writesAccount"] for c in data["data"]["commands"])
     code, out = runner.run("help", "nope")

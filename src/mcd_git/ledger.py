@@ -196,8 +196,17 @@ class Ledger:
         return {str(key): clean(entry) for key, entry in orders.items()}
 
     def _seed(self) -> Dict[str, Dict[str, Any]]:
-        """demo 第一次读账本时的初始内容（合成订单随 card 一起补上）。"""
-        return {}
+        """demo 第一次读账本：播种一年的合成订单 + 演示历史里的 5 单，贡献图才有东西可画（真实模式从不播种）。"""
+        from .demo import world
+
+        orders: Dict[str, Dict[str, Any]] = {}
+        for raw in world.year_orders() + world.history_entries():
+            orders[key_of(raw["orderId"])] = merge(None, raw)
+        try:
+            self.save(orders)
+        except OSError:
+            pass  # 写不进去就只在这条命令里用一次
+        return orders
 
     def save(self, orders: Dict[str, Dict[str, Any]]) -> None:
         self.root.mkdir(mode=0o700, parents=True, exist_ok=True)
