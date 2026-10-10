@@ -256,8 +256,8 @@ def _mcp(envelope: Dict[str, Any]) -> Dict[str, Any]:
     return {"content": [{"type": "text", "text": ""}], "isError": False, "structuredContent": envelope}
 
 
-def _jsonrpc_error(code: int, message: str) -> Any:
-    """create-order 的 JSON-RPC 响应是 {"error": {"code": …, "message": …}}：经真实的 McdMcpClient 解析（FakeServer 回放，不联网）。"""
+def _jsonrpc_error(tool: str, code: int, message: str) -> Any:
+    """tool 的 JSON-RPC 响应是 {"error": {"code": …, "message": …}}：经真实的 McdMcpClient 解析（FakeServer 回放，不联网）。"""
 
     def reply(payload: Dict[str, Any]) -> FakeResponse:
         body = {"jsonrpc": "2.0", "id": payload["id"], "error": {"code": code, "message": message}}
@@ -265,7 +265,7 @@ def _jsonrpc_error(code: int, message: str) -> Any:
 
     def call(args: Dict[str, Any], allow_write: bool) -> Dict[str, Any]:
         client = McdMcpClient("unit-test-token", opener=FakeServer([reply]), min_interval=0)
-        return client.call_tool("create-order", args, allow_write=allow_write)
+        return client.call_tool(tool, args, allow_write=allow_write)
 
     return call
 
@@ -280,8 +280,8 @@ def _jsonrpc_error(code: int, message: str) -> Any:
         # 默认 opener 不跟随重定向，30x 经 _http_error 变成这个（见 test_client 的重定向用例）
         pytest.param(McdError("服务端返回 HTTP 302", http_status=302), 1, id="redirect-302"),
         # JSON-RPC 层的服务端错误：处理时出了错，说明不了订单没建成
-        pytest.param(_jsonrpc_error(-32603, "Internal error"), 1, id="jsonrpc-internal-error"),
-        pytest.param(_jsonrpc_error(-32000, "Server error"), 1, id="jsonrpc-server-error"),
+        pytest.param(_jsonrpc_error("create-order", -32603, "Internal error"), 1, id="jsonrpc-internal-error"),
+        pytest.param(_jsonrpc_error("create-order", -32000, "Server error"), 1, id="jsonrpc-server-error"),
         pytest.param(KeyboardInterrupt(), 130, id="ctrl-c"),
     ],
 )
@@ -331,7 +331,7 @@ def test_jsonrpc_request_not_accepted_counts_as_rejected(runner: Runner, rpc_cod
     """JSON-RPC 层没受理这次请求（解析失败、请求无效、方法不存在、参数无效）：可以断定什么都没下单。"""
     short = _setup(runner)
     runner.run(*PUSH, mock=True)
-    runner.hooks["create-order"] = _jsonrpc_error(rpc_code, "Invalid params")
+    runner.hooks["create-order"] = _jsonrpc_error("create-order", rpc_code, "Invalid params")
     code, data = runner.json(*PUSH, "--confirm", short, mock=True)
     assert code == 1 and data["ok"] is False
     assert data["error"]["hints"] == ["什么都没下单；处理完上面的问题后重新 git mcd push 预览"]
@@ -417,3 +417,26 @@ def test_revert_confirm_without_preview_and_completed_orders(runner: Runner) -> 
     code, out = runner.run("revert", "1024202610231231000000000004", "--reason", "1", mock=True)
     assert code == 1 and "不能 revert" in out
     assert runner.count("cancel-order") == 0
+
+
+@pytest.mark.parametrize("rpc_code, message", [(-32603, "Internal error"), (-32602, "Invalid params")])
+def test_revert_jsonrpc_error_never_says_not_cancelled(runner: Runner, rpc_code: int, message: str) -> None:
+    """cancel-order 收到 JSON-RPC 错误：不管是 -32603（处理时出错）还是 -32602（参数无效），revert 都只让用户先 git mcd show
+    看订单现在的状态，从不断言「没取消」；cancel-order 只调 1 次，预览已消费，要再取消得重新预览。"""
+    order_id = _pushed(runner)
+    code, data = runner.json("revert", "--reason", "3", mock=True)
+    assert code == 0 and data["data"]["status"] == "confirmation_required"
+    runner.hooks["cancel-order"] = _jsonrpc_error("cancel-order", rpc_code, message)
+    code, data = runner.json("revert", "--reason", "3", "--confirm", order_id, mock=True)
+    assert code == 1 and data["ok"] is False and data["error"]["exitCode"] == 1
+    assert data["error"]["message"] == f"revert 失败：tools/call：{message}"
+    assert data["error"]["remote"] == [f"tools/call：{message}（code {rpc_code}）"]
+    assert data["error"]["hints"] == ["git mcd show 看看订单现在的状态"]
+    output = json.dumps(data, ensure_ascii=False)
+    assert not any(words in output for words in ("什么都没取消", "没有取消", "没取消", "未取消"))
+    assert runner.count("cancel-order") == 1
+    code, out = runner.run("revert", "--reason", "3", "--confirm", order_id, mock=True)  # 预览已消费，不能原样再取消一次
+    assert code == 1 and "确认摘要" in out
+    assert runner.count("cancel-order") == 1
+    code, data = runner.json("status", mock=True)
+    assert data["data"]["pendingPayment"]["orderId"] == order_id  # 本地记录也没被当成已取消
