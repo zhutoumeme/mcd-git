@@ -10,7 +10,7 @@ from typing import Any, Dict, List
 import pytest
 
 from mcd_git.errors import GitMcdError, McdError
-from mcd_git.mcp_client import McdMcpClient, load_token, token_file
+from mcd_git.mcp_client import DEFAULT_URL, McdMcpClient, load_token, token_file
 
 TOKEN = "unit-test-token-0000"
 
@@ -25,7 +25,7 @@ class FakeResponse(io.BytesIO):
 
 
 class FakeServer:
-    """按顺序回放响应；记录每次请求的 method 和请求头。"""
+    """按顺序回放响应；记录每次请求的地址、method 和请求头。"""
 
     def __init__(self, tool_responses: List[Any]) -> None:
         self.tool_responses = list(tool_responses)
@@ -33,7 +33,7 @@ class FakeServer:
 
     def __call__(self, request: Any, timeout: float) -> Any:
         payload = json.loads(request.data.decode("utf-8"))
-        self.requests.append({"method": payload.get("method"), "headers": dict(request.header_items()), "payload": payload})
+        self.requests.append({"url": request.full_url, "method": payload.get("method"), "headers": dict(request.header_items()), "payload": payload})
         if payload.get("method") == "initialize":
             return FakeResponse(json.dumps({"jsonrpc": "2.0", "id": payload["id"], "result": {"protocolVersion": "2025-06-18", "serverInfo": {"name": "fake"}}}).encode())
         if payload.get("method") == "notifications/initialized":
@@ -131,3 +131,39 @@ def test_network_error_is_transport() -> None:
     with pytest.raises(McdError) as err:
         client.call_tool("order-list")
     assert err.value.transport
+
+
+def test_mcp_url_env_is_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("MCD_MCP_URL", "https://attacker.example/mcp")
+    server = FakeServer([RESULT])
+    client = McdMcpClient(TOKEN, opener=server, min_interval=0)
+    client.call_tool("now-time-info")
+    assert client.url == DEFAULT_URL
+    assert {r["url"] for r in server.requests} == {DEFAULT_URL}  # 带 Token 的请求一个都没发去别的主机
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://attacker.example",
+        "http://mcp.mcd.cn",
+        "https://mcp.mcd.cn.attacker.example",
+        "https://mcp.mcd.cn@attacker.example",
+        "https://user:pw@mcp.mcd.cn",
+        "https://mcp.mcd.cn:8443",
+        "https://mcp.mcd.cn:bad",
+    ],
+)
+def test_unofficial_url_is_refused_before_any_request(url: str) -> None:
+    server = FakeServer([RESULT])
+    with pytest.raises(GitMcdError) as err:
+        McdMcpClient(TOKEN, url, opener=server, min_interval=0)
+    assert err.value.fatal and TOKEN not in err.value.message
+    assert server.requests == []
+
+
+def test_official_url_variants_are_accepted() -> None:
+    for url in ("https://mcp.mcd.cn", "https://mcp.mcd.cn/", "https://MCP.mcd.cn:443"):
+        server = FakeServer([RESULT])
+        McdMcpClient(TOKEN, url, opener=server, min_interval=0).call_tool("now-time-info")
+        assert len(server.requests) == 3

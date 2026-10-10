@@ -2,6 +2,7 @@
 
 - Token 读取顺序：环境变量 MCD_MCP_TOKEN → ~/.config/mcd-mcp/token。Token 只放进请求头，
   不打印、不写日志、不出现在异常信息和 repr 里。
+- 地址写死为 https://mcp.mcd.cn，不读任何环境变量；别的协议或主机在发请求前就拒绝，Token 不会被带去别处。
 - 写操作 tool（下单、取消、领券……）默认拒绝；只有 push / revert 的确认闸会带 allow_write=True。
 - 返回解包优先用 structuredContent，缺失时才从 Markdown 文本里找 JSON 信封（三种布局都兼容）。
 """
@@ -13,6 +14,7 @@ import re
 import socket
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, Iterator, Optional
@@ -21,6 +23,7 @@ from . import __version__
 from .errors import GitMcdError, McdError
 
 DEFAULT_URL = "https://mcp.mcd.cn"
+OFFICIAL_HOST = "mcp.mcd.cn"
 PROTOCOL_VERSION = "2025-06-18"
 
 # 会改变账户状态的 tool。mcd-git 只会经确认闸调用前两个，其余永远不调。
@@ -149,8 +152,27 @@ def iter_sse(lines: Iterable[bytes]) -> Iterator[Dict[str, Any]]:
         yield json.loads("\n".join(data))
 
 
+def check_url(url: str) -> str:
+    """请求头里带着 Token，所以只允许 https://mcp.mcd.cn（默认端口、不带用户名密码），否则直接 fatal。"""
+    try:
+        parts = urllib.parse.urlsplit(url)
+        port = parts.port
+    except ValueError:
+        parts, port = None, -1
+    if (
+        parts is None
+        or parts.scheme != "https"
+        or (parts.hostname or "").lower() != OFFICIAL_HOST
+        or port not in (None, 443)
+        or parts.username is not None
+        or parts.password is not None
+    ):
+        raise GitMcdError(f"拒绝连接非官方的 MCP 地址：Token 只发给 {DEFAULT_URL}", fatal=True)
+    return url
+
+
 def _default_opener(request: urllib.request.Request, timeout: float):
-    return urllib.request.urlopen(request, timeout=timeout)  # noqa: S310（固定 https 地址）
+    return urllib.request.urlopen(request, timeout=timeout)  # noqa: S310（地址经 check_url 校验，只会是 https://mcp.mcd.cn）
 
 
 class McdMcpClient:
@@ -170,7 +192,8 @@ class McdMcpClient:
         if not token:
             raise ValueError("token 为空")
         self.__token = token
-        self.url = url or os.environ.get("MCD_MCP_URL") or DEFAULT_URL
+        # 只有构造参数能改地址（留给测试），而且同样要过 check_url；不读环境变量
+        self.url = check_url(url or DEFAULT_URL)
         self.timeout = timeout
         self._opener = opener or _default_opener
         self._sleep = sleep
