@@ -145,5 +145,14 @@ sequenceDiagram
 - `order-list` 只有最近 10 单，`log` 拿不到更早的历史。
 - 0 元订单（全额预付券）是否返回 `payH5Url` 未实测；没有链接时会提示去麦当劳 App 的订单页查看。
 - 取餐柜订单里 `lockerCode` / `lockerQrCode` 的真实形态未实测，按可选字段处理。
-- 特制（`--no-pickle`、`--with 少冰`、`--with 加一份浓缩` 等）按 schema 传 `modification`，多选组里没选中的项传 `quantity: 0`。`calculate-price` 既不校验也不回显特制，本项目也没有对真实账户调用过 `create-order`，所以特制在真实订单里是否生效**尚未实测**。下单后可以用 `git mcd show` 核对子项名称（来自 `query-order` 的 `comboItemList`）。
+- 特制（`--no-pickle`、`--with 少冰`、`--with 加一份浓缩` 等）按 schema 传 `modification`，多选组里没选中的项传 `quantity: 0`。`calculate-price` 既不校验也不回显特制，真实下单实测（见 §10）的那一单又没有特制，所以特制在真实订单里是否生效**尚未实测**。下单后可以用 `git mcd show` 核对子项名称（来自 `query-order` 的 `comboItemList`）。
 - 随单购（withOrder）、团餐（beType=6）暂不支持。
+
+## 10. 真实下单实测（2026-10-10）
+
+用作者本人的账户走了一遍真实下单和取消：到店自取，一瓶纯净水，没有付款。
+
+- `push` 先出预览，再按返回的 `data.next` 带 `--confirm` 执行：`calculate-price` 1 次、`create-order` 1 次，生成待支付订单，`orderStatus` 返回的是中文「待支付」。
+- `payH5Url` 指向麦当劳官方 H5 页面（`m.mcd.cn`），能正常打开；`expirePayTime` 是下单后 15 分钟。
+- `git mcd status` 和 `git mcd show` 都会提示待支付和付款截止时间。
+- `revert --reason=-1` 同样先预览、再带 `--confirm` 执行：`cancel-order` 1 次，随后 `git mcd show` 显示「订单已取消」。
