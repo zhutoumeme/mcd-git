@@ -26,8 +26,8 @@ mcd-git 是麦当劳中国 MCP Server 的一个命令行客户端：把 MCP 的 
 | `query-meal-detail` | 读 | `add`、`rebase`、`cherry-pick` | 套餐各轮选项、单品特制（去酸黄瓜、冰量、加浓缩） |
 | `calculate-price` | 读 | `diff`、`rebase`、`commit`、`push` | 核价；`takeWayCode` 只取自它返回的 `takeWayList` |
 | `query-store-coupons` | 读 | `status`、`rebase` | 本店、本渠道可用的券 |
-| `order-list` | 读 | `log`、`show`、`cherry-pick` | 最近 10 单（接口没有分页），合进本地提交历史 |
-| `query-order` | 读 | `show`、`revert` | 订单状态、取餐码、取餐柜、外送进度 |
+| `order-list` | 读 | `log`、`show`、`cherry-pick`、`card` | 最近 10 单（接口没有分页），合进本地提交历史，并顺手记进本机订单账本 |
+| `query-order` | 读 | `show`、`revert` | 订单状态、取餐码、取餐柜、外送进度；`show` 时顺手把这一单的原价、优惠记进本机订单账本 |
 | `campaign-calendar` | 读 | `fetch` | 今日和近期活动 |
 | `available-coupons` | 读 | `fetch` | 可领的券（只展示，不领） |
 | `create-order` | **写** | `push`（确认之后） | 生成待支付订单，返回 `payH5Url`，终端里渲染二维码 |
@@ -54,6 +54,7 @@ mcd-git 是麦当劳中国 MCP Server 的一个命令行客户端：把 MCP 的 
 | `cherry-pick` | 本地同店的 commit：0；否则 order-list + query-meals + query-meal-detail | 0～N |
 | `revert`（预览 / --confirm） | query-order；确认后再加 cancel-order | 1 / 2 |
 | `fetch` | campaign-calendar + available-coupons | 2 |
+| `card` | order-list（刷新本机账本，格子来自账本） | 1 |
 
 每条命令的 MCP 调用总数上限 60，`calculate-price` 上限 20；超过就停下并如实提示。
 
@@ -133,6 +134,7 @@ sequenceDiagram
 - `calculate-price` 每条命令最多 20 次并缓存相同参数；遇到 HTTP 429 只对只读 tool 做两次指数退避（1 秒、2 秒），写操作不重试。
 - Token 只放在本机、只出现在请求头里，不进日志、不进仓库、不上传任何第三方平台，也不需要放进 CI。
 - 个人信息：收货地址只保留 addressId 和打码提示；外送订单里的地址、手机号、骑手信息在解析时就丢弃，不展示、不进 `--json` 输出。
+- 本机订单账本 `~/.config/mcd-git/ledger.json`（目录 700、文件 600）只存下单时间、状态、餐品名和份数、原价 / 优惠 / 实付、取餐方式和 push 它的本地 commit；订单号只存哈希，不存门店、地址、手机号、取餐码、支付链接。`card` 生成的 SVG 只写在本机，卡片上没有门店、订单号、具体时刻和总消费，mcd-git 不会上传它，也不提供定时生成。
 
 ## 8. 业务价值
 
@@ -142,7 +144,7 @@ sequenceDiagram
 
 ## 9. 已知限制
 
-- `order-list` 只有最近 10 单，`log` 拿不到更早的历史。
+- `order-list` 只有最近 10 单，`log` 拿不到更早的历史；`card` 的格子靠本机账本慢慢补全，刚开始用会比较空。`order-list` 也不返回原价和优惠，`card --with-savings` 只算 push 或 show 过的单省下的钱。
 - 0 元订单（全额预付券）是否返回 `payH5Url` 未实测；没有链接时会提示去麦当劳 App 的订单页查看。
 - 取餐柜订单里 `lockerCode` / `lockerQrCode` 的真实形态未实测，按可选字段处理。
 - 特制（`--no-pickle`、`--with 少冰`、`--with 加一份浓缩` 等）按 schema 传 `modification`，多选组里没选中的项传 `quantity: 0`。`calculate-price` 既不校验也不回显特制，真实下单实测（见 §10）的那一单又没有特制，所以特制在真实订单里是否生效**尚未实测**。下单后可以用 `git mcd show` 核对子项名称（来自 `query-order` 的 `comboItemList`）。

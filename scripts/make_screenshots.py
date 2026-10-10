@@ -5,6 +5,7 @@
 
 每张截图都是 rich 的 Console(record=True) 导出的 SVG：在临时 HOME 里从头跑一遍 demo 流程，
 所以路径显示成 ~/.config/mcd-git/demo，不会出现本机用户名、真实门店、订单或 Token。
+吃麦贡献图 assets/card-demo.svg 也由它生成：另开一个全新的 demo 世界跑 card -o（和 tests/test_card.py 的快照条件一致）。
 """
 from __future__ import annotations
 
@@ -132,14 +133,27 @@ def badges() -> None:
         print(f"wrote {(folder / name).relative_to(ROOT)}.svg")
 
 
+def _fresh_home(home: str) -> None:
+    os.environ["HOME"] = home
+    for key in ("MCD_GIT_HOME", "MCD_GIT_NOW", "MCD_MCP_TOKEN", "COLUMNS"):
+        os.environ.pop(key, None)
+
+
 def run() -> None:
     ASSETS.mkdir(exist_ok=True)
     with tempfile.TemporaryDirectory() as home:
-        os.environ["HOME"] = home
-        for key in ("MCD_GIT_HOME", "MCD_GIT_NOW", "MCD_MCP_TOKEN", "COLUMNS"):
-            os.environ.pop(key, None)
+        _fresh_home(home)
         for step in STEPS:
             shot(*step)
+    # 贡献图在全新的 demo 世界里单独生成（当天没有 push 过），卡片本身写到 assets/card-demo.svg
+    cwd = os.getcwd()
+    with tempfile.TemporaryDirectory() as home:
+        _fresh_home(home)
+        os.chdir(ROOT)
+        try:
+            shot("card", ["card -o assets/card-demo.svg"], None)
+        finally:
+            os.chdir(cwd)
     badges()
 
 

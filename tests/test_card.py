@@ -258,6 +258,16 @@ def test_card_falls_back_to_ledger_when_order_list_fails(runner: Runner, tmp_pat
     assert data["data"]["warning"].startswith("order-list 查询失败")
 
 
+def test_demo_card_matches_committed_asset(runner: Runner, tmp_path: Path) -> None:
+    """README 里那张 assets/card-demo.svg 就是全新 demo 世界在 DEMO_NOW 生成的卡片，逐字节一致（Python 3.9 上也一样）。"""
+    out = tmp_path / "c.svg"
+    code, _ = runner.run("--demo", "card", "-o", str(out))
+    assert code == 0
+    committed = (ROOT / "assets" / "card-demo.svg").read_text(encoding="utf-8")
+    assert out.read_text(encoding="utf-8") == committed, "assets/card-demo.svg 过期了：重跑 .venv/bin/python scripts/make_screenshots.py"
+    assert not any(word in committed for word in BANNED)
+
+
 def test_card_with_broken_ledger(runner: Runner, tmp_path: Path) -> None:
     path = Path(runner.tmp_path) / "mcd-git" / "ledger.json"
     path.parent.mkdir(parents=True)

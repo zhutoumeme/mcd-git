@@ -39,6 +39,34 @@ Agent：（git mcd push --at 12:20 --locker --no-tableware --confirm bfc651c --j
 
 **和普通 Skill 的区别：确认由代码强制执行。** 普通 Skill 只是一段提示词，Agent 手里有 MCP 连接器就能随时直接调 `create-order`。mcd-git 的 Skill 不需要给 Agent 配 MCP 连接器，Token 只给 mcd-git 用，Agent 手里只有 `git mcd` 这一套命令：下单必须先出确认摘要，再用 `--confirm <commit 哈希>` 执行；哈希、参数、重新算出的应付金额，任何一项和预览时对不上，代码都会拒绝。代码保证的是这三件事：一定先出预览，确认时不能换参数，价格会复核。至于 Agent 有没有先把摘要拿给你看、等你点头，代码分辨不出来，这一步靠 SKILL.md 的规则约束 Agent。
 
+## 1024 特别版：生成你的吃麦贡献图
+
+![过去一年吃麦贡献图（demo 合成数据）](assets/card-demo.svg)
+
+把过去一年的吃麦记录画成 GitHub 风格的贡献图：7 行 × 最近 53 周，一格一天，颜色深浅表示那天吃了几单，10-24 那格单独描了边。终端里先出预览，同时在本机写一个 SVG：自包含（不引用外部字体、图片和脚本），跟着系统切换浅色 / 深色，二十几 KB。
+
+```bash
+git mcd --demo card                # 先用合成数据看看效果（上面这张就是），写到当前目录的 mcd-contributions.svg
+git mcd card                       # 用你自己的记录
+git mcd card -o ~/Desktop/mcd.svg  # 换个地方写
+git mcd card --with-savings        # 卡片上多一项「用券省下 ¥X」（默认不出现任何金额）
+```
+
+**贴到 GitHub 个人主页**（全程在本机手动完成）：
+
+1. 建一个和用户名同名的仓库 `<用户名>/<用户名>`，GitHub 会把它的 README 显示在你的个人主页上；
+2. 在本机运行 `git mcd card -o <那个仓库的目录>/mcd-contributions.svg`；
+3. 在那个仓库的 README.md 里加一行 `<img src="mcd-contributions.svg" alt="过去一年吃麦贡献图">`；
+4. 自己 `git add`、`git commit`、`git push`。
+
+**不要用 GitHub Actions 定时生成。** MCP Token 不能放进 CI（服务规则不允许把凭证托管到第三方平台），也不允许自动化调用。想更新就在本机再跑一次 `git mcd card`。
+
+**卡片上有什么**：日期级的格子、总单数、最常点、最常时段，以及数据范围（比如「数据：麦当劳最近 10 单 + 本机记录，最早到 2026-10-21」）。没有门店、地址、订单号、手机号、具体下单时刻和总消费；只有加了 `--with-savings` 才显示省下的钱。公开之前自己再看一眼。
+
+**数据从哪来**：`order-list` 只返回最近 10 单，所以刚开始用时格子会比较空。mcd-git 会把看到的订单记进本机账本，用得越久越全；取消的和没付款的单不算。
+
+**本机订单账本**：`~/.config/mcd-git/ledger.json`（demo 用的是另一份 `~/.config/mcd-git/demo/ledger.json`），文件权限 600，只给吃麦贡献图当数据。`log`、`cherry-pick`、`card` 查 `order-list` 时顺手合并最近 10 单，`show` 顺手补上那一单的原价和优惠（同一单按订单号合并，新状态覆盖旧状态），`push` 下单成功时记一笔，并和那个本地 commit 关联起来。每单只存下单时间、状态、餐品名和份数、原价 / 优惠 / 实付、取餐方式；不存订单号原文（只存它的哈希）、门店、手机号、地址、取餐码、支付链接。删掉这个文件就清空了，不影响购物车和订单。
+
 ## git 命令 ↔ 点餐动作
 
 | git mcd | 点餐动作 | 会改动你的账户吗 |
@@ -58,6 +86,7 @@ Agent：（git mcd push --at 12:20 --locker --no-tableware --confirm bfc651c --j
 | `cherry-pick HEAD` | 再来一单：把上一单拣回购物车，换了门店也会按新菜单重新对齐 | 否 |
 | `revert` | 取消订单，必须选原因 | ✎ 会，先确认 |
 | `fetch` | 今日活动、可领的券（只读，不替你领） | 否 |
+| `card` | 1024 吃麦贡献图：终端预览 + 本机 SVG（见上面「1024 特别版」） | 否 |
 
 所有命令都支持 `--demo`（合成数据，不需要 Token）和 `--json`（给 Agent 和脚本用）。对照表随时看：`git mcd help`。
 
@@ -83,6 +112,7 @@ git mcd --demo push --at 12:20 --locker --no-tableware   # 终端里会问 y/N
 git mcd --demo log --graph
 git mcd --demo show
 git mcd --demo cherry-pick HEAD
+git mcd --demo card                                      # 吃麦贡献图，写到当前目录的 mcd-contributions.svg
 ```
 
 装完会有两个等价的命令：`git-mcd`（git 会把 `git mcd` 分发给它）和 `mcd-git`。demo 的状态单独放在 `~/.config/mcd-git/demo/`，想从头再来就 `git mcd --demo init --pick 1`。嫌每条都敲 `--demo` 麻烦，可以先 `export MCD_GIT_DEMO=1`（首屏动图就是这么录的）。
@@ -133,6 +163,12 @@ git mcd --demo cherry-pick HEAD
 
 ![git mcd cherry-pick HEAD](assets/cherry-pick.svg)
 
+### card：1024 吃麦贡献图
+
+终端里一周一列：有颜色时一格一个小方块，管道和 `NO_COLOR` 下用 `· ░ ▒ ▓ █` 分档。卡片本身写成 SVG，见上面「1024 特别版」。
+
+![git mcd card](assets/card.svg)
+
 ### help：对照表
 
 对照表用 `git mcd help` 看（`git mcd -h` 和不带参数的 `git mcd` 也行）。注意别在 `mcd` 后面直接跟 `--help`，git 会把它拦截成 `git help mcd` 去找 man 手册。子命令的帮助照常可用，比如 `git mcd push -h`。
@@ -173,7 +209,7 @@ Token 我会自己配置到 ~/.config/mcd-mcp/token，不用在对话里发给�
 - **确认闸由代码执行**：`--confirm` 必须对得上 10 分钟内的预览（同一个 commit、同样的参数）；真正下单前重新算价，应付金额和下单参数的指纹都要和预览时一致；同一份确认只能用一次；`push --force` 一律拒绝。
 - **结果未知不重试**：网络超时、响应不完整、返回看不懂、按了 Ctrl+C，这些情况都不会自动重发 `create-order`，会提示先 `git mcd log` 核对，避免重复下单。
 - **低频、手动**：每条命令由你触发；`calculate-price` 每条命令最多 20 次，带缓存；遇到 429 只对只读请求退避重试。
-- **隐私**：Token 只在请求头里，只发给 `https://mcp.mcd.cn`（地址写死在代码里，不能用环境变量改）；收货地址只保留 addressId 和打码提示；状态文件在 `~/.config/mcd-git/`（目录 700、文件 600）。
+- **隐私**：Token 只在请求头里，只发给 `https://mcp.mcd.cn`（地址写死在代码里，不能用环境变量改）；收货地址只保留 addressId 和打码提示；状态文件在 `~/.config/mcd-git/`（目录 700、文件 600），本机订单账本 `ledger.json` 也在这里，只存贡献图要用的字段（见「1024 特别版」）；`card` 生成的 SVG 只写在你的电脑上，mcd-git 不会替你上传。
 
 ## 目标用户
 
@@ -187,7 +223,7 @@ Token 我会自己配置到 ~/.config/mcd-mcp/token，不用在对话里发给�
 
 **真的会下单吗？** 只有 `push` 并且你确认之后才会。生成的是待支付订单，付款要你自己在支付页或麦当劳 App 里完成。付款窗口是下单后 15 分钟（用真实账户实测过），不想要了就 `git mcd revert` 取消。
 
-**会读写我的代码仓库吗？** 不会。mcd-git 不碰任何 `.git` 目录，状态只放在 `~/.config/mcd-git/`。
+**会读写我的代码仓库吗？** 不会。mcd-git 不碰任何 `.git` 目录，状态只放在 `~/.config/mcd-git/`。唯一会往别处写文件的是 `card`：只在你指定的位置写一个 SVG（默认当前目录的 `mcd-contributions.svg`）。
 
 **rebase 会不会为了省钱让我多吃？** 不会。只有购物车里的东西正好凑满一个套餐时才换，不会额外加任何餐品。
 
@@ -197,7 +233,7 @@ Token 我会自己配置到 ~/.config/mcd-mcp/token，不用在对话里发给�
 
 **为什么一单只能用一张券？** 这是 MCP 的规则：两张券会返回「暂不支持多张券使用」（600022）。
 
-**`log` 为什么最多只有 10 单？** `order-list` 没有分页参数，只返回最近 10 单。
+**`log` 为什么最多只有 10 单？** `order-list` 没有分页参数，只返回最近 10 单。`card` 会再加上本机账本里记下的订单，用得越久越全。
 
 **`show` 会一直刷新订单状态吗？** 不会。只在你运行时查一次，不轮询。
 
@@ -206,7 +242,7 @@ Token 我会自己配置到 ~/.config/mcd-mcp/token，不用在对话里发给�
 ## 路线图
 
 - **P1**：`log --stat` 汇总最近订单的单数和金额；`stash` / `stash pop` 暂存购物车；`pull` 领券（写操作，同样走确认闸）；`rebase -i` 手动挑方案；预约时段在本地先校验。
-- **P2**：`card` 在本地生成 SVG「吃麦贡献图」；`ship --team` 发版庆功的团餐方案（下单仍走 push）；`push --at next-gap` 读本地 .ics 找会议空档。
+- **P2**：`ship --team` 发版庆功的团餐方案（下单仍走 push）；`push --at next-gap` 读本地 .ics 找会议空档。
 
 欢迎提 Issue 和 PR，新命令请保持「只读命令零副作用、写操作必须过确认闸」这条规矩。
 

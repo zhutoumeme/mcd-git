@@ -1,6 +1,6 @@
 ---
 name: mcd-git
-description: 用本地命令行 mcd-git（git mcd --json）帮用户点麦当劳：选门店、看菜单、加购物车（去酸黄瓜、少冰、套餐换搭）、自动凑套餐挑最省的券、核价、下单拿支付链接、查取餐码、再来一单、取消订单。用户提到点麦当劳、麦当劳到店 / 得来速 / 麦乐送、取餐码、再来一单、取消麦当劳订单时使用。下单和取消必须先把确认摘要给用户看，用户明确同意后才能带 --confirm 执行。
+description: 用本地命令行 mcd-git（git mcd --json）帮用户点麦当劳：选门店、看菜单、加购物车（去酸黄瓜、少冰、套餐换搭）、自动凑套餐挑最省的券、核价、下单拿支付链接、查取餐码、再来一单、取消订单，以及生成 1024 吃麦贡献图（card）。用户提到点麦当劳、麦当劳到店 / 得来速 / 麦乐送、取餐码、再来一单、取消麦当劳订单、吃麦贡献图时使用。下单和取消必须先把确认摘要给用户看，用户明确同意后才能带 --confirm 执行。
 ---
 
 # mcd-git：用 git 命令点麦当劳
@@ -52,6 +52,7 @@ mcd-git 把麦当劳中国 MCP Server 包装成 git 风格的命令：`add` 放�
 | 再来一单 | `git mcd cherry-pick HEAD --json`，再 `git mcd commit -m 再来一单 --json`，然后按「下单预览」走 | `data.index`、`data.conflicts`（本店买不到的会列出来）。cherry-pick 只放回购物车，不 commit 就 push 会报「购物车还没 commit」。只用于已经 push 过的单：HEAD 还没 push 时它本来就是这一单，`cherry-pick HEAD` 会被拒绝（`error.detail.code == "empty_cherry_pick"`，购物车不动），直接按「下单预览」走；用户要多点就 `add` 后 `commit --amend` |
 | 取消 | `git mcd revert --reason 3 --json` | 预览后用户同意，再运行 `data.next` |
 | 活动和可领券 | `git mcd fetch --json` | `data.events`、`data.claimable`（只读，领券请用户去 App） |
+| 吃麦贡献图 | `git mcd card -o <路径> --json` | `data.path`（写好的 SVG）、`data.stats`（`total`、`topItem`、`topSlot`、`earliest`）；`data.status == "empty"` 说明还没有记录，没写文件。只在本机写文件：不要替用户把图提交或上传到 GitHub，也不要设置定时任务；默认不加 `--with-savings`，用户想看省了多少钱再加 |
 
 - `--remark` 只用于麦乐送；`--locker` 要门店有取餐柜，没有会报错，把可选的取餐方式告诉用户。
 - `--at` 写 `HH:MM`（今天）或 `"YYYY-MM-DD HH:MM"`；预览和确认时要用完全相同的参数。
