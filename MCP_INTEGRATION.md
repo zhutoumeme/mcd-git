@@ -143,7 +143,7 @@ sequenceDiagram
 6. `create-order` 只有在服务端明确拒绝时才提示「什么都没下单」：信封里的业务错误码、HTTP 4xx，或 JSON-RPC 层没受理这次请求（-32700 / -32600 / -32601 / -32602）。网络超时、30x、5xx、其余 JSON-RPC 错误（如 -32603 Internal error、-32000～-32099）、响应被截断、返回看不懂或没有订单号、Ctrl+C 中断，一律按结果未知处理：不自动重试，提示先 `git mcd log` 核对。
 7. 只生成待支付订单，只返回支付链接，**不代付**；付款后由用户自己运行 `git mcd show` 查取餐码，不轮询。
 8. `revert`（cancel-order）同样：必须选取消原因（1 改主意了、2 重复下单、3 点错了、4 地址电话填错、5 送达时间选错、-1 其它），预览 → 同意 → `--confirm <订单号>`。
-9. `pull`（auto-bind-coupons）同样：预览 → 同意 → `--confirm <指纹>`。这个 tool 没有参数，一次领取全部可领券，不能只领其中几张，摘要里逐张列出并写明这一点。指纹按可领券列表（名称、状态、标签的多重集合，稳定排序）算出；`--confirm` 必须对得上 10 分钟内的预览，确认时重新拉一次 `available-coupons`，指纹变了就拒绝并要求重新预览，列表空了就输出 `Already up to date.`；预览在发请求前被消费，只能用一次。只有服务端明确拒绝（判断同第 6 条）才提示「什么都没领」，其余一律按结果未知处理：不自动重试，提示先 `git mcd status` 或 `git mcd fetch` 核对。`--force` 一律拒绝，`--dry-run` 只出预览；返回里的 couponId、券码不展示，也不进 `--json` 输出。
+9. `pull`（auto-bind-coupons）同样：预览 → 同意 → `--confirm <指纹>`。这个 tool 没有参数，一次领取全部可领券，不能只领其中几张，摘要里逐张列出并写明这一点。指纹按可领券列表（名称、状态、标签的多重集合，稳定排序）算出；`--confirm` 必须对得上 10 分钟内的预览，确认时重新拉一次 `available-coupons`，指纹变了就拒绝并要求重新预览，列表空了就输出 `Already up to date.`；预览在发请求前被消费，只能用一次。交互终端回答 y 之后立即领取（和 push 的交互路径一样不再重拉列表），领的是发请求那一刻的全部可领券。只有服务端明确拒绝（判断同第 6 条）才提示「什么都没领」，其余一律按结果未知处理：不自动重试，提示先 `git mcd status` 或 `git mcd fetch` 核对。`--force` 一律拒绝，`--dry-run` 只出预览；返回里的 couponId、券码不展示，也不进 `--json` 输出。
 
 自动化测试全部离线：push / revert / pull 的真实链路只用 mock 客户端测试（`tests/test_push_gate.py`、`tests/test_pull_gate.py`），从不对真实账户调用写操作。
 
@@ -168,7 +168,7 @@ sequenceDiagram
 - 0 元订单（全额预付券）是否返回 `payH5Url` 未实测；没有链接时会提示去麦当劳 App 的订单页查看。
 - 取餐柜订单里 `lockerCode` / `lockerQrCode` 的真实形态未实测，按可选字段处理。
 - 特制（`--no-pickle`、`--with 少冰`、`--with 加一份浓缩` 等）按 schema 传 `modification`，多选组里没选中的项传 `quantity: 0`。`calculate-price` 既不校验也不回显特制，真实下单实测（见 §10）的那一单又没有特制，所以特制在真实订单里是否生效**尚未实测**。下单后可以用 `git mcd show` 核对子项名称（来自 `query-order` 的 `comboItemList`）。
-- `auto-bind-coupons` 只按 outputSchema 实现（`successCount`、`failedCount`、`totalCount`、`successCoupons`、`failedCoupons`），真实账户还没调用过。解析做了容错：计数缺失就用名单长度，名单缺失就只显示张数，`data` 看不懂按结果未知处理。
+- `auto-bind-coupons` 只按 outputSchema 实现（`successCount`、`failedCount`、`totalCount`、`successCoupons`、`failedCoupons`），真实账户还没调用过。解析做了容错：计数缺失就用名单长度，名单缺失就只显示张数。`data` 不是对象，或者这四个计数 / 名单字段（不算 `totalCount`）一个合法值都没有（比如 `{}`、字段名和 schema 对不上），都按结果未知处理：退出码 1，提示先 `git mcd status` 或 `git mcd fetch` 核对，不重试。服务端明确回了 0 张成功、0 张失败时输出 `Already up to date.`，同样提示用 `git mcd fetch` 核对。
 - 随单购（withOrder）、团餐（beType=6）暂不支持。
 
 ## 10. 真实下单实测（2026-10-10）
