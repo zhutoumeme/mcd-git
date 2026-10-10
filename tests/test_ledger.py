@@ -141,6 +141,24 @@ def test_push_links_commit_and_revert_marks_cancelled(runner: Runner) -> None:
     assert entry["way"] == "到店自取 · 外带 · 店外取餐柜"
 
 
+def test_demo_ledger_is_seeded_and_reset_by_init(runner: Runner) -> None:
+    runner.run("--demo", "add", "热拿铁")
+    runner.run("--demo", "commit", "-m", "下午茶")
+    code, data = runner.json("--demo", "push")
+    code, data = runner.json("--demo", "push", "--confirm", data["data"]["confirm"])
+    assert code == 0 and data["data"]["status"] == "pushed"
+    order_id = data["data"]["orderId"]
+    path = _home(runner) / "demo" / "ledger.json"
+    orders = _orders(path)
+    assert len(orders) == len(world.year_orders()) + len(world.HISTORY) + 1  # 播种的一年 + 演示历史 + 刚 push 的这一单
+    assert orders[ledger.key_of(order_id)]["source"] == "push"
+    assert runner.run("--demo", "init", "--pick", "1")[0] == 0
+    assert not path.exists()  # demo 从头来，账本也清掉
+    assert runner.run("--demo", "log")[0] == 0
+    assert ledger.key_of(order_id) not in _orders(path)  # 下次读取重新播种
+    assert not (_home(runner) / "ledger.json").exists()  # 真实账本从不播种，也没被碰过
+
+
 def test_ledger_write_failure_never_breaks_push(runner: Runner, monkeypatch: pytest.MonkeyPatch) -> None:
     def full(self: Ledger, orders: Any) -> None:
         raise OSError(28, "No space left on device")
