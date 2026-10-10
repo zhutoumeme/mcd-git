@@ -5,7 +5,8 @@
 
 每张截图都是 rich 的 Console(record=True) 导出的 SVG：在临时 HOME 里从头跑一遍 demo 流程，
 所以路径显示成 ~/.config/mcd-git/demo，不会出现本机用户名、真实门店、订单或 Token。
-吃麦贡献图 assets/card-demo.svg 也由它生成：另开一个全新的 demo 世界跑 card -o（和 tests/test_card.py 的快照条件一致）。
+吃麦贡献图 assets/card-demo.svg（天际线）、card-receipt-demo.svg（小票）、card-grid-demo.svg（平面格子）也由它生成：
+另开一个全新的 demo 世界跑 card -o（和 tests/test_card.py、tests/test_card_styles.py 的快照条件一致）。
 """
 from __future__ import annotations
 
@@ -146,13 +147,19 @@ def run() -> None:
         _fresh_home(home)
         for step in STEPS:
             shot(*step)
-    # 贡献图在全新的 demo 世界里单独生成（当天没有 push 过），卡片本身写到 assets/card-demo.svg
+    # 贡献图在全新的 demo 世界里单独生成（当天没有 push 过）：天际线 → assets/card-demo.svg，
+    # 小票 → assets/card-receipt-demo.svg，平面格子 → assets/card-grid-demo.svg（格子版只要卡片，不要终端截图）
     cwd = os.getcwd()
     with tempfile.TemporaryDirectory() as home:
         _fresh_home(home)
         os.chdir(ROOT)
         try:
             shot("card", ["card -o assets/card-demo.svg"], None)
+            shot("card-receipt", ["card --style receipt -o assets/card-receipt-demo.svg"], None)
+            quiet = Console(file=io.StringIO(), width=WIDTH)
+            if main(["--demo", "card", "--style", "grid", "-o", "assets/card-grid-demo.svg"], console=quiet, interactive=False) != 0:
+                raise SystemExit("card --style grid 失败")
+            print("wrote assets/card-grid-demo.svg")
         finally:
             os.chdir(cwd)
     badges()

@@ -1,0 +1,482 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="480" height="778" viewBox="-20 -20 480 778" role="img" aria-labelledby="t d">
+<title id="t">年度吃麦小票：过去一年 111 单</title>
+<desc id="d">吃麦贡献图：2025-10-20 至 2026-10-24，共 111 次；最常点巨无霸套餐，最常在午饭时段。</desc>
+<!-- 0x400 = 1024 -->
+<style>
+svg{font-family:ui-monospace,"SF Mono",Menlo,Consolas,"PingFang SC","Microsoft YaHei","Noto Sans Mono CJK SC",monospace}text{white-space:pre}
+.o{fill:#E9E4DA}.sh{fill:#000000;opacity:.18}.pp{fill:#FBF8F1}.i{fill:#2A2621}.u{fill:#6B645A}.z{fill:#D8D1C4}.r{stroke:#2A2621;stroke-width:1}.dr{stroke-dasharray:4 3}.ring{fill:none;stroke:#D9342B;stroke-width:1.4}
+.b{font-weight:700}.xb{font-weight:800}
+@media (prefers-color-scheme:dark){.o{fill:#1D1F26}.sh{opacity:.5}}
+</style>
+<rect class="o" x="-20" y="-20" width="480" height="778"/>
+<path class="sh" transform="translate(3,5)" d="M0,0 L5,6 L15,0 L25,6 L35,0 L45,6 L55,0 L65,6 L75,0 L85,6 L95,0 L105,6 L115,0 L125,6 L135,0 L145,6 L155,0 L165,6 L175,0 L185,6 L195,0 L205,6 L215,0 L225,6 L235,0 L245,6 L255,0 L265,6 L275,0 L285,6 L295,0 L305,6 L315,0 L325,6 L335,0 L345,6 L355,0 L365,6 L375,0 L385,6 L395,0 L405,6 L415,0 L425,6 L435,0 L440,0 L440,738 L435,732 L425,738 L415,732 L405,738 L395,732 L385,738 L375,732 L365,738 L355,732 L345,738 L335,732 L325,738 L315,732 L305,738 L295,732 L285,738 L275,732 L265,738 L255,732 L245,738 L235,732 L225,738 L215,732 L205,738 L195,732 L185,738 L175,732 L165,738 L155,732 L145,738 L135,732 L125,738 L115,732 L105,738 L95,732 L85,738 L75,732 L65,738 L55,732 L45,738 L35,732 L25,738 L15,732 L5,738 L0,738 Z"/>
+<path class="pp" d="M0,0 L5,6 L15,0 L25,6 L35,0 L45,6 L55,0 L65,6 L75,0 L85,6 L95,0 L105,6 L115,0 L125,6 L135,0 L145,6 L155,0 L165,6 L175,0 L185,6 L195,0 L205,6 L215,0 L225,6 L235,0 L245,6 L255,0 L265,6 L275,0 L285,6 L295,0 L305,6 L315,0 L325,6 L335,0 L345,6 L355,0 L365,6 L375,0 L385,6 L395,0 L405,6 L415,0 L425,6 L435,0 L440,0 L440,738 L435,732 L425,738 L415,732 L405,738 L395,732 L385,738 L375,732 L365,738 L355,732 L345,738 L335,732 L325,738 L315,732 L305,738 L295,732 L285,738 L275,732 L265,738 L255,732 L245,738 L235,732 L225,738 L215,732 L205,738 L195,732 L185,738 L175,732 L165,738 L155,732 L145,738 L135,732 L125,738 L115,732 L105,738 L95,732 L85,738 L75,732 L65,738 L55,732 L45,738 L35,732 L25,738 L15,732 L5,738 L0,738 Z"/>
+<text class="i xb" x="220.0" y="64" font-size="20" text-anchor="middle">git mcd · 吃麦小票</text>
+<text class="u" x="220.0" y="88" font-size="11" text-anchor="middle">ANNUAL RECEIPT  2025-10-20 → 2026-10-24</text>
+<line class="r dr" x1="34" y1="114" x2="406" y2="114"/>
+<text class="i" x="34.0" y="138" font-size="13">COMMIT  0x400</text>
+<text class="i" x="406.0" y="138" font-size="13" text-anchor="end">BRANCH  lunch</text>
+<text class="i" x="34.0" y="158" font-size="13">DATE    2026-10-24</text>
+<text class="i" x="406.0" y="158" font-size="13" text-anchor="end">HEAD    —</text>
+<line class="r dr" x1="34" y1="180" x2="406" y2="180"/>
+<text class="i b" x="34.0" y="204" font-size="13">QTY  ITEM</text>
+<text class="i b" x="406.0" y="204" font-size="13" text-anchor="end">FREQ</text>
+<text class="i" x="34.0" y="226" font-size="13"> 27  巨无霸套餐</text>
+<rect class="i" x="326" y="217" width="80" height="8"/>
+<text class="i" x="34.0" y="246" font-size="13"> 23  菠萝派</text>
+<rect class="i" x="338" y="237" width="68" height="8"/>
+<text class="i" x="34.0" y="266" font-size="13"> 22  猪柳蛋麦满分</text>
+<rect class="i" x="341" y="257" width="65" height="8"/>
+<text class="i" x="34.0" y="286" font-size="13"> 19  板烧鸡腿堡套餐</text>
+<rect class="i" x="350" y="277" width="56" height="8"/>
+<text class="i" x="34.0" y="306" font-size="13"> 19  麦辣鸡腿堡套餐</text>
+<rect class="i" x="350" y="297" width="56" height="8"/>
+<line class="r dr" x1="34" y1="328" x2="406" y2="328"/>
+<circle class="z" cx="37.5" cy="355.5" r="0.9"/>
+<circle class="i" cx="37.5" cy="362.5" r="2.2"/>
+<circle class="z" cx="37.5" cy="369.5" r="0.9"/>
+<circle class="z" cx="37.5" cy="376.6" r="0.9"/>
+<circle class="z" cx="37.5" cy="383.6" r="0.9"/>
+<circle class="z" cx="37.5" cy="390.6" r="0.9"/>
+<circle class="z" cx="37.5" cy="397.6" r="0.9"/>
+<circle class="z" cx="44.5" cy="355.5" r="0.9"/>
+<circle class="i" cx="44.5" cy="362.5" r="2.2"/>
+<circle class="i" cx="44.5" cy="369.5" r="2.2"/>
+<circle class="z" cx="44.5" cy="376.6" r="0.9"/>
+<circle class="z" cx="44.5" cy="383.6" r="0.9"/>
+<circle class="z" cx="44.5" cy="390.6" r="0.9"/>
+<circle class="z" cx="44.5" cy="397.6" r="0.9"/>
+<circle class="z" cx="51.5" cy="355.5" r="0.9"/>
+<circle class="z" cx="51.5" cy="362.5" r="0.9"/>
+<circle class="i" cx="51.5" cy="369.5" r="2.2"/>
+<circle class="z" cx="51.5" cy="376.6" r="0.9"/>
+<circle class="z" cx="51.5" cy="383.6" r="0.9"/>
+<circle class="z" cx="51.5" cy="390.6" r="0.9"/>
+<circle class="i" cx="51.5" cy="397.6" r="2.2"/>
+<circle class="z" cx="58.6" cy="355.5" r="0.9"/>
+<circle class="z" cx="58.6" cy="362.5" r="0.9"/>
+<circle class="z" cx="58.6" cy="369.5" r="0.9"/>
+<circle class="z" cx="58.6" cy="376.6" r="0.9"/>
+<circle class="i" cx="58.6" cy="383.6" r="2.2"/>
+<circle class="z" cx="58.6" cy="390.6" r="0.9"/>
+<circle class="z" cx="58.6" cy="397.6" r="0.9"/>
+<circle class="z" cx="65.6" cy="355.5" r="0.9"/>
+<circle class="i" cx="65.6" cy="362.5" r="2.2"/>
+<circle class="z" cx="65.6" cy="369.5" r="0.9"/>
+<circle class="i" cx="65.6" cy="376.6" r="2.2"/>
+<circle class="z" cx="65.6" cy="383.6" r="0.9"/>
+<circle class="i" cx="65.6" cy="390.6" r="2.2"/>
+<circle class="z" cx="65.6" cy="397.6" r="0.9"/>
+<circle class="i" cx="72.6" cy="355.5" r="2.2"/>
+<circle class="z" cx="72.6" cy="362.5" r="0.9"/>
+<circle class="z" cx="72.6" cy="369.5" r="0.9"/>
+<circle class="i" cx="72.6" cy="376.6" r="2.2"/>
+<circle class="z" cx="72.6" cy="383.6" r="0.9"/>
+<circle class="z" cx="72.6" cy="390.6" r="0.9"/>
+<circle class="z" cx="72.6" cy="397.6" r="0.9"/>
+<circle class="z" cx="79.6" cy="355.5" r="0.9"/>
+<circle class="z" cx="79.6" cy="362.5" r="0.9"/>
+<circle class="z" cx="79.6" cy="369.5" r="0.9"/>
+<circle class="z" cx="79.6" cy="376.6" r="0.9"/>
+<circle class="i" cx="79.6" cy="383.6" r="2.2"/>
+<circle class="z" cx="79.6" cy="390.6" r="0.9"/>
+<circle class="i" cx="79.6" cy="397.6" r="2.2"/>
+<circle class="z" cx="86.6" cy="355.5" r="0.9"/>
+<circle class="z" cx="86.6" cy="362.5" r="0.9"/>
+<circle class="z" cx="86.6" cy="369.5" r="0.9"/>
+<circle class="i" cx="86.6" cy="376.6" r="2.2"/>
+<circle class="i" cx="86.6" cy="383.6" r="2.2"/>
+<circle class="z" cx="86.6" cy="390.6" r="0.9"/>
+<circle class="i" cx="86.6" cy="397.6" r="2.2"/>
+<circle class="i" cx="93.7" cy="355.5" r="2.2"/>
+<circle class="z" cx="93.7" cy="362.5" r="0.9"/>
+<circle class="i" cx="93.7" cy="369.5" r="2.2"/>
+<circle class="z" cx="93.7" cy="376.6" r="0.9"/>
+<circle class="z" cx="93.7" cy="383.6" r="0.9"/>
+<circle class="i" cx="93.7" cy="390.6" r="2.2"/>
+<circle class="z" cx="93.7" cy="397.6" r="0.9"/>
+<circle class="z" cx="100.7" cy="355.5" r="0.9"/>
+<circle class="z" cx="100.7" cy="362.5" r="0.9"/>
+<circle class="z" cx="100.7" cy="369.5" r="0.9"/>
+<circle class="i" cx="100.7" cy="376.6" r="2.2"/>
+<circle class="z" cx="100.7" cy="383.6" r="0.9"/>
+<circle class="z" cx="100.7" cy="390.6" r="0.9"/>
+<circle class="z" cx="100.7" cy="397.6" r="0.9"/>
+<circle class="z" cx="107.7" cy="355.5" r="0.9"/>
+<circle class="z" cx="107.7" cy="362.5" r="0.9"/>
+<circle class="z" cx="107.7" cy="369.5" r="0.9"/>
+<circle class="i" cx="107.7" cy="376.6" r="3"/>
+<circle class="z" cx="107.7" cy="383.6" r="0.9"/>
+<circle class="z" cx="107.7" cy="390.6" r="0.9"/>
+<circle class="z" cx="107.7" cy="397.6" r="0.9"/>
+<circle class="i" cx="114.7" cy="355.5" r="2.2"/>
+<circle class="i" cx="114.7" cy="362.5" r="2.2"/>
+<circle class="z" cx="114.7" cy="369.5" r="0.9"/>
+<circle class="i" cx="114.7" cy="376.6" r="2.2"/>
+<circle class="z" cx="114.7" cy="383.6" r="0.9"/>
+<circle class="z" cx="114.7" cy="390.6" r="0.9"/>
+<circle class="z" cx="114.7" cy="397.6" r="0.9"/>
+<circle class="i" cx="121.7" cy="355.5" r="2.2"/>
+<circle class="z" cx="121.7" cy="362.5" r="0.9"/>
+<circle class="z" cx="121.7" cy="369.5" r="0.9"/>
+<circle class="i" cx="121.7" cy="376.6" r="2.2"/>
+<circle class="i" cx="121.7" cy="383.6" r="2.2"/>
+<circle class="z" cx="121.7" cy="390.6" r="0.9"/>
+<circle class="z" cx="121.7" cy="397.6" r="0.9"/>
+<circle class="i" cx="128.8" cy="355.5" r="2.2"/>
+<circle class="z" cx="128.8" cy="362.5" r="0.9"/>
+<circle class="i" cx="128.8" cy="369.5" r="2.2"/>
+<circle class="z" cx="128.8" cy="376.6" r="0.9"/>
+<circle class="z" cx="128.8" cy="383.6" r="0.9"/>
+<circle class="z" cx="128.8" cy="390.6" r="0.9"/>
+<circle class="z" cx="128.8" cy="397.6" r="0.9"/>
+<circle class="i" cx="135.8" cy="355.5" r="2.2"/>
+<circle class="z" cx="135.8" cy="362.5" r="0.9"/>
+<circle class="z" cx="135.8" cy="369.5" r="0.9"/>
+<circle class="z" cx="135.8" cy="376.6" r="0.9"/>
+<circle class="i" cx="135.8" cy="383.6" r="2.2"/>
+<circle class="z" cx="135.8" cy="390.6" r="0.9"/>
+<circle class="z" cx="135.8" cy="397.6" r="0.9"/>
+<circle class="z" cx="142.8" cy="355.5" r="0.9"/>
+<circle class="z" cx="142.8" cy="362.5" r="0.9"/>
+<circle class="i" cx="142.8" cy="369.5" r="2.2"/>
+<circle class="z" cx="142.8" cy="376.6" r="0.9"/>
+<circle class="z" cx="142.8" cy="383.6" r="0.9"/>
+<circle class="z" cx="142.8" cy="390.6" r="0.9"/>
+<circle class="z" cx="142.8" cy="397.6" r="0.9"/>
+<circle class="z" cx="149.8" cy="355.5" r="0.9"/>
+<circle class="z" cx="149.8" cy="362.5" r="0.9"/>
+<circle class="i" cx="149.8" cy="369.5" r="2.2"/>
+<circle class="i" cx="149.8" cy="376.6" r="2.2"/>
+<circle class="i" cx="149.8" cy="383.6" r="2.2"/>
+<circle class="z" cx="149.8" cy="390.6" r="0.9"/>
+<circle class="z" cx="149.8" cy="397.6" r="0.9"/>
+<circle class="z" cx="156.8" cy="355.5" r="0.9"/>
+<circle class="z" cx="156.8" cy="362.5" r="0.9"/>
+<circle class="z" cx="156.8" cy="369.5" r="0.9"/>
+<circle class="z" cx="156.8" cy="376.6" r="0.9"/>
+<circle class="z" cx="156.8" cy="383.6" r="0.9"/>
+<circle class="z" cx="156.8" cy="390.6" r="0.9"/>
+<circle class="z" cx="156.8" cy="397.6" r="0.9"/>
+<circle class="z" cx="163.8" cy="355.5" r="0.9"/>
+<circle class="z" cx="163.8" cy="362.5" r="0.9"/>
+<circle class="z" cx="163.8" cy="369.5" r="0.9"/>
+<circle class="z" cx="163.8" cy="376.6" r="0.9"/>
+<circle class="i" cx="163.8" cy="383.6" r="2.2"/>
+<circle class="i" cx="163.8" cy="390.6" r="2.2"/>
+<circle class="z" cx="163.8" cy="397.6" r="0.9"/>
+<circle class="z" cx="170.9" cy="355.5" r="0.9"/>
+<circle class="z" cx="170.9" cy="362.5" r="0.9"/>
+<circle class="i" cx="170.9" cy="369.5" r="2.2"/>
+<circle class="z" cx="170.9" cy="376.6" r="0.9"/>
+<circle class="z" cx="170.9" cy="383.6" r="0.9"/>
+<circle class="z" cx="170.9" cy="390.6" r="0.9"/>
+<circle class="z" cx="170.9" cy="397.6" r="0.9"/>
+<circle class="z" cx="177.9" cy="355.5" r="0.9"/>
+<circle class="z" cx="177.9" cy="362.5" r="0.9"/>
+<circle class="z" cx="177.9" cy="369.5" r="0.9"/>
+<circle class="z" cx="177.9" cy="376.6" r="0.9"/>
+<circle class="i" cx="177.9" cy="383.6" r="2.2"/>
+<circle class="i" cx="177.9" cy="390.6" r="2.2"/>
+<circle class="z" cx="177.9" cy="397.6" r="0.9"/>
+<circle class="i" cx="184.9" cy="355.5" r="2.2"/>
+<circle class="i" cx="184.9" cy="362.5" r="2.2"/>
+<circle class="z" cx="184.9" cy="369.5" r="0.9"/>
+<circle class="z" cx="184.9" cy="376.6" r="0.9"/>
+<circle class="i" cx="184.9" cy="383.6" r="2.2"/>
+<circle class="z" cx="184.9" cy="390.6" r="0.9"/>
+<circle class="z" cx="184.9" cy="397.6" r="0.9"/>
+<circle class="i" cx="191.9" cy="355.5" r="3"/>
+<circle class="z" cx="191.9" cy="362.5" r="0.9"/>
+<circle class="i" cx="191.9" cy="369.5" r="2.2"/>
+<circle class="z" cx="191.9" cy="376.6" r="0.9"/>
+<circle class="z" cx="191.9" cy="383.6" r="0.9"/>
+<circle class="z" cx="191.9" cy="390.6" r="0.9"/>
+<circle class="z" cx="191.9" cy="397.6" r="0.9"/>
+<circle class="i" cx="198.9" cy="355.5" r="3"/>
+<circle class="i" cx="198.9" cy="362.5" r="2.2"/>
+<circle class="z" cx="198.9" cy="369.5" r="0.9"/>
+<circle class="z" cx="198.9" cy="376.6" r="0.9"/>
+<circle class="z" cx="198.9" cy="383.6" r="0.9"/>
+<circle class="z" cx="198.9" cy="390.6" r="0.9"/>
+<circle class="z" cx="198.9" cy="397.6" r="0.9"/>
+<circle class="z" cx="206.0" cy="355.5" r="0.9"/>
+<circle class="z" cx="206.0" cy="362.5" r="0.9"/>
+<circle class="z" cx="206.0" cy="369.5" r="0.9"/>
+<circle class="z" cx="206.0" cy="376.6" r="0.9"/>
+<circle class="i" cx="206.0" cy="383.6" r="2.2"/>
+<circle class="z" cx="206.0" cy="390.6" r="0.9"/>
+<circle class="i" cx="206.0" cy="397.6" r="2.2"/>
+<circle class="z" cx="213.0" cy="355.5" r="0.9"/>
+<circle class="z" cx="213.0" cy="362.5" r="0.9"/>
+<circle class="i" cx="213.0" cy="369.5" r="2.2"/>
+<circle class="z" cx="213.0" cy="376.6" r="0.9"/>
+<circle class="z" cx="213.0" cy="383.6" r="0.9"/>
+<circle class="z" cx="213.0" cy="390.6" r="0.9"/>
+<circle class="z" cx="213.0" cy="397.6" r="0.9"/>
+<circle class="i" cx="220.0" cy="355.5" r="2.2"/>
+<circle class="z" cx="220.0" cy="362.5" r="0.9"/>
+<circle class="z" cx="220.0" cy="369.5" r="0.9"/>
+<circle class="z" cx="220.0" cy="376.6" r="0.9"/>
+<circle class="z" cx="220.0" cy="383.6" r="0.9"/>
+<circle class="z" cx="220.0" cy="390.6" r="0.9"/>
+<circle class="z" cx="220.0" cy="397.6" r="0.9"/>
+<circle class="z" cx="227.0" cy="355.5" r="0.9"/>
+<circle class="z" cx="227.0" cy="362.5" r="0.9"/>
+<circle class="z" cx="227.0" cy="369.5" r="0.9"/>
+<circle class="i" cx="227.0" cy="376.6" r="2.2"/>
+<circle class="i" cx="227.0" cy="383.6" r="2.2"/>
+<circle class="i" cx="227.0" cy="390.6" r="2.2"/>
+<circle class="z" cx="227.0" cy="397.6" r="0.9"/>
+<circle class="z" cx="234.0" cy="355.5" r="0.9"/>
+<circle class="i" cx="234.0" cy="362.5" r="2.2"/>
+<circle class="i" cx="234.0" cy="369.5" r="2.2"/>
+<circle class="z" cx="234.0" cy="376.6" r="0.9"/>
+<circle class="i" cx="234.0" cy="383.6" r="2.2"/>
+<circle class="z" cx="234.0" cy="390.6" r="0.9"/>
+<circle class="z" cx="234.0" cy="397.6" r="0.9"/>
+<circle class="z" cx="241.1" cy="355.5" r="0.9"/>
+<circle class="i" cx="241.1" cy="362.5" r="2.2"/>
+<circle class="z" cx="241.1" cy="369.5" r="0.9"/>
+<circle class="z" cx="241.1" cy="376.6" r="0.9"/>
+<circle class="z" cx="241.1" cy="383.6" r="0.9"/>
+<circle class="z" cx="241.1" cy="390.6" r="0.9"/>
+<circle class="z" cx="241.1" cy="397.6" r="0.9"/>
+<circle class="i" cx="248.1" cy="355.5" r="2.2"/>
+<circle class="z" cx="248.1" cy="362.5" r="0.9"/>
+<circle class="i" cx="248.1" cy="369.5" r="3"/>
+<circle class="z" cx="248.1" cy="376.6" r="0.9"/>
+<circle class="z" cx="248.1" cy="383.6" r="0.9"/>
+<circle class="z" cx="248.1" cy="390.6" r="0.9"/>
+<circle class="z" cx="248.1" cy="397.6" r="0.9"/>
+<circle class="z" cx="255.1" cy="355.5" r="0.9"/>
+<circle class="z" cx="255.1" cy="362.5" r="0.9"/>
+<circle class="z" cx="255.1" cy="369.5" r="0.9"/>
+<circle class="i" cx="255.1" cy="376.6" r="2.2"/>
+<circle class="z" cx="255.1" cy="383.6" r="0.9"/>
+<circle class="i" cx="255.1" cy="390.6" r="2.2"/>
+<circle class="z" cx="255.1" cy="397.6" r="0.9"/>
+<circle class="z" cx="262.1" cy="355.5" r="0.9"/>
+<circle class="i" cx="262.1" cy="362.5" r="2.2"/>
+<circle class="z" cx="262.1" cy="369.5" r="0.9"/>
+<circle class="z" cx="262.1" cy="376.6" r="0.9"/>
+<circle class="z" cx="262.1" cy="383.6" r="0.9"/>
+<circle class="z" cx="262.1" cy="390.6" r="0.9"/>
+<circle class="z" cx="262.1" cy="397.6" r="0.9"/>
+<circle class="z" cx="269.1" cy="355.5" r="0.9"/>
+<circle class="z" cx="269.1" cy="362.5" r="0.9"/>
+<circle class="i" cx="269.1" cy="369.5" r="2.2"/>
+<circle class="z" cx="269.1" cy="376.6" r="0.9"/>
+<circle class="z" cx="269.1" cy="383.6" r="0.9"/>
+<circle class="z" cx="269.1" cy="390.6" r="0.9"/>
+<circle class="z" cx="269.1" cy="397.6" r="0.9"/>
+<circle class="i" cx="276.2" cy="355.5" r="2.2"/>
+<circle class="z" cx="276.2" cy="362.5" r="0.9"/>
+<circle class="z" cx="276.2" cy="369.5" r="0.9"/>
+<circle class="z" cx="276.2" cy="376.6" r="0.9"/>
+<circle class="i" cx="276.2" cy="383.6" r="2.2"/>
+<circle class="i" cx="276.2" cy="390.6" r="2.2"/>
+<circle class="z" cx="276.2" cy="397.6" r="0.9"/>
+<circle class="z" cx="283.2" cy="355.5" r="0.9"/>
+<circle class="z" cx="283.2" cy="362.5" r="0.9"/>
+<circle class="z" cx="283.2" cy="369.5" r="0.9"/>
+<circle class="i" cx="283.2" cy="376.6" r="2.2"/>
+<circle class="i" cx="283.2" cy="383.6" r="2.2"/>
+<circle class="z" cx="283.2" cy="390.6" r="0.9"/>
+<circle class="z" cx="283.2" cy="397.6" r="0.9"/>
+<circle class="i" cx="290.2" cy="355.5" r="2.2"/>
+<circle class="z" cx="290.2" cy="362.5" r="0.9"/>
+<circle class="z" cx="290.2" cy="369.5" r="0.9"/>
+<circle class="i" cx="290.2" cy="376.6" r="2.2"/>
+<circle class="i" cx="290.2" cy="383.6" r="2.2"/>
+<circle class="z" cx="290.2" cy="390.6" r="0.9"/>
+<circle class="z" cx="290.2" cy="397.6" r="0.9"/>
+<circle class="z" cx="297.2" cy="355.5" r="0.9"/>
+<circle class="i" cx="297.2" cy="362.5" r="2.2"/>
+<circle class="i" cx="297.2" cy="369.5" r="2.2"/>
+<circle class="z" cx="297.2" cy="376.6" r="0.9"/>
+<circle class="z" cx="297.2" cy="383.6" r="0.9"/>
+<circle class="i" cx="297.2" cy="390.6" r="2.2"/>
+<circle class="z" cx="297.2" cy="397.6" r="0.9"/>
+<circle class="z" cx="304.2" cy="355.5" r="0.9"/>
+<circle class="i" cx="304.2" cy="362.5" r="2.2"/>
+<circle class="z" cx="304.2" cy="369.5" r="0.9"/>
+<circle class="z" cx="304.2" cy="376.6" r="0.9"/>
+<circle class="z" cx="304.2" cy="383.6" r="0.9"/>
+<circle class="z" cx="304.2" cy="390.6" r="0.9"/>
+<circle class="z" cx="304.2" cy="397.6" r="0.9"/>
+<circle class="z" cx="311.2" cy="355.5" r="0.9"/>
+<circle class="z" cx="311.2" cy="362.5" r="0.9"/>
+<circle class="z" cx="311.2" cy="369.5" r="0.9"/>
+<circle class="z" cx="311.2" cy="376.6" r="0.9"/>
+<circle class="i" cx="311.2" cy="383.6" r="3"/>
+<circle class="z" cx="311.2" cy="390.6" r="0.9"/>
+<circle class="z" cx="311.2" cy="397.6" r="0.9"/>
+<circle class="z" cx="318.3" cy="355.5" r="0.9"/>
+<circle class="z" cx="318.3" cy="362.5" r="0.9"/>
+<circle class="z" cx="318.3" cy="369.5" r="0.9"/>
+<circle class="z" cx="318.3" cy="376.6" r="0.9"/>
+<circle class="z" cx="318.3" cy="383.6" r="0.9"/>
+<circle class="z" cx="318.3" cy="390.6" r="0.9"/>
+<circle class="z" cx="318.3" cy="397.6" r="0.9"/>
+<circle class="z" cx="325.3" cy="355.5" r="0.9"/>
+<circle class="i" cx="325.3" cy="362.5" r="3"/>
+<circle class="z" cx="325.3" cy="369.5" r="0.9"/>
+<circle class="i" cx="325.3" cy="376.6" r="2.2"/>
+<circle class="z" cx="325.3" cy="383.6" r="0.9"/>
+<circle class="z" cx="325.3" cy="390.6" r="0.9"/>
+<circle class="z" cx="325.3" cy="397.6" r="0.9"/>
+<circle class="z" cx="332.3" cy="355.5" r="0.9"/>
+<circle class="i" cx="332.3" cy="362.5" r="2.2"/>
+<circle class="i" cx="332.3" cy="369.5" r="2.2"/>
+<circle class="z" cx="332.3" cy="376.6" r="0.9"/>
+<circle class="z" cx="332.3" cy="383.6" r="0.9"/>
+<circle class="z" cx="332.3" cy="390.6" r="0.9"/>
+<circle class="z" cx="332.3" cy="397.6" r="0.9"/>
+<circle class="z" cx="339.3" cy="355.5" r="0.9"/>
+<circle class="z" cx="339.3" cy="362.5" r="0.9"/>
+<circle class="i" cx="339.3" cy="369.5" r="2.2"/>
+<circle class="i" cx="339.3" cy="376.6" r="2.2"/>
+<circle class="i" cx="339.3" cy="383.6" r="2.2"/>
+<circle class="z" cx="339.3" cy="390.6" r="0.9"/>
+<circle class="z" cx="339.3" cy="397.6" r="0.9"/>
+<circle class="z" cx="346.3" cy="355.5" r="0.9"/>
+<circle class="i" cx="346.3" cy="362.5" r="2.2"/>
+<circle class="i" cx="346.3" cy="369.5" r="2.2"/>
+<circle class="z" cx="346.3" cy="376.6" r="0.9"/>
+<circle class="z" cx="346.3" cy="383.6" r="0.9"/>
+<circle class="z" cx="346.3" cy="390.6" r="0.9"/>
+<circle class="z" cx="346.3" cy="397.6" r="0.9"/>
+<circle class="z" cx="353.4" cy="355.5" r="0.9"/>
+<circle class="z" cx="353.4" cy="362.5" r="0.9"/>
+<circle class="i" cx="353.4" cy="369.5" r="2.2"/>
+<circle class="z" cx="353.4" cy="376.6" r="0.9"/>
+<circle class="z" cx="353.4" cy="383.6" r="0.9"/>
+<circle class="i" cx="353.4" cy="390.6" r="2.2"/>
+<circle class="z" cx="353.4" cy="397.6" r="0.9"/>
+<circle class="z" cx="360.4" cy="355.5" r="0.9"/>
+<circle class="i" cx="360.4" cy="362.5" r="2.2"/>
+<circle class="z" cx="360.4" cy="369.5" r="0.9"/>
+<circle class="z" cx="360.4" cy="376.6" r="0.9"/>
+<circle class="z" cx="360.4" cy="383.6" r="0.9"/>
+<circle class="z" cx="360.4" cy="390.6" r="0.9"/>
+<circle class="z" cx="360.4" cy="397.6" r="0.9"/>
+<circle class="i" cx="367.4" cy="355.5" r="2.2"/>
+<circle class="z" cx="367.4" cy="362.5" r="0.9"/>
+<circle class="z" cx="367.4" cy="369.5" r="0.9"/>
+<circle class="z" cx="367.4" cy="376.6" r="0.9"/>
+<circle class="z" cx="367.4" cy="383.6" r="0.9"/>
+<circle class="z" cx="367.4" cy="390.6" r="0.9"/>
+<circle class="z" cx="367.4" cy="397.6" r="0.9"/>
+<circle class="z" cx="374.4" cy="355.5" r="0.9"/>
+<circle class="z" cx="374.4" cy="362.5" r="0.9"/>
+<circle class="i" cx="374.4" cy="369.5" r="2.2"/>
+<circle class="i" cx="374.4" cy="376.6" r="2.2"/>
+<circle class="z" cx="374.4" cy="383.6" r="0.9"/>
+<circle class="z" cx="374.4" cy="390.6" r="0.9"/>
+<circle class="z" cx="374.4" cy="397.6" r="0.9"/>
+<circle class="z" cx="381.4" cy="355.5" r="0.9"/>
+<circle class="i" cx="381.4" cy="362.5" r="2.2"/>
+<circle class="z" cx="381.4" cy="369.5" r="0.9"/>
+<circle class="i" cx="381.4" cy="376.6" r="2.2"/>
+<circle class="z" cx="381.4" cy="383.6" r="0.9"/>
+<circle class="i" cx="381.4" cy="390.6" r="2.2"/>
+<circle class="z" cx="381.4" cy="397.6" r="0.9"/>
+<circle class="i" cx="388.5" cy="355.5" r="2.2"/>
+<circle class="z" cx="388.5" cy="362.5" r="0.9"/>
+<circle class="z" cx="388.5" cy="369.5" r="0.9"/>
+<circle class="i" cx="388.5" cy="376.6" r="2.2"/>
+<circle class="i" cx="388.5" cy="383.6" r="2.2"/>
+<circle class="z" cx="388.5" cy="390.6" r="0.9"/>
+<circle class="z" cx="388.5" cy="397.6" r="0.9"/>
+<circle class="z" cx="395.5" cy="355.5" r="0.9"/>
+<circle class="i" cx="395.5" cy="362.5" r="2.2"/>
+<circle class="z" cx="395.5" cy="369.5" r="0.9"/>
+<circle class="i" cx="395.5" cy="376.6" r="2.2"/>
+<circle class="z" cx="395.5" cy="383.6" r="0.9"/>
+<circle class="i" cx="395.5" cy="390.6" r="2.2"/>
+<circle class="z" cx="395.5" cy="397.6" r="0.9"/>
+<circle class="z" cx="402.5" cy="355.5" r="0.9"/>
+<circle class="z" cx="402.5" cy="362.5" r="0.9"/>
+<circle class="i" cx="402.5" cy="369.5" r="2.2"/>
+<circle class="i" cx="402.5" cy="376.6" r="2.2"/>
+<circle class="i" cx="402.5" cy="383.6" r="3"/>
+<circle class="ring" cx="402.5" cy="390.6" r="3.6"/>
+<circle class="z" cx="402.5" cy="390.6" r="0.9"/>
+<text class="u" x="220.0" y="423" font-size="10.5" text-anchor="middle">每个点是一天 · 红圈是 10-24</text>
+<line class="r dr" x1="34" y1="445" x2="406" y2="445"/>
+<text class="i" x="34.0" y="469" font-size="13">早餐</text>
+<rect class="i" x="333" y="458" width="39" height="13"/>
+<text class="i" x="406.0" y="469" font-size="13" text-anchor="end">22</text>
+<text class="i" x="34.0" y="489" font-size="13">午饭</text>
+<rect class="i" x="252" y="478" width="120" height="13"/>
+<text class="i" x="406.0" y="489" font-size="13" text-anchor="end">67</text>
+<text class="i" x="34.0" y="509" font-size="13">下午茶</text>
+<rect class="i" x="349" y="498" width="23" height="13"/>
+<text class="i" x="406.0" y="509" font-size="13" text-anchor="end">13</text>
+<text class="i" x="34.0" y="529" font-size="13">晚饭</text>
+<rect class="i" x="356" y="518" width="16" height="13"/>
+<text class="i" x="406.0" y="529" font-size="13" text-anchor="end">9</text>
+<line class="r" x1="34" y1="551" x2="406" y2="551"/>
+<text class="i xb" x="34.0" y="575" font-size="16">TOTAL</text>
+<text class="i xb" x="406.0" y="575" font-size="16" text-anchor="end">111 单</text>
+<rect class="i" x="99.2" y="599" width="1.0" height="46"/>
+<rect class="i" x="102.4" y="599" width="1.0" height="46"/>
+<rect class="i" x="105.6" y="599" width="1.0" height="46"/>
+<rect class="i" x="108.8" y="599" width="1.0" height="46"/>
+<rect class="i" x="112.0" y="599" width="1.0" height="46"/>
+<rect class="i" x="116.4" y="599" width="1.0" height="46"/>
+<rect class="i" x="119.6" y="599" width="2.2" height="46"/>
+<rect class="i" x="124.0" y="599" width="1.0" height="46"/>
+<rect class="i" x="128.4" y="599" width="2.2" height="46"/>
+<rect class="i" x="134.0" y="599" width="1.0" height="46"/>
+<rect class="i" x="138.4" y="599" width="2.2" height="46"/>
+<rect class="i" x="144.0" y="599" width="2.2" height="46"/>
+<rect class="i" x="149.6" y="599" width="1.0" height="46"/>
+<rect class="i" x="152.8" y="599" width="1.0" height="46"/>
+<rect class="i" x="157.2" y="599" width="2.2" height="46"/>
+<rect class="i" x="161.6" y="599" width="2.2" height="46"/>
+<rect class="i" x="167.2" y="599" width="2.2" height="46"/>
+<rect class="i" x="171.6" y="599" width="2.2" height="46"/>
+<rect class="i" x="177.2" y="599" width="2.2" height="46"/>
+<rect class="i" x="182.8" y="599" width="1.0" height="46"/>
+<rect class="i" x="187.2" y="599" width="1.0" height="46"/>
+<rect class="i" x="190.4" y="599" width="1.0" height="46"/>
+<rect class="i" x="193.6" y="599" width="2.2" height="46"/>
+<rect class="i" x="198.0" y="599" width="1.0" height="46"/>
+<rect class="i" x="201.2" y="599" width="2.2" height="46"/>
+<rect class="i" x="205.6" y="599" width="1.0" height="46"/>
+<rect class="i" x="208.8" y="599" width="1.0" height="46"/>
+<rect class="i" x="213.2" y="599" width="2.2" height="46"/>
+<rect class="i" x="217.6" y="599" width="1.0" height="46"/>
+<rect class="i" x="220.8" y="599" width="2.2" height="46"/>
+<rect class="i" x="226.4" y="599" width="2.2" height="46"/>
+<rect class="i" x="232.0" y="599" width="2.2" height="46"/>
+<rect class="i" x="236.4" y="599" width="1.0" height="46"/>
+<rect class="i" x="239.6" y="599" width="1.0" height="46"/>
+<rect class="i" x="242.8" y="599" width="1.0" height="46"/>
+<rect class="i" x="246.0" y="599" width="1.0" height="46"/>
+<rect class="i" x="249.2" y="599" width="2.2" height="46"/>
+<rect class="i" x="254.8" y="599" width="2.2" height="46"/>
+<rect class="i" x="260.4" y="599" width="1.0" height="46"/>
+<rect class="i" x="263.6" y="599" width="1.0" height="46"/>
+<rect class="i" x="268.0" y="599" width="2.2" height="46"/>
+<rect class="i" x="273.6" y="599" width="1.0" height="46"/>
+<rect class="i" x="276.8" y="599" width="2.2" height="46"/>
+<rect class="i" x="281.2" y="599" width="1.0" height="46"/>
+<rect class="i" x="285.6" y="599" width="2.2" height="46"/>
+<rect class="i" x="291.2" y="599" width="2.2" height="46"/>
+<rect class="i" x="295.6" y="599" width="1.0" height="46"/>
+<rect class="i" x="300.0" y="599" width="2.2" height="46"/>
+<rect class="i" x="304.4" y="599" width="2.2" height="46"/>
+<rect class="i" x="310.0" y="599" width="1.0" height="46"/>
+<rect class="i" x="314.4" y="599" width="1.0" height="46"/>
+<rect class="i" x="317.6" y="599" width="2.2" height="46"/>
+<rect class="i" x="322.0" y="599" width="2.2" height="46"/>
+<rect class="i" x="327.6" y="599" width="2.2" height="46"/>
+<rect class="i" x="332.0" y="599" width="1.0" height="46"/>
+<rect class="i" x="335.2" y="599" width="2.2" height="46"/>
+<text class="i b" x="220.0" y="667" font-size="13" text-anchor="middle">*** HAPPY 0x400 DAY ***</text>
+<text class="u" x="220.0" y="687" font-size="10" text-anchor="middle">数据：演示合成数据，最早到 2025-10-21</text>
+<text class="u" x="220.0" y="704" font-size="10.5" text-anchor="middle">非麦当劳官方票据 · 由 git mcd 本机生成</text>
+</svg>

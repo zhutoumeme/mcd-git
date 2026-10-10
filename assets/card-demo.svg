@@ -1,422 +1,456 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="750" height="288" viewBox="0 0 750 288" role="img" aria-labelledby="t d">
-<title id="t">过去一年吃麦 111 次</title>
-<desc id="d">吃麦贡献图：2025-10-20 至 2026-10-24，共 111 次；最常点巨无霸套餐，最常在午饭时段。</desc>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="624" viewBox="0 0 1200 624" role="img" aria-labelledby="t d">
+<title id="t">麦门天际线：过去一年吃麦 111 次</title>
+<desc id="d">吃麦贡献图：2025-10-20 至 2026-10-24，共 111 次；最常点巨无霸套餐，最常在午饭时段。每天吃了几次就叠几层汉堡，10-24 插了一面 0x400 小旗。</desc>
 <!-- 0x400 = 1024 -->
 <style>
 svg{font-family:-apple-system,"PingFang SC","Microsoft YaHei","Noto Sans CJK SC",sans-serif}
-.bg{fill:#fffaf2;stroke:#f0e2cc;stroke-width:2}.bd{stroke:#f0e2cc;stroke-width:1}
-.t1{fill:#3b2a1a}.t2{fill:#8a7560}
-.h{font-size:18px;font-weight:700}.s{font-size:12px}.m{font-size:10px}.k{font-size:11px}.v{font-size:15px;font-weight:700}
-.l0{fill:#f3ebdf}.l1{fill:#ffd9a0}.l2{fill:#ffb35c}.l3{fill:#f08a24}.l4{fill:#c45a10}
-.x{stroke:#6b2f00;stroke-width:1.5}
-@media (prefers-color-scheme:dark){
-.bg{fill:#1f1a16;stroke:#3a2f26}.bd{stroke:#3a2f26}.t1{fill:#f5e9dc}.t2{fill:#b39f8a}
-.l0{fill:#2e2722}.l1{fill:#5a3a15}.l2{fill:#8a5518}.l3{fill:#c8761c}.l4{fill:#f2a33a}.x{stroke:#ffe2b0}
+.mo{font-family:ui-monospace,"SF Mono",Menlo,Consolas,"PingFang SC","Microsoft YaHei","Noto Sans Mono CJK SC",monospace;white-space:pre}
+.h{font-size:30px;font-weight:800}.s{font-size:14px}.k{font-size:13px}.v{font-size:20px;font-weight:700}.m{font-size:11px}
+.t1{fill:#F4EFE6}.t2{fill:#9AA0B4}.bd{stroke:#2C3142;stroke-width:1}.tl{fill:#262A38}.tm{fill:#5A2E2B}.g0{stop-color:#3A2E2A}.g1{stop-color:#161925}.pole{stroke:#E8E3D8}
+.f{animation:drop 0.6s cubic-bezier(.3,1.25,.5,1) both}
+@keyframes drop{0%{transform:translateY(-90px);opacity:0}35%{opacity:1}100%{transform:translateY(0);opacity:1}}
+@media (prefers-reduced-motion:reduce){.f{animation:none}}
+@media (prefers-color-scheme:light){
+.t1{fill:#3B2A1A}.t2{fill:#8A7560}.bd{stroke:#E6D6BD}.tl{fill:#E8DAC2}.tm{fill:#F2C3B0}.g0{stop-color:#FFF8EC}.g1{stop-color:#F3E6CF}.pole{stroke:#6B4A2E}
 }
 </style>
-<rect class="bg" x="1" y="1" width="748" height="286" rx="12"/>
-<text class="t1 h" x="24" y="36">过去一年吃麦 111 次</text>
-<text class="t2 s" x="24" y="56">Happy 0x400 Day · 1024 程序员节快乐</text>
-<text class="t2 m" x="70" y="80">11月</text>
-<text class="t2 m" x="122" y="80">12月</text>
-<text class="t2 m" x="187" y="80">1月</text>
-<text class="t2 m" x="239" y="80">2月</text>
-<text class="t2 m" x="291" y="80">3月</text>
-<text class="t2 m" x="356" y="80">4月</text>
-<text class="t2 m" x="408" y="80">5月</text>
-<text class="t2 m" x="460" y="80">6月</text>
-<text class="t2 m" x="525" y="80">7月</text>
-<text class="t2 m" x="577" y="80">8月</text>
-<text class="t2 m" x="642" y="80">9月</text>
-<text class="t2 m" x="694" y="80">10月</text>
-<text class="t2 m" x="24" y="97">一</text>
-<text class="t2 m" x="24" y="123">三</text>
-<text class="t2 m" x="24" y="149">五</text>
-<rect class="l0" x="44" y="88" width="10" height="10" rx="2"/>
-<rect class="l1" x="44" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="44" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="44" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="44" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="44" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="44" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="57" y="88" width="10" height="10" rx="2"/>
-<rect class="l1" x="57" y="101" width="10" height="10" rx="2"/>
-<rect class="l1" x="57" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="57" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="57" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="57" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="57" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="70" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="70" y="101" width="10" height="10" rx="2"/>
-<rect class="l1" x="70" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="70" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="70" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="70" y="153" width="10" height="10" rx="2"/>
-<rect class="l1" x="70" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="83" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="83" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="83" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="83" y="127" width="10" height="10" rx="2"/>
-<rect class="l1" x="83" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="83" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="83" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="96" y="88" width="10" height="10" rx="2"/>
-<rect class="l1" x="96" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="96" y="114" width="10" height="10" rx="2"/>
-<rect class="l1" x="96" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="96" y="140" width="10" height="10" rx="2"/>
-<rect class="l1" x="96" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="96" y="166" width="10" height="10" rx="2"/>
-<rect class="l1" x="109" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="109" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="109" y="114" width="10" height="10" rx="2"/>
-<rect class="l1" x="109" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="109" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="109" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="109" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="122" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="122" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="122" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="122" y="127" width="10" height="10" rx="2"/>
-<rect class="l1" x="122" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="122" y="153" width="10" height="10" rx="2"/>
-<rect class="l1" x="122" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="135" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="135" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="135" y="114" width="10" height="10" rx="2"/>
-<rect class="l1" x="135" y="127" width="10" height="10" rx="2"/>
-<rect class="l1" x="135" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="135" y="153" width="10" height="10" rx="2"/>
-<rect class="l1" x="135" y="166" width="10" height="10" rx="2"/>
-<rect class="l1" x="148" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="148" y="101" width="10" height="10" rx="2"/>
-<rect class="l1" x="148" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="148" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="148" y="140" width="10" height="10" rx="2"/>
-<rect class="l1" x="148" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="148" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="161" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="161" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="161" y="114" width="10" height="10" rx="2"/>
-<rect class="l1" x="161" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="161" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="161" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="161" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="174" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="174" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="174" y="114" width="10" height="10" rx="2"/>
-<rect class="l2" x="174" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="174" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="174" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="174" y="166" width="10" height="10" rx="2"/>
-<rect class="l1" x="187" y="88" width="10" height="10" rx="2"/>
-<rect class="l1" x="187" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="187" y="114" width="10" height="10" rx="2"/>
-<rect class="l1" x="187" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="187" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="187" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="187" y="166" width="10" height="10" rx="2"/>
-<rect class="l1" x="200" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="200" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="200" y="114" width="10" height="10" rx="2"/>
-<rect class="l1" x="200" y="127" width="10" height="10" rx="2"/>
-<rect class="l1" x="200" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="200" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="200" y="166" width="10" height="10" rx="2"/>
-<rect class="l1" x="213" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="213" y="101" width="10" height="10" rx="2"/>
-<rect class="l1" x="213" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="213" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="213" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="213" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="213" y="166" width="10" height="10" rx="2"/>
-<rect class="l1" x="226" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="226" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="226" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="226" y="127" width="10" height="10" rx="2"/>
-<rect class="l1" x="226" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="226" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="226" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="239" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="239" y="101" width="10" height="10" rx="2"/>
-<rect class="l1" x="239" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="239" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="239" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="239" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="239" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="252" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="252" y="101" width="10" height="10" rx="2"/>
-<rect class="l1" x="252" y="114" width="10" height="10" rx="2"/>
-<rect class="l1" x="252" y="127" width="10" height="10" rx="2"/>
-<rect class="l1" x="252" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="252" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="252" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="265" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="265" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="265" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="265" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="265" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="265" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="265" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="278" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="278" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="278" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="278" y="127" width="10" height="10" rx="2"/>
-<rect class="l1" x="278" y="140" width="10" height="10" rx="2"/>
-<rect class="l1" x="278" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="278" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="291" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="291" y="101" width="10" height="10" rx="2"/>
-<rect class="l1" x="291" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="291" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="291" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="291" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="291" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="304" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="304" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="304" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="304" y="127" width="10" height="10" rx="2"/>
-<rect class="l1" x="304" y="140" width="10" height="10" rx="2"/>
-<rect class="l1" x="304" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="304" y="166" width="10" height="10" rx="2"/>
-<rect class="l1" x="317" y="88" width="10" height="10" rx="2"/>
-<rect class="l1" x="317" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="317" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="317" y="127" width="10" height="10" rx="2"/>
-<rect class="l1" x="317" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="317" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="317" y="166" width="10" height="10" rx="2"/>
-<rect class="l2" x="330" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="330" y="101" width="10" height="10" rx="2"/>
-<rect class="l1" x="330" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="330" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="330" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="330" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="330" y="166" width="10" height="10" rx="2"/>
-<rect class="l2" x="343" y="88" width="10" height="10" rx="2"/>
-<rect class="l1" x="343" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="343" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="343" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="343" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="343" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="343" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="356" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="356" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="356" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="356" y="127" width="10" height="10" rx="2"/>
-<rect class="l1" x="356" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="356" y="153" width="10" height="10" rx="2"/>
-<rect class="l1" x="356" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="369" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="369" y="101" width="10" height="10" rx="2"/>
-<rect class="l1" x="369" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="369" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="369" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="369" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="369" y="166" width="10" height="10" rx="2"/>
-<rect class="l1" x="382" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="382" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="382" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="382" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="382" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="382" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="382" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="395" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="395" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="395" y="114" width="10" height="10" rx="2"/>
-<rect class="l1" x="395" y="127" width="10" height="10" rx="2"/>
-<rect class="l1" x="395" y="140" width="10" height="10" rx="2"/>
-<rect class="l1" x="395" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="395" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="408" y="88" width="10" height="10" rx="2"/>
-<rect class="l1" x="408" y="101" width="10" height="10" rx="2"/>
-<rect class="l1" x="408" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="408" y="127" width="10" height="10" rx="2"/>
-<rect class="l1" x="408" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="408" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="408" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="421" y="88" width="10" height="10" rx="2"/>
-<rect class="l1" x="421" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="421" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="421" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="421" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="421" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="421" y="166" width="10" height="10" rx="2"/>
-<rect class="l1" x="434" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="434" y="101" width="10" height="10" rx="2"/>
-<rect class="l2" x="434" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="434" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="434" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="434" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="434" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="447" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="447" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="447" y="114" width="10" height="10" rx="2"/>
-<rect class="l1" x="447" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="447" y="140" width="10" height="10" rx="2"/>
-<rect class="l1" x="447" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="447" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="460" y="88" width="10" height="10" rx="2"/>
-<rect class="l1" x="460" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="460" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="460" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="460" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="460" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="460" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="473" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="473" y="101" width="10" height="10" rx="2"/>
-<rect class="l1" x="473" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="473" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="473" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="473" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="473" y="166" width="10" height="10" rx="2"/>
-<rect class="l1" x="486" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="486" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="486" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="486" y="127" width="10" height="10" rx="2"/>
-<rect class="l1" x="486" y="140" width="10" height="10" rx="2"/>
-<rect class="l1" x="486" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="486" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="499" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="499" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="499" y="114" width="10" height="10" rx="2"/>
-<rect class="l1" x="499" y="127" width="10" height="10" rx="2"/>
-<rect class="l1" x="499" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="499" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="499" y="166" width="10" height="10" rx="2"/>
-<rect class="l1" x="512" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="512" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="512" y="114" width="10" height="10" rx="2"/>
-<rect class="l1" x="512" y="127" width="10" height="10" rx="2"/>
-<rect class="l1" x="512" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="512" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="512" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="525" y="88" width="10" height="10" rx="2"/>
-<rect class="l1" x="525" y="101" width="10" height="10" rx="2"/>
-<rect class="l1" x="525" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="525" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="525" y="140" width="10" height="10" rx="2"/>
-<rect class="l1" x="525" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="525" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="538" y="88" width="10" height="10" rx="2"/>
-<rect class="l1" x="538" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="538" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="538" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="538" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="538" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="538" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="551" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="551" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="551" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="551" y="127" width="10" height="10" rx="2"/>
-<rect class="l2" x="551" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="551" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="551" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="564" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="564" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="564" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="564" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="564" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="564" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="564" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="577" y="88" width="10" height="10" rx="2"/>
-<rect class="l2" x="577" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="577" y="114" width="10" height="10" rx="2"/>
-<rect class="l1" x="577" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="577" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="577" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="577" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="590" y="88" width="10" height="10" rx="2"/>
-<rect class="l1" x="590" y="101" width="10" height="10" rx="2"/>
-<rect class="l1" x="590" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="590" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="590" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="590" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="590" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="603" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="603" y="101" width="10" height="10" rx="2"/>
-<rect class="l1" x="603" y="114" width="10" height="10" rx="2"/>
-<rect class="l1" x="603" y="127" width="10" height="10" rx="2"/>
-<rect class="l1" x="603" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="603" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="603" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="616" y="88" width="10" height="10" rx="2"/>
-<rect class="l1" x="616" y="101" width="10" height="10" rx="2"/>
-<rect class="l1" x="616" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="616" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="616" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="616" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="616" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="629" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="629" y="101" width="10" height="10" rx="2"/>
-<rect class="l1" x="629" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="629" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="629" y="140" width="10" height="10" rx="2"/>
-<rect class="l1" x="629" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="629" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="642" y="88" width="10" height="10" rx="2"/>
-<rect class="l1" x="642" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="642" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="642" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="642" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="642" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="642" y="166" width="10" height="10" rx="2"/>
-<rect class="l1" x="655" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="655" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="655" y="114" width="10" height="10" rx="2"/>
-<rect class="l0" x="655" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="655" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="655" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="655" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="668" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="668" y="101" width="10" height="10" rx="2"/>
-<rect class="l1" x="668" y="114" width="10" height="10" rx="2"/>
-<rect class="l1" x="668" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="668" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="668" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="668" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="681" y="88" width="10" height="10" rx="2"/>
-<rect class="l1" x="681" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="681" y="114" width="10" height="10" rx="2"/>
-<rect class="l1" x="681" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="681" y="140" width="10" height="10" rx="2"/>
-<rect class="l1" x="681" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="681" y="166" width="10" height="10" rx="2"/>
-<rect class="l1" x="694" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="694" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="694" y="114" width="10" height="10" rx="2"/>
-<rect class="l1" x="694" y="127" width="10" height="10" rx="2"/>
-<rect class="l1" x="694" y="140" width="10" height="10" rx="2"/>
-<rect class="l0" x="694" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="694" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="707" y="88" width="10" height="10" rx="2"/>
-<rect class="l1" x="707" y="101" width="10" height="10" rx="2"/>
-<rect class="l0" x="707" y="114" width="10" height="10" rx="2"/>
-<rect class="l1" x="707" y="127" width="10" height="10" rx="2"/>
-<rect class="l0" x="707" y="140" width="10" height="10" rx="2"/>
-<rect class="l1" x="707" y="153" width="10" height="10" rx="2"/>
-<rect class="l0" x="707" y="166" width="10" height="10" rx="2"/>
-<rect class="l0" x="720" y="88" width="10" height="10" rx="2"/>
-<rect class="l0" x="720" y="101" width="10" height="10" rx="2"/>
-<rect class="l1" x="720" y="114" width="10" height="10" rx="2"/>
-<rect class="l1" x="720" y="127" width="10" height="10" rx="2"/>
-<rect class="l2" x="720" y="140" width="10" height="10" rx="2"/>
-<rect class="l0 x" x="720" y="153" width="10" height="10" rx="2"/>
-<text class="t2 m" x="44" y="203">少</text>
-<rect class="l0" x="58" y="194" width="10" height="10" rx="2"/>
-<rect class="l1" x="71" y="194" width="10" height="10" rx="2"/>
-<rect class="l2" x="84" y="194" width="10" height="10" rx="2"/>
-<rect class="l3" x="97" y="194" width="10" height="10" rx="2"/>
-<rect class="l4" x="110" y="194" width="10" height="10" rx="2"/>
-<text class="t2 m" x="124" y="203">多</text>
-<rect class="l0 x" x="150" y="194" width="10" height="10" rx="2"/>
-<text class="t2 m" x="164" y="203">10-24 程序员节</text>
-<line class="bd" x1="24" y1="214" x2="726" y2="214"/>
-<text class="t2 k" x="24" y="232">总单数</text>
-<text class="t1 v" x="24" y="252">111</text>
-<text class="t2 k" x="258" y="232">最常点</text>
-<text class="t1 v" x="258" y="252">巨无霸套餐</text>
-<text class="t2 k" x="492" y="232">最常时段</text>
-<text class="t1 v" x="492" y="252">午饭</text>
-<text class="t2 m" x="24" y="274">数据：演示合成数据，最早到 2025-10-21 · git mcd card 生成</text>
+<defs><radialGradient id="g" cx="0.55" cy="0.62" r="0.65"><stop offset="0" class="g0"/><stop offset="1" class="g1"/></radialGradient><polygon id="tile" points="1.1,1.3 14.8,4.4 7.9,9.7 -5.8,6.6"/><g id="b"><polygon fill="#E9B66B" points="-5.8,6.6 7.9,9.7 7.9,6.6 -5.8,3.6"/><polygon fill="#C9914A" points="14.8,4.4 7.9,9.7 7.9,6.6 14.8,1.3"/><polygon fill="#8A4B2A" points="-5.8,3.6 7.9,6.6 7.9,3.0 -5.8,-0.1"/><polygon fill="#6E3A20" points="14.8,1.3 7.9,6.6 7.9,3.0 14.8,-2.4"/><polygon fill="#FFD24A" points="-5.8,-0.1 7.9,3.0 7.9,1.6 -5.8,-1.5"/><polygon fill="#E5B42E" points="14.8,-2.4 7.9,3.0 7.9,1.6 14.8,-3.8"/><polygon fill="#7DBE4E" points="-5.8,-1.5 7.9,1.6 7.9,0.2 -5.8,-2.9"/><polygon fill="#5E9C38" points="14.8,-3.8 7.9,1.6 7.9,0.2 14.8,-5.2"/><polygon fill="#F2B95C" points="-5.8,-2.9 7.9,0.2 7.9,-4.3 -5.8,-7.4"/><polygon fill="#D39A41" points="14.8,-5.2 7.9,0.2 7.9,-4.3 14.8,-9.6"/></g><g id="c"><polygon fill="#F7C873" points="1.1,1.3 14.8,4.4 7.9,9.7 -5.8,6.6"/><ellipse cx="1.0" cy="6.0" rx="1.1" ry="0.7" fill="#FFF6E0"/><ellipse cx="7.0" cy="4.3" rx="1.1" ry="0.7" fill="#FFF6E0"/><ellipse cx="5.0" cy="7.7" rx="1.1" ry="0.7" fill="#FFF6E0"/><ellipse cx="9.0" cy="7.3" rx="1.1" ry="0.7" fill="#FFF6E0"/></g><g id="p"><circle r="6" fill="#E8473C" stroke="#FFF6E0" stroke-width="1"/><path d="M-1,-3.5h2v2.5h2.5v2h-2.5v2.5h-2v-2.5h-2.5v-2h2.5z" fill="#FFF6E0"/></g><g id="fl"><line class="pole" x1="0" y1="0" x2="0" y2="-42" stroke-width="1.5"/><path d="M0,-42h44l-6,7.5l6,7.5h-44z" fill="#E8473C"/><text x="5" y="-31" font-family="ui-monospace,&quot;SF Mono&quot;,Menlo,Consolas,&quot;PingFang SC&quot;,&quot;Microsoft YaHei&quot;,&quot;Noto Sans Mono CJK SC&quot;,monospace" font-size="10" font-weight="700" fill="#FFFFFF">0x400</text></g></defs>
+<rect x="0" y="0" width="1200" height="624" rx="18" fill="url(#g)"/>
+<text class="t1 h" x="60" y="64">麦门天际线</text>
+<text class="t2 s mo" x="60" y="94">$ git mcd card  # 每天吃几次，就叠几层汉堡</text>
+<g class="tl">
+<use href="#tile" x="150" y="215"/>
+<use href="#tile" x="141" y="222"/>
+<use href="#tile" x="132" y="229"/>
+<use href="#tile" x="123" y="236"/>
+<use href="#tile" x="114" y="243"/>
+<use href="#tile" x="105" y="250"/>
+<use href="#tile" x="96" y="257"/>
+<use href="#tile" x="168" y="219"/>
+<use href="#tile" x="159" y="226"/>
+<use href="#tile" x="150" y="233"/>
+<use href="#tile" x="141" y="240"/>
+<use href="#tile" x="132" y="247"/>
+<use href="#tile" x="123" y="254"/>
+<use href="#tile" x="114" y="261"/>
+<use href="#tile" x="186" y="223"/>
+<use href="#tile" x="177" y="230"/>
+<use href="#tile" x="168" y="237"/>
+<use href="#tile" x="159" y="244"/>
+<use href="#tile" x="150" y="251"/>
+<use href="#tile" x="141" y="258"/>
+<use href="#tile" x="132" y="265"/>
+<use href="#tile" x="204" y="227"/>
+<use href="#tile" x="195" y="234"/>
+<use href="#tile" x="186" y="241"/>
+<use href="#tile" x="177" y="248"/>
+<use href="#tile" x="168" y="255"/>
+<use href="#tile" x="159" y="262"/>
+<use href="#tile" x="150" y="269"/>
+<use href="#tile" x="222" y="231"/>
+<use href="#tile" x="213" y="238"/>
+<use href="#tile" x="204" y="245"/>
+<use href="#tile" x="195" y="252"/>
+<use href="#tile" x="186" y="259"/>
+<use href="#tile" x="177" y="266"/>
+<use href="#tile" x="168" y="273"/>
+<use href="#tile" x="240" y="235"/>
+<use href="#tile" x="231" y="242"/>
+<use href="#tile" x="222" y="249"/>
+<use href="#tile" x="213" y="256"/>
+<use href="#tile" x="204" y="263"/>
+<use href="#tile" x="195" y="270"/>
+<use href="#tile" x="186" y="277"/>
+<use href="#tile" x="258" y="239"/>
+<use href="#tile" x="249" y="246"/>
+<use href="#tile" x="240" y="253"/>
+<use href="#tile" x="231" y="260"/>
+<use href="#tile" x="222" y="267"/>
+<use href="#tile" x="213" y="274"/>
+<use href="#tile" x="204" y="281"/>
+<use href="#tile" x="276" y="243"/>
+<use href="#tile" x="267" y="250"/>
+<use href="#tile" x="258" y="257"/>
+<use href="#tile" x="249" y="264"/>
+<use href="#tile" x="240" y="271"/>
+<use href="#tile" x="231" y="278"/>
+<use href="#tile" x="222" y="285"/>
+<use href="#tile" x="294" y="247"/>
+<use href="#tile" x="285" y="254"/>
+<use href="#tile" x="276" y="261"/>
+<use href="#tile" x="267" y="268"/>
+<use href="#tile" x="258" y="275"/>
+<use href="#tile" x="249" y="282"/>
+<use href="#tile" x="240" y="289"/>
+<use href="#tile" x="312" y="251"/>
+<use href="#tile" x="303" y="258"/>
+<use href="#tile" x="294" y="265"/>
+<use href="#tile" x="285" y="272"/>
+<use href="#tile" x="276" y="279"/>
+<use href="#tile" x="267" y="286"/>
+<use href="#tile" x="258" y="293"/>
+<use href="#tile" x="330" y="255"/>
+<use href="#tile" x="321" y="262"/>
+<use href="#tile" x="312" y="269"/>
+<use href="#tile" x="303" y="276"/>
+<use href="#tile" x="294" y="283"/>
+<use href="#tile" x="285" y="290"/>
+<use href="#tile" x="276" y="297"/>
+<use href="#tile" x="348" y="259"/>
+<use href="#tile" x="339" y="266"/>
+<use href="#tile" x="330" y="273"/>
+<use href="#tile" x="321" y="280"/>
+<use href="#tile" x="312" y="287"/>
+<use href="#tile" x="303" y="294"/>
+<use href="#tile" x="294" y="301"/>
+<use href="#tile" x="366" y="263"/>
+<use href="#tile" x="357" y="270"/>
+<use href="#tile" x="348" y="277"/>
+<use href="#tile" x="339" y="284"/>
+<use href="#tile" x="330" y="291"/>
+<use href="#tile" x="321" y="298"/>
+<use href="#tile" x="312" y="305"/>
+<use href="#tile" x="384" y="267"/>
+<use href="#tile" x="375" y="274"/>
+<use href="#tile" x="366" y="281"/>
+<use href="#tile" x="357" y="288"/>
+<use href="#tile" x="348" y="295"/>
+<use href="#tile" x="339" y="302"/>
+<use href="#tile" x="330" y="309"/>
+<use href="#tile" x="402" y="271"/>
+<use href="#tile" x="393" y="278"/>
+<use href="#tile" x="384" y="285"/>
+<use href="#tile" x="375" y="292"/>
+<use href="#tile" x="366" y="299"/>
+<use href="#tile" x="357" y="306"/>
+<use href="#tile" x="348" y="313"/>
+<use href="#tile" x="420" y="275"/>
+<use href="#tile" x="411" y="282"/>
+<use href="#tile" x="402" y="289"/>
+<use href="#tile" x="393" y="296"/>
+<use href="#tile" x="384" y="303"/>
+<use href="#tile" x="375" y="310"/>
+<use href="#tile" x="366" y="317"/>
+<use href="#tile" x="438" y="279"/>
+<use href="#tile" x="429" y="286"/>
+<use href="#tile" x="420" y="293"/>
+<use href="#tile" x="411" y="300"/>
+<use href="#tile" x="402" y="307"/>
+<use href="#tile" x="393" y="314"/>
+<use href="#tile" x="384" y="321"/>
+<use href="#tile" x="456" y="283"/>
+<use href="#tile" x="447" y="290"/>
+<use href="#tile" x="438" y="297"/>
+<use href="#tile" x="429" y="304"/>
+<use href="#tile" x="420" y="311"/>
+<use href="#tile" x="411" y="318"/>
+<use href="#tile" x="402" y="325"/>
+<use href="#tile" x="474" y="287"/>
+<use href="#tile" x="465" y="294"/>
+<use href="#tile" x="456" y="301"/>
+<use href="#tile" x="447" y="308"/>
+<use href="#tile" x="438" y="315"/>
+<use href="#tile" x="429" y="322"/>
+<use href="#tile" x="420" y="329"/>
+<use href="#tile" x="492" y="291"/>
+<use href="#tile" x="483" y="298"/>
+<use href="#tile" x="474" y="305"/>
+<use href="#tile" x="465" y="312"/>
+<use href="#tile" x="456" y="319"/>
+<use href="#tile" x="447" y="326"/>
+<use href="#tile" x="438" y="333"/>
+<use href="#tile" x="510" y="295"/>
+<use href="#tile" x="501" y="302"/>
+<use href="#tile" x="492" y="309"/>
+<use href="#tile" x="483" y="316"/>
+<use href="#tile" x="474" y="323"/>
+<use href="#tile" x="465" y="330"/>
+<use href="#tile" x="456" y="337"/>
+<use href="#tile" x="528" y="299"/>
+<use href="#tile" x="519" y="306"/>
+<use href="#tile" x="510" y="313"/>
+<use href="#tile" x="501" y="320"/>
+<use href="#tile" x="492" y="327"/>
+<use href="#tile" x="483" y="334"/>
+<use href="#tile" x="474" y="341"/>
+<use href="#tile" x="546" y="303"/>
+<use href="#tile" x="537" y="310"/>
+<use href="#tile" x="528" y="317"/>
+<use href="#tile" x="519" y="324"/>
+<use href="#tile" x="510" y="331"/>
+<use href="#tile" x="501" y="338"/>
+<use href="#tile" x="492" y="345"/>
+<use href="#tile" x="564" y="307"/>
+<use href="#tile" x="555" y="314"/>
+<use href="#tile" x="546" y="321"/>
+<use href="#tile" x="537" y="328"/>
+<use href="#tile" x="528" y="335"/>
+<use href="#tile" x="519" y="342"/>
+<use href="#tile" x="510" y="349"/>
+<use href="#tile" x="582" y="311"/>
+<use href="#tile" x="573" y="318"/>
+<use href="#tile" x="564" y="325"/>
+<use href="#tile" x="555" y="332"/>
+<use href="#tile" x="546" y="339"/>
+<use href="#tile" x="537" y="346"/>
+<use href="#tile" x="528" y="353"/>
+<use href="#tile" x="600" y="315"/>
+<use href="#tile" x="591" y="322"/>
+<use href="#tile" x="582" y="329"/>
+<use href="#tile" x="573" y="336"/>
+<use href="#tile" x="564" y="343"/>
+<use href="#tile" x="555" y="350"/>
+<use href="#tile" x="546" y="357"/>
+<use href="#tile" x="618" y="319"/>
+<use href="#tile" x="609" y="326"/>
+<use href="#tile" x="600" y="333"/>
+<use href="#tile" x="591" y="340"/>
+<use href="#tile" x="582" y="347"/>
+<use href="#tile" x="573" y="354"/>
+<use href="#tile" x="564" y="361"/>
+<use href="#tile" x="636" y="323"/>
+<use href="#tile" x="627" y="330"/>
+<use href="#tile" x="618" y="337"/>
+<use href="#tile" x="609" y="344"/>
+<use href="#tile" x="600" y="351"/>
+<use href="#tile" x="591" y="358"/>
+<use href="#tile" x="582" y="365"/>
+<use href="#tile" x="654" y="327"/>
+<use href="#tile" x="645" y="334"/>
+<use href="#tile" x="636" y="341"/>
+<use href="#tile" x="627" y="348"/>
+<use href="#tile" x="618" y="355"/>
+<use href="#tile" x="609" y="362"/>
+<use href="#tile" x="600" y="369"/>
+<use href="#tile" x="672" y="331"/>
+<use href="#tile" x="663" y="338"/>
+<use href="#tile" x="654" y="345"/>
+<use href="#tile" x="645" y="352"/>
+<use href="#tile" x="636" y="359"/>
+<use href="#tile" x="627" y="366"/>
+<use href="#tile" x="618" y="373"/>
+<use href="#tile" x="690" y="335"/>
+<use href="#tile" x="681" y="342"/>
+<use href="#tile" x="672" y="349"/>
+<use href="#tile" x="663" y="356"/>
+<use href="#tile" x="654" y="363"/>
+<use href="#tile" x="645" y="370"/>
+<use href="#tile" x="636" y="377"/>
+<use href="#tile" x="708" y="339"/>
+<use href="#tile" x="699" y="346"/>
+<use href="#tile" x="690" y="353"/>
+<use href="#tile" x="681" y="360"/>
+<use href="#tile" x="672" y="367"/>
+<use href="#tile" x="663" y="374"/>
+<use href="#tile" x="654" y="381"/>
+<use href="#tile" x="726" y="343"/>
+<use href="#tile" x="717" y="350"/>
+<use href="#tile" x="708" y="357"/>
+<use href="#tile" x="699" y="364"/>
+<use href="#tile" x="690" y="371"/>
+<use href="#tile" x="681" y="378"/>
+<use href="#tile" x="672" y="385"/>
+<use href="#tile" x="744" y="347"/>
+<use href="#tile" x="735" y="354"/>
+<use href="#tile" x="726" y="361"/>
+<use href="#tile" x="717" y="368"/>
+<use href="#tile" x="708" y="375"/>
+<use href="#tile" x="699" y="382"/>
+<use href="#tile" x="690" y="389"/>
+<use href="#tile" x="762" y="351"/>
+<use href="#tile" x="753" y="358"/>
+<use href="#tile" x="744" y="365"/>
+<use href="#tile" x="735" y="372"/>
+<use href="#tile" x="726" y="379"/>
+<use href="#tile" x="717" y="386"/>
+<use href="#tile" x="708" y="393"/>
+<use href="#tile" x="780" y="355"/>
+<use href="#tile" x="771" y="362"/>
+<use href="#tile" x="762" y="369"/>
+<use href="#tile" x="753" y="376"/>
+<use href="#tile" x="744" y="383"/>
+<use href="#tile" x="735" y="390"/>
+<use href="#tile" x="726" y="397"/>
+<use href="#tile" x="798" y="359"/>
+<use href="#tile" x="789" y="366"/>
+<use href="#tile" x="780" y="373"/>
+<use href="#tile" x="771" y="380"/>
+<use href="#tile" x="762" y="387"/>
+<use href="#tile" x="753" y="394"/>
+<use href="#tile" x="744" y="401"/>
+<use href="#tile" x="816" y="363"/>
+<use href="#tile" x="807" y="370"/>
+<use href="#tile" x="798" y="377"/>
+<use href="#tile" x="789" y="384"/>
+<use href="#tile" x="780" y="391"/>
+<use href="#tile" x="771" y="398"/>
+<use href="#tile" x="762" y="405"/>
+<use href="#tile" x="834" y="367"/>
+<use href="#tile" x="825" y="374"/>
+<use href="#tile" x="816" y="381"/>
+<use href="#tile" x="807" y="388"/>
+<use href="#tile" x="798" y="395"/>
+<use href="#tile" x="789" y="402"/>
+<use href="#tile" x="780" y="409"/>
+<use href="#tile" x="852" y="371"/>
+<use href="#tile" x="843" y="378"/>
+<use href="#tile" x="834" y="385"/>
+<use href="#tile" x="825" y="392"/>
+<use href="#tile" x="816" y="399"/>
+<use href="#tile" x="807" y="406"/>
+<use href="#tile" x="798" y="413"/>
+<use href="#tile" x="870" y="375"/>
+<use href="#tile" x="861" y="382"/>
+<use href="#tile" x="852" y="389"/>
+<use href="#tile" x="843" y="396"/>
+<use href="#tile" x="834" y="403"/>
+<use href="#tile" x="825" y="410"/>
+<use href="#tile" x="816" y="417"/>
+<use href="#tile" x="888" y="379"/>
+<use href="#tile" x="879" y="386"/>
+<use href="#tile" x="870" y="393"/>
+<use href="#tile" x="861" y="400"/>
+<use href="#tile" x="852" y="407"/>
+<use href="#tile" x="843" y="414"/>
+<use href="#tile" x="834" y="421"/>
+<use href="#tile" x="906" y="383"/>
+<use href="#tile" x="897" y="390"/>
+<use href="#tile" x="888" y="397"/>
+<use href="#tile" x="879" y="404"/>
+<use href="#tile" x="870" y="411"/>
+<use href="#tile" x="861" y="418"/>
+<use href="#tile" x="852" y="425"/>
+<use href="#tile" x="924" y="387"/>
+<use href="#tile" x="915" y="394"/>
+<use href="#tile" x="906" y="401"/>
+<use href="#tile" x="897" y="408"/>
+<use href="#tile" x="888" y="415"/>
+<use href="#tile" x="879" y="422"/>
+<use href="#tile" x="870" y="429"/>
+<use href="#tile" x="942" y="391"/>
+<use href="#tile" x="933" y="398"/>
+<use href="#tile" x="924" y="405"/>
+<use href="#tile" x="915" y="412"/>
+<use href="#tile" x="906" y="419"/>
+<use href="#tile" x="897" y="426"/>
+<use href="#tile" x="888" y="433"/>
+<use href="#tile" x="960" y="395"/>
+<use href="#tile" x="951" y="402"/>
+<use href="#tile" x="942" y="409"/>
+<use href="#tile" x="933" y="416"/>
+<use href="#tile" x="924" y="423"/>
+<use href="#tile" x="915" y="430"/>
+<use href="#tile" x="906" y="437"/>
+<use href="#tile" x="978" y="399"/>
+<use href="#tile" x="969" y="406"/>
+<use href="#tile" x="960" y="413"/>
+<use href="#tile" x="951" y="420"/>
+<use href="#tile" x="942" y="427"/>
+<use href="#tile" x="933" y="434"/>
+<use href="#tile" x="924" y="441"/>
+<use href="#tile" x="996" y="403"/>
+<use href="#tile" x="987" y="410"/>
+<use href="#tile" x="978" y="417"/>
+<use href="#tile" x="969" y="424"/>
+<use href="#tile" x="960" y="431"/>
+<use href="#tile" x="951" y="438"/>
+<use href="#tile" x="942" y="445"/>
+<use href="#tile" x="1014" y="407"/>
+<use href="#tile" x="1005" y="414"/>
+<use href="#tile" x="996" y="421"/>
+<use href="#tile" x="987" y="428"/>
+<use href="#tile" x="978" y="435"/>
+<use href="#tile" x="969" y="442"/>
+<use href="#tile" x="960" y="449"/>
+<use href="#tile" x="1032" y="411"/>
+<use href="#tile" x="1023" y="418"/>
+<use href="#tile" x="1014" y="425"/>
+<use href="#tile" x="1005" y="432"/>
+<use href="#tile" x="996" y="439"/>
+<use href="#tile" x="987" y="446"/>
+<use href="#tile" x="978" y="453"/>
+<use href="#tile" x="1050" y="415"/>
+<use href="#tile" x="1041" y="422"/>
+<use href="#tile" x="1032" y="429"/>
+<use href="#tile" x="1023" y="436"/>
+<use href="#tile" x="1014" y="443"/>
+<use href="#tile" x="1005" y="450"/>
+<use href="#tile" x="996" y="457"/>
+<use href="#tile" x="1068" y="419"/>
+<use href="#tile" x="1059" y="426"/>
+<use href="#tile" x="1050" y="433"/>
+<use href="#tile" x="1041" y="440"/>
+<use href="#tile" x="1032" y="447"/>
+<use href="#tile" x="1023" y="454"/>
+<use href="#tile" x="1014" y="461"/>
+<use href="#tile" x="1086" y="423"/>
+<use href="#tile" x="1077" y="430"/>
+<use href="#tile" x="1068" y="437"/>
+<use href="#tile" x="1059" y="444"/>
+<use href="#tile" x="1050" y="451"/>
+<use href="#tile" x="1041" y="458" class="tm"/>
+</g>
+<g class="f" style="animation-delay:0.00s"><use href="#b" x="141" y="222"/><use href="#c" x="141" y="208"/></g>
+<g class="f" style="animation-delay:0.04s"><use href="#b" x="159" y="226"/><use href="#c" x="159" y="212"/><use href="#b" x="150" y="233"/><use href="#c" x="150" y="219"/></g>
+<g class="f" style="animation-delay:0.08s"><use href="#b" x="168" y="237"/><use href="#c" x="168" y="223"/><use href="#b" x="132" y="265"/><use href="#c" x="132" y="251"/></g>
+<g class="f" style="animation-delay:0.12s"><use href="#b" x="168" y="255"/><use href="#c" x="168" y="241"/></g>
+<g class="f" style="animation-delay:0.16s"><use href="#b" x="213" y="238"/><use href="#c" x="213" y="224"/><use href="#b" x="195" y="252"/><use href="#c" x="195" y="238"/><use href="#b" x="177" y="266"/><use href="#c" x="177" y="252"/></g>
+<g class="f" style="animation-delay:0.20s"><use href="#b" x="240" y="235"/><use href="#c" x="240" y="221"/><use href="#b" x="213" y="256"/><use href="#c" x="213" y="242"/></g>
+<g class="f" style="animation-delay:0.24s"><use href="#b" x="222" y="267"/><use href="#c" x="222" y="253"/><use href="#b" x="204" y="281"/><use href="#c" x="204" y="267"/></g>
+<g class="f" style="animation-delay:0.28s"><use href="#b" x="249" y="264"/><use href="#c" x="249" y="250"/><use href="#b" x="240" y="271"/><use href="#c" x="240" y="257"/><use href="#b" x="222" y="285"/><use href="#c" x="222" y="271"/></g>
+<g class="f" style="animation-delay:0.32s"><use href="#b" x="294" y="247"/><use href="#c" x="294" y="233"/><use href="#b" x="276" y="261"/><use href="#c" x="276" y="247"/><use href="#b" x="249" y="282"/><use href="#c" x="249" y="268"/></g>
+<g class="f" style="animation-delay:0.36s"><use href="#b" x="285" y="272"/><use href="#c" x="285" y="258"/></g>
+<g class="f" style="animation-delay:0.40s"><use href="#b" x="303" y="276"/><use href="#b" x="303" y="262"/><use href="#c" x="303" y="248"/></g>
+<g class="f" style="animation-delay:0.44s"><use href="#b" x="348" y="259"/><use href="#c" x="348" y="245"/><use href="#b" x="339" y="266"/><use href="#c" x="339" y="252"/><use href="#b" x="321" y="280"/><use href="#c" x="321" y="266"/></g>
+<g class="f" style="animation-delay:0.48s"><use href="#b" x="366" y="263"/><use href="#c" x="366" y="249"/><use href="#b" x="339" y="284"/><use href="#c" x="339" y="270"/><use href="#b" x="330" y="291"/><use href="#c" x="330" y="277"/></g>
+<g class="f" style="animation-delay:0.52s"><use href="#b" x="384" y="267"/><use href="#c" x="384" y="253"/><use href="#b" x="366" y="281"/><use href="#c" x="366" y="267"/></g>
+<g class="f" style="animation-delay:0.56s"><use href="#b" x="402" y="271"/><use href="#c" x="402" y="257"/><use href="#b" x="366" y="299"/><use href="#c" x="366" y="285"/></g>
+<g class="f" style="animation-delay:0.60s"><use href="#b" x="402" y="289"/><use href="#c" x="402" y="275"/></g>
+<g class="f" style="animation-delay:0.64s"><use href="#b" x="420" y="293"/><use href="#c" x="420" y="279"/><use href="#b" x="411" y="300"/><use href="#c" x="411" y="286"/><use href="#b" x="402" y="307"/><use href="#c" x="402" y="293"/></g>
+<g class="f" style="animation-delay:0.72s"><use href="#b" x="438" y="315"/><use href="#c" x="438" y="301"/><use href="#b" x="429" y="322"/><use href="#c" x="429" y="308"/></g>
+<g class="f" style="animation-delay:0.76s"><use href="#b" x="474" y="305"/><use href="#c" x="474" y="291"/></g>
+<g class="f" style="animation-delay:0.80s"><use href="#b" x="474" y="323"/><use href="#c" x="474" y="309"/><use href="#b" x="465" y="330"/><use href="#c" x="465" y="316"/></g>
+<g class="f" style="animation-delay:0.84s"><use href="#b" x="528" y="299"/><use href="#c" x="528" y="285"/><use href="#b" x="519" y="306"/><use href="#c" x="519" y="292"/><use href="#b" x="492" y="327"/><use href="#c" x="492" y="313"/></g>
+<g class="f" style="animation-delay:0.88s"><use href="#b" x="546" y="303"/><use href="#b" x="546" y="289"/><use href="#c" x="546" y="275"/><use href="#b" x="528" y="317"/><use href="#c" x="528" y="303"/></g>
+<g class="f" style="animation-delay:0.92s"><use href="#b" x="564" y="307"/><use href="#b" x="564" y="293"/><use href="#c" x="564" y="279"/><use href="#b" x="555" y="314"/><use href="#c" x="555" y="300"/></g>
+<g class="f" style="animation-delay:0.96s"><use href="#b" x="546" y="339"/><use href="#c" x="546" y="325"/><use href="#b" x="528" y="353"/><use href="#c" x="528" y="339"/></g>
+<g class="f" style="animation-delay:1.00s"><use href="#b" x="582" y="329"/><use href="#c" x="582" y="315"/></g>
+<g class="f" style="animation-delay:1.04s"><use href="#b" x="618" y="319"/><use href="#c" x="618" y="305"/></g>
+<g class="f" style="animation-delay:1.08s"><use href="#b" x="609" y="344"/><use href="#c" x="609" y="330"/><use href="#b" x="600" y="351"/><use href="#c" x="600" y="337"/><use href="#b" x="591" y="358"/><use href="#c" x="591" y="344"/></g>
+<g class="f" style="animation-delay:1.12s"><use href="#b" x="645" y="334"/><use href="#c" x="645" y="320"/><use href="#b" x="636" y="341"/><use href="#c" x="636" y="327"/><use href="#b" x="618" y="355"/><use href="#c" x="618" y="341"/></g>
+<g class="f" style="animation-delay:1.16s"><use href="#b" x="663" y="338"/><use href="#c" x="663" y="324"/></g>
+<g class="f" style="animation-delay:1.20s"><use href="#b" x="690" y="335"/><use href="#c" x="690" y="321"/><use href="#b" x="672" y="349"/><use href="#b" x="672" y="335"/><use href="#c" x="672" y="321"/></g>
+<g class="f" style="animation-delay:1.24s"><use href="#b" x="681" y="360"/><use href="#c" x="681" y="346"/><use href="#b" x="663" y="374"/><use href="#c" x="663" y="360"/></g>
+<g class="f" style="animation-delay:1.28s"><use href="#b" x="717" y="350"/><use href="#c" x="717" y="336"/></g>
+<g class="f" style="animation-delay:1.32s"><use href="#b" x="726" y="361"/><use href="#c" x="726" y="347"/></g>
+<g class="f" style="animation-delay:1.36s"><use href="#b" x="762" y="351"/><use href="#c" x="762" y="337"/><use href="#b" x="726" y="379"/><use href="#c" x="726" y="365"/><use href="#b" x="717" y="386"/><use href="#c" x="717" y="372"/></g>
+<g class="f" style="animation-delay:1.40s"><use href="#b" x="753" y="376"/><use href="#c" x="753" y="362"/><use href="#b" x="744" y="383"/><use href="#c" x="744" y="369"/></g>
+<g class="f" style="animation-delay:1.44s"><use href="#b" x="798" y="359"/><use href="#c" x="798" y="345"/><use href="#b" x="771" y="380"/><use href="#c" x="771" y="366"/><use href="#b" x="762" y="387"/><use href="#c" x="762" y="373"/></g>
+<g class="f" style="animation-delay:1.48s"><use href="#b" x="807" y="370"/><use href="#c" x="807" y="356"/><use href="#b" x="798" y="377"/><use href="#c" x="798" y="363"/><use href="#b" x="771" y="398"/><use href="#c" x="771" y="384"/></g>
+<g class="f" style="animation-delay:1.52s"><use href="#b" x="825" y="374"/><use href="#c" x="825" y="360"/></g>
+<g class="f" style="animation-delay:1.56s"><use href="#b" x="816" y="399"/><use href="#b" x="816" y="385"/><use href="#c" x="816" y="371"/></g>
+<g class="f" style="animation-delay:1.64s"><use href="#b" x="879" y="386"/><use href="#b" x="879" y="372"/><use href="#c" x="879" y="358"/><use href="#b" x="861" y="400"/><use href="#c" x="861" y="386"/></g>
+<g class="f" style="animation-delay:1.68s"><use href="#b" x="897" y="390"/><use href="#c" x="897" y="376"/><use href="#b" x="888" y="397"/><use href="#c" x="888" y="383"/></g>
+<g class="f" style="animation-delay:1.72s"><use href="#b" x="906" y="401"/><use href="#c" x="906" y="387"/><use href="#b" x="897" y="408"/><use href="#c" x="897" y="394"/><use href="#b" x="888" y="415"/><use href="#c" x="888" y="401"/></g>
+<g class="f" style="animation-delay:1.76s"><use href="#b" x="933" y="398"/><use href="#c" x="933" y="384"/><use href="#b" x="924" y="405"/><use href="#c" x="924" y="391"/></g>
+<g class="f" style="animation-delay:1.80s"><use href="#b" x="942" y="409"/><use href="#c" x="942" y="395"/><use href="#b" x="915" y="430"/><use href="#c" x="915" y="416"/></g>
+<g class="f" style="animation-delay:1.84s"><use href="#b" x="969" y="406"/><use href="#c" x="969" y="392"/></g>
+<g class="f" style="animation-delay:1.88s"><use href="#b" x="996" y="403"/><use href="#c" x="996" y="389"/></g>
+<g class="f" style="animation-delay:1.92s"><use href="#b" x="996" y="421"/><use href="#c" x="996" y="407"/><use href="#b" x="987" y="428"/><use href="#c" x="987" y="414"/></g>
+<g class="f" style="animation-delay:1.96s"><use href="#b" x="1023" y="418"/><use href="#c" x="1023" y="404"/><use href="#b" x="1005" y="432"/><use href="#c" x="1005" y="418"/><use href="#b" x="987" y="446"/><use href="#c" x="987" y="432"/></g>
+<g class="f" style="animation-delay:2.00s"><use href="#b" x="1050" y="415"/><use href="#c" x="1050" y="401"/><use href="#b" x="1023" y="436"/><use href="#c" x="1023" y="422"/><use href="#b" x="1014" y="443"/><use href="#c" x="1014" y="429"/></g>
+<g class="f" style="animation-delay:2.04s"><use href="#b" x="1059" y="426"/><use href="#c" x="1059" y="412"/><use href="#b" x="1041" y="440"/><use href="#c" x="1041" y="426"/><use href="#b" x="1023" y="454"/><use href="#c" x="1023" y="440"/></g>
+<g class="f" style="animation-delay:2.08s"><use href="#b" x="1068" y="437"/><use href="#c" x="1068" y="423"/><use href="#b" x="1059" y="444"/><use href="#c" x="1059" y="430"/><use href="#b" x="1050" y="451"/><use href="#b" x="1050" y="437"/><use href="#c" x="1050" y="423"/></g>
+<g class="f flag" style="animation-delay:2.28s"><use href="#fl" x="1046" y="464"/></g>
+<line class="bd" x1="60" y1="510" x2="1140" y2="510"/>
+<text class="t2 k" x="60" y="540">过去一年</text>
+<text class="t1 v" x="60" y="568">111 次</text>
+<text class="t2 k" x="330" y="540">最常点</text>
+<text class="t1 v" x="330" y="568">巨无霸套餐</text>
+<text class="t2 k" x="600" y="540">最常时段</text>
+<text class="t1 v" x="600" y="568">lunch · 午饭</text>
+<text class="t2 k" x="870" y="540">10-24</text>
+<text class="t1 v" x="870" y="568">Happy 0x400 Day</text>
+<text class="t2 m" x="60" y="606">数据：演示合成数据，最早到 2025-10-21 · git mcd card 生成</text>
+<text class="t2 m" x="1140" y="606" text-anchor="end">1 层汉堡 = 吃 1 次 · 超过 4 次只叠 4 层，顶上标 +</text>
 </svg>

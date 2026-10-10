@@ -62,7 +62,8 @@ def month_labels(start: date) -> List[Tuple[int, str]]:
     return [(col, f"{month}月") for col, month in kept]
 
 
-def build(entries: List[Dict[str, Any]], *, today: date, with_savings: bool, demo: bool) -> Dict[str, Any]:
+def build(entries: List[Dict[str, Any]], *, today: date, with_savings: bool, demo: bool, head: Optional[str] = None) -> Dict[str, Any]:
+    """head：当前 HEAD 的短哈希（小票上印「HEAD」用），没有就是 None。"""
     start = window_start(today)
     counted: List[Tuple[date, Dict[str, Any]]] = []
     for entry in entries:
@@ -85,7 +86,7 @@ def build(entries: List[Dict[str, Any]], *, today: date, with_savings: bool, dem
         weeks.append(column)
 
     total = len(rows)
-    top = stats.top_items(rows, 1)
+    top = stats.top_items(rows, 5)
     slot = stats.top_slot(rows)
     slot_count = stats.slot_counts(rows)[slot] if slot else 0
     money = stats.money(rows)
@@ -111,6 +112,10 @@ def build(entries: List[Dict[str, Any]], *, today: date, with_savings: bool, dem
         "activeDays": len(per_day),
         "topItem": top_item,
         "topSlot": top_slot,
+        "topItems": top,
+        "slots": stats.slot_counts(rows),
+        "head": head,
+        "today": today.isoformat(),
         "savings": money["saved"] if with_savings else None,
         "savingsKnownOrders": money["savedKnown"] if with_savings else None,
         "earliest": earliest.isoformat() if earliest else None,

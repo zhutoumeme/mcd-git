@@ -247,7 +247,7 @@ def test_every_command_speaks_json(runner: Runner, tmp_path: Path) -> None:
 def test_help_table_everywhere(runner: Runner) -> None:
     for argv in ([], ["help"], ["-h"], ["--help"]):
         code, out = runner.run(*argv)
-        assert code == 0 and "cherry-pick HEAD" in out and "git mcd help" in out and "card [-o 文件]" in out, argv
+        assert code == 0 and "cherry-pick HEAD" in out and "git mcd help" in out and "card [--style 样式]" in out, argv
     code, data = runner.json("help")
     writes = {c["command"] for c in data["data"]["commands"] if c["writesAccount"]}
     assert writes == {"push", "revert", "pull"}  # 会改动账户的只有这三个，都先确认
