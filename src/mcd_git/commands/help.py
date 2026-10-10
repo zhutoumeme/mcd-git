@@ -30,7 +30,8 @@ COMMANDS: List[Tuple[str, str, bool]] = [
     ("show [HEAD]", "订单详情、取餐码", False),
     ("cherry-pick HEAD", "再来一单（拣回购物车）", False),
     ("revert", "取消订单", True),
-    ("fetch", "今日活动、可领券", False),
+    ("fetch", "今日活动、可领券（只读）", False),
+    ("pull", "领券：一次领全部可领券", True),
     ("card [-o 文件]", "1024 吃麦贡献图（终端预览 + SVG）", False),
 ]
 

@@ -1,6 +1,6 @@
 """DemoClient：用合成世界模拟 MCP 的返回，包括失败形态（success=false、isError=false、没有 data）。
 
-create-order / cancel-order 只改本地 demo 目录里的 server.json，不发任何网络请求。
+create-order / cancel-order / auto-bind-coupons 只改本地 demo 目录里的 server.json，不发任何网络请求。
 """
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
 from ..errors import GitMcdError
-from ..mcp_client import WRITE_TOOLS
+from ..mcp_client import WRITE_BLOCKED, write_blocked
 from ..money import parse_diff_price
 from . import world
 
@@ -47,8 +47,8 @@ class DemoClient:
     # ------------------------------------------------------------ 框架
 
     def call_tool(self, name: str, arguments: Optional[Dict[str, Any]] = None, *, allow_write: bool = False) -> Dict[str, Any]:
-        if name in WRITE_TOOLS and not allow_write:
-            raise GitMcdError(f"拒绝调用 {name}：写操作只能经过 push / revert 的确认闸", fatal=True)
+        if write_blocked(name, allow_write):  # 和真实客户端同一套拦截
+            raise GitMcdError(WRITE_BLOCKED.format(name=name), fatal=True)
         args = copy.deepcopy(arguments or {})
         self.calls.append((name, args))
         trace = hashlib.md5(f"demo:{name}:{len(self.calls)}".encode("utf-8")).hexdigest()  # noqa: S324（只是演示用的 traceId）
@@ -143,7 +143,22 @@ class DemoClient:
         return [{k: v for k, v in c.items() if k != "rule"} for c in copy.deepcopy(rows)]
 
     def _t_available_coupons(self, args: Dict[str, Any]) -> List[Dict[str, Any]]:
+        if self._load_db().get("claimed"):
+            return []  # pull 领过之后就没有可领的了；--demo init 删掉 server.json 恢复
         return copy.deepcopy(world.AVAILABLE_COUPONS)
+
+    def _t_auto_bind_coupons(self, args: Dict[str, Any]) -> Dict[str, Any]:
+        """一次领走全部可领券（形态按 outputSchema）；已经领过再调，返回全 0。"""
+        db = self._load_db()
+        if db.get("claimed"):
+            return {"successCount": 0, "failedCount": 0, "totalCount": 0, "successCoupons": [], "failedCoupons": []}
+        db["claimed"] = True
+        self._save_db(db)
+        claimed = [
+            {"couponId": f"demo-claim-{i:04d}", "couponName": c["couponName"], "couponCode": f"DEMOPULL{i:04d}", "couponImage": ""}
+            for i, c in enumerate(world.AVAILABLE_COUPONS, 1)
+        ]
+        return {"successCount": len(claimed), "failedCount": 0, "totalCount": len(claimed), "successCoupons": claimed, "failedCoupons": []}
 
     def _t_campaign_calendar(self, args: Dict[str, Any]) -> Dict[str, Any]:
         return copy.deepcopy(world.CALENDAR)

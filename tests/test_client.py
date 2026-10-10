@@ -142,6 +142,33 @@ def test_write_tools_blocked_without_gate() -> None:
     assert server.requests == []  # 连 initialize 都没发
 
 
+NEVER_TOOLS = ("mall-create-order", "draw-lottery", "party-order-create", "delivery-create-address")
+
+
+def test_never_tools_blocked_even_with_allow_write() -> None:
+    """积分兑换、抽奖、派对订单、新建地址：不在确认闸能放行的三个里，带着 allow_write 也调不出去。"""
+    server = FakeServer([])
+    client = McdMcpClient(TOKEN, opener=server, min_interval=0)
+    for tool in NEVER_TOOLS:
+        with pytest.raises(GitMcdError) as err:
+            client.call_tool(tool, {}, allow_write=True)
+        assert err.value.fatal and "确认闸" in err.value.message
+    assert server.requests == []
+
+
+def test_gated_tool_needs_allow_write() -> None:
+    """auto-bind-coupons 只有 pull 的确认闸放行（allow_write）才发得出去；发出去也只发一次，429 不重试。"""
+    server = FakeServer([_http_error(429), RESULT])
+    client = McdMcpClient(TOKEN, opener=server, sleep=lambda s: None, min_interval=0)
+    with pytest.raises(GitMcdError):
+        client.call_tool("auto-bind-coupons", {})
+    assert server.requests == []
+    with pytest.raises(McdError) as err:
+        client.call_tool("auto-bind-coupons", {}, allow_write=True)
+    assert err.value.http_status == 429
+    assert [r["method"] for r in server.requests].count("tools/call") == 1
+
+
 def test_network_error_is_transport() -> None:
     client = McdMcpClient(TOKEN, opener=FakeServer([urllib.error.URLError("timed out")]), min_interval=0)
     with pytest.raises(McdError) as err:

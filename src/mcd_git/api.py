@@ -310,6 +310,40 @@ def normalize_order(raw: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _count(value: Any) -> Optional[int]:
+    """非负整数（或数字串）才算数；缺失、布尔、小数、负数都当没给。"""
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value if value >= 0 else None
+    if isinstance(value, str) and value.strip().isdigit():
+        return int(value.strip())
+    return None
+
+
+def normalize_bind(data: Dict[str, Any]) -> Dict[str, Any]:
+    """auto-bind-coupons 的 data。字段按 outputSchema，真实账户没调过，所以样样容错：
+    列表不是列表就当空；计数缺失或不是整数就用列表长度；计数比列表短时以列表为准。
+    只留券名和失败原因，couponId / couponCode（券码）/ couponImage 都不往上传。"""
+
+    def rows(key: str) -> List[Dict[str, Any]]:
+        value = data.get(key)
+        return [c for c in value if isinstance(c, dict)] if isinstance(value, list) else []
+
+    success = [{"name": str(c.get("couponName") or "").strip()} for c in rows("successCoupons")]
+    failed = [{"name": str(c.get("couponName") or "").strip(), "reason": str(c.get("reason") or "").strip()} for c in rows("failedCoupons")]
+    success_count = max(_count(data.get("successCount")) or 0, len(success))
+    failed_count = max(_count(data.get("failedCount")) or 0, len(failed))
+    total = _count(data.get("totalCount"))
+    return {
+        "success": success,
+        "failed": failed,
+        "successCount": success_count,
+        "failedCount": failed_count,
+        "totalCount": total if total is not None else success_count + failed_count,
+    }
+
+
 def scope_args(remote: Dict[str, Any], reservation: Optional[str] = None) -> Dict[str, Any]:
     """storeCode / orderType / beType，得来速和外送再带 beCode（到店自取不能带，传了会报错）。"""
     args: Dict[str, Any] = {
@@ -337,6 +371,9 @@ class McdApi:
         self._cache: Dict[Tuple[str, str], Any] = {}
 
     def _call(self, tool: str, args: Optional[Dict[str, Any]] = None, *, cache: bool = True, approval: Any = None) -> Any:
+        if approval is not None and getattr(approval, "tool", None) != tool:
+            # push / revert 的许可不能挪去领券，反过来也一样
+            raise GitMcdError("确认闸校验失败：许可和要调用的 tool 不一致", fatal=True)
         args = args or {}
         key = (tool, json.dumps(args, sort_keys=True, ensure_ascii=False))
         if cache and key in self._cache:
@@ -458,3 +495,12 @@ class McdApi:
         approval.check("cancel-order", args)
         data = self._call("cancel-order", args, cache=False, approval=approval) or {}
         return {"cancelResult": data.get("cancelResult"), "orderId": str(data.get("orderId") or args.get("orderId"))}
+
+    def auto_bind_coupons(self, approval: Any) -> Dict[str, Any]:
+        """一次领取当前所有可领券（没有参数，不能只领其中几张）。"""
+        approval.check("auto-bind-coupons", {})
+        data = self._call("auto-bind-coupons", {}, cache=False, approval=approval)
+        if not isinstance(data, dict):
+            # 请求已经发出去了，返回却看不懂：券可能已经领到，按结果未知处理（调用方不会重试）
+            raise McdError("auto-bind-coupons 的返回看不懂", transport=True)
+        return normalize_bind(data)

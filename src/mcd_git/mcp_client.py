@@ -3,7 +3,8 @@
 - Token 读取顺序：环境变量 MCD_MCP_TOKEN → ~/.config/mcd-mcp/token。Token 只放进请求头，
   不打印、不写日志、不出现在异常信息和 repr 里。
 - 地址写死为 https://mcp.mcd.cn，不读任何环境变量；别的协议或主机在发请求前就拒绝，也不跟随重定向，Token 不会被带去别处。
-- 写操作 tool（下单、取消、领券……）默认拒绝；只有 push / revert 的确认闸会带 allow_write=True。
+- 写操作 tool（下单、取消、领券……）默认拒绝；只有 push / revert / pull 的确认闸会带 allow_write=True，
+  而且只放行 GATED_WRITE_TOOLS 里的三个，其余写操作带着 allow_write 也调不出去。
 - 返回解包优先用 structuredContent，缺失时才从 Markdown 文本里找 JSON 信封（三种布局都兼容）。
 """
 from __future__ import annotations
@@ -27,7 +28,7 @@ DEFAULT_URL = "https://mcp.mcd.cn"
 OFFICIAL_HOST = "mcp.mcd.cn"
 PROTOCOL_VERSION = "2025-06-18"
 
-# 会改变账户状态的 tool。mcd-git 只会经确认闸调用前两个，其余永远不调。
+# 会改变账户状态的 tool。mcd-git 只会经确认闸调用前三个，其余永远不调。
 WRITE_TOOLS = frozenset(
     {
         "create-order",
@@ -39,6 +40,16 @@ WRITE_TOOLS = frozenset(
         "delivery-create-address",
     }
 )
+# 确认闸能放行的写操作：push → create-order、revert → cancel-order、pull → auto-bind-coupons
+GATED_WRITE_TOOLS = frozenset({"create-order", "cancel-order", "auto-bind-coupons"})
+
+
+def write_blocked(name: str, allow_write: bool) -> bool:
+    """写操作没有确认闸放行（allow_write）就拒绝；不在 GATED_WRITE_TOOLS 里的写操作一律拒绝。"""
+    return name in WRITE_TOOLS and (not allow_write or name not in GATED_WRITE_TOOLS)
+
+
+WRITE_BLOCKED = "拒绝调用 {name}：写操作只能经过 push / revert / pull 的确认闸"
 
 _ENVELOPE_RE = re.compile(r'\{\s*"success"\s*:')
 _MARKER = "## Original Response"
@@ -333,9 +344,9 @@ class McdMcpClient:
         return result
 
     def call_tool(self, name: str, arguments: Optional[Dict[str, Any]] = None, *, allow_write: bool = False) -> Dict[str, Any]:
-        if name in WRITE_TOOLS and not allow_write:
-            raise GitMcdError(f"拒绝调用 {name}：写操作只能经过 push / revert 的确认闸", fatal=True)
+        if write_blocked(name, allow_write):
+            raise GitMcdError(WRITE_BLOCKED.format(name=name), fatal=True)
         if not self._initialized:
             self.initialize()
-        # 写操作不做任何自动重试，防止重复下单
+        # 写操作不做任何自动重试，防止重复下单 / 重复领券
         return self.request("tools/call", {"name": name, "arguments": arguments or {}}, retry_429=name not in WRITE_TOOLS)

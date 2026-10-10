@@ -234,12 +234,12 @@ def test_cherry_pick_reports_conflicts(runner: Runner) -> None:
 
 def test_every_command_speaks_json(runner: Runner, tmp_path: Path) -> None:
     runner.run("--demo", "add", "热拿铁")
-    commands = (["status"], ["ls-remote", "薯条"], ["diff"], ["rebase"], ["log", "--oneline"], ["fetch"], ["show", "1024202610221205000000000002"], ["card", "-o", str(tmp_path / "c.svg")])
+    commands = (["status"], ["ls-remote", "薯条"], ["diff"], ["rebase"], ["log", "--oneline"], ["fetch"], ["pull"], ["show", "1024202610221205000000000002"], ["card", "-o", str(tmp_path / "c.svg")])
     for argv in commands:
         code, data = runner.json("--demo", *argv)
         assert code == 0 and data["ok"] is True and data["demo"] is True, argv
     code, data = runner.json("--demo", "fetch")
-    assert len(data["data"]["claimable"]) == 3
+    assert len(data["data"]["claimable"]) == 3  # pull --json 只出预览，一张都没领
     code, data = runner.json("--demo", "show", "nope!")
     assert code == 128 and data["ok"] is False and data["error"]["type"] == "fatal"
 
@@ -249,7 +249,8 @@ def test_help_table_everywhere(runner: Runner) -> None:
         code, out = runner.run(*argv)
         assert code == 0 and "cherry-pick HEAD" in out and "git mcd help" in out and "card [-o 文件]" in out, argv
     code, data = runner.json("help")
-    assert any(c["writesAccount"] for c in data["data"]["commands"])
+    writes = {c["command"] for c in data["data"]["commands"] if c["writesAccount"]}
+    assert writes == {"push", "revert", "pull"}  # 会改动账户的只有这三个，都先确认
     code, out = runner.run("help", "nope")
     assert code == 1
 

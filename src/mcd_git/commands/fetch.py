@@ -1,4 +1,4 @@
-"""git mcd fetch：今日活动和可领券（只读）。领券是写操作（auto-bind-coupons），mcd-git 不做。"""
+"""git mcd fetch：今日活动和可领券（只读）。领券是写操作（auto-bind-coupons），用 git mcd pull，会先确认。"""
 from __future__ import annotations
 
 from typing import Any, Dict, List
@@ -12,7 +12,7 @@ from ..errors import McdError
 
 
 def register(sub: Any, common: Any) -> None:
-    p = sub.add_parser("fetch", parents=[common], help="今日活动、可领券（只读）", description="看活动日历和可领的券。只读，不会替你领券。")
+    p = sub.add_parser("fetch", parents=[common], help="今日活动、可领券（只读）", description="看活动日历和可领的券。只读；领券用 git mcd pull（会先确认）")
     p.set_defaults(func=run)
 
 
@@ -44,7 +44,7 @@ def run(ctx: Context, args: Any) -> Result:
             names = "、".join(c["name"] for c in claimable[:3]) + ("…" if len(claimable) > 3 else "")
             console.print(Text.assemble(" * ", ("[可领券]", R.TAG), f"   {len(claimable)} 张：{names}"))
             console.print(Text.assemble("Your branch is behind ", ("'mcd/coupons'", R.REMOTE), f" by {len(claimable)}."))
-            console.print("  (领券会改动账户：请在麦当劳 App 里领；mcd-git 不替你领)", style=R.DIM)
+            console.print("  (git mcd pull 领取：会先确认，一次领全部)", style=R.DIM)
         elif not errors:
             console.print("Already up to date.（没有可领的券）")
         for err in errors:

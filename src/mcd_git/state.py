@@ -1,7 +1,8 @@
 """本地状态：只放在 ~/.config/mcd-git/（demo 用 ~/.config/mcd-git/demo/），不碰任何代码仓库的 .git。
 
 一个 state.json 存全部：远端（门店）、暂存区（购物车）、commit 快照、HEAD、push 过的订单、
-待确认的 push / revert 预览。写入用临时文件 + rename，目录 700、文件 600。
+待确认的 push / revert 预览（pending）和 pull 预览（pending_pull，单独一格，互不覆盖）。
+写入用临时文件 + rename，目录 700、文件 600。
 """
 from __future__ import annotations
 
@@ -93,6 +94,7 @@ def empty_state() -> Dict[str, Any]:
         "head": None,
         "orders": [],
         "pending": None,
+        "pending_pull": None,
         "seq": 0,
     }
 
