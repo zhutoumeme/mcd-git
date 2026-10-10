@@ -37,9 +37,10 @@ class UsageError(GitMcdError):
 
 
 class McdError(Exception):
-    """MCP 调用失败：业务失败（success=false / code≠200）、HTTP 错误或网络错误。
+    """MCP 调用失败：业务失败（success=false / code≠200）、HTTP 错误、JSON-RPC 错误或网络错误。
 
     transport=True 表示请求结果未知（超时、断网），写操作遇到这种情况绝不自动重试。
+    rpc=True 表示 JSON-RPC 层的错误：code 是 JSON-RPC 错误码（如 -32603），不是信封里的业务错误码。
     """
 
     def __init__(
@@ -50,6 +51,7 @@ class McdError(Exception):
         trace_id: Optional[str] = None,
         http_status: Optional[int] = None,
         transport: bool = False,
+        rpc: bool = False,
     ) -> None:
         super().__init__(message)
         self.message = message
@@ -57,6 +59,7 @@ class McdError(Exception):
         self.trace_id = trace_id
         self.http_status = http_status
         self.transport = transport
+        self.rpc = rpc
 
     def remote_lines(self) -> List[str]:
         """按 git 的 `remote:` 行展示服务端原话、错误码和 traceId。"""

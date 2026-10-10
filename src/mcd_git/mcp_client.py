@@ -315,7 +315,7 @@ class McdMcpClient:
         message = self._send(payload, retry_429=retry_429) or {}
         if "error" in message:
             err = message.get("error") or {}
-            raise McdError(f"{method}：{err.get('message') or '调用失败'}", code=err.get("code"))
+            raise McdError(f"{method}：{err.get('message') or '调用失败'}", code=err.get("code"), rpc=True)
         return message.get("result") or {}
 
     def initialize(self) -> Dict[str, Any]:

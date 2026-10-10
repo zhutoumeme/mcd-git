@@ -241,6 +241,19 @@ def render_summary(console: Console, s: Dict[str, Any], *, demo: bool) -> None:
 
 UNKNOWN_RESULT_HINT = "不确定订单有没有建成：先运行 git mcd log 看最新订单，不要直接重试（避免重复下单）"
 
+# JSON-RPC 错误里只有这四个说明请求本身没被受理（解析失败、请求无效、方法不存在、参数无效）；
+# -32603 Internal error、-32000～-32099 这类是服务端处理时出了错，订单可能已经建成
+RPC_NOT_ACCEPTED = (-32700, -32600, -32601, -32602)
+
+
+def _rejected(err: McdError) -> bool:
+    """服务端明确拒绝、可以断定没下单：信封里的业务错误码、HTTP 4xx，或 JSON-RPC 层没受理这次请求。"""
+    if err.transport:
+        return False
+    if err.rpc:
+        return err.code in RPC_NOT_ACCEPTED
+    return err.code not in (None, "") or 400 <= (err.http_status or 0) < 500
+
 
 def _place(ctx: Context, head: Dict[str, Any], args_: Dict[str, Any], s: Dict[str, Any]) -> Result:
     api = ctx.api()
@@ -253,9 +266,8 @@ def _place(ctx: Context, head: Dict[str, Any], args_: Dict[str, Any], s: Dict[st
     except GitMcdError:
         raise  # 确认闸校验、调用上限：请求还没发出去
     except McdError as err:
-        # 只有服务端明确拒绝（带业务错误码，或 HTTP 4xx）才能断定没下单；超时、5xx、返回看不懂都当结果未知
-        rejected = not err.transport and (err.code not in (None, "") or 400 <= (err.http_status or 0) < 500)
-        hint = ["什么都没下单；处理完上面的问题后重新 git mcd push 预览"] if rejected else [UNKNOWN_RESULT_HINT]
+        # 只有服务端明确拒绝（见 _rejected）才能断定没下单；超时、30x、5xx、-32603 这类 JSON-RPC 错误、返回看不懂都当结果未知
+        hint = ["什么都没下单；处理完上面的问题后重新 git mcd push 预览"] if _rejected(err) else [UNKNOWN_RESULT_HINT]
         raise GitMcdError(f"failed to push some refs: {err.message}", remote=err.remote_lines(), hint=hint) from None
     except KeyboardInterrupt:
         raise GitMcdError("failed to push some refs: 已中断，没等到下单结果", hint=UNKNOWN_RESULT_HINT, exit_code=130) from None

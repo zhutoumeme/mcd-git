@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import http.client
+import json
 from datetime import datetime
 from typing import Any, Dict
 
@@ -10,9 +11,11 @@ import pytest
 from mcd_git import gate
 from mcd_git.api import McdApi
 from mcd_git.errors import GitMcdError, McdError
+from mcd_git.mcp_client import McdMcpClient
 from mcd_git.state import CN_TZ, DEMO_NOW, now
 
 from .conftest import Runner
+from .test_client import FakeResponse, FakeServer
 
 
 def _setup(runner: Runner, *, pick: str = "1") -> str:
@@ -172,6 +175,20 @@ def _mcp(envelope: Dict[str, Any]) -> Dict[str, Any]:
     return {"content": [{"type": "text", "text": ""}], "isError": False, "structuredContent": envelope}
 
 
+def _jsonrpc_error(code: int, message: str) -> Any:
+    """create-order 的 JSON-RPC 响应是 {"error": {"code": …, "message": …}}：经真实的 McdMcpClient 解析（FakeServer 回放，不联网）。"""
+
+    def reply(payload: Dict[str, Any]) -> FakeResponse:
+        body = {"jsonrpc": "2.0", "id": payload["id"], "error": {"code": code, "message": message}}
+        return FakeResponse(json.dumps(body).encode("utf-8"))
+
+    def call(args: Dict[str, Any], allow_write: bool) -> Dict[str, Any]:
+        client = McdMcpClient("unit-test-token", opener=FakeServer([reply]), min_interval=0)
+        return client.call_tool("create-order", args, allow_write=allow_write)
+
+    return call
+
+
 @pytest.mark.parametrize(
     "outcome, exit_code",
     [
@@ -181,6 +198,9 @@ def _mcp(envelope: Dict[str, Any]) -> Dict[str, Any]:
         pytest.param({"content": [{"type": "text", "text": "502 Bad Gateway"}], "isError": False}, 1, id="unparseable"),
         # 默认 opener 不跟随重定向，30x 经 _http_error 变成这个（见 test_client 的重定向用例）
         pytest.param(McdError("服务端返回 HTTP 302", http_status=302), 1, id="redirect-302"),
+        # JSON-RPC 层的服务端错误：处理时出了错，说明不了订单没建成
+        pytest.param(_jsonrpc_error(-32603, "Internal error"), 1, id="jsonrpc-internal-error"),
+        pytest.param(_jsonrpc_error(-32000, "Server error"), 1, id="jsonrpc-server-error"),
         pytest.param(KeyboardInterrupt(), 130, id="ctrl-c"),
     ],
 )
@@ -192,6 +212,8 @@ def test_unknown_create_order_result_says_check_log_first(runner: Runner, outcom
     def hook(args: Dict[str, Any], allow_write: bool) -> Dict[str, Any]:
         if isinstance(outcome, BaseException):
             raise outcome
+        if callable(outcome):  # 经真实的 McdMcpClient 发出去
+            return outcome(args, allow_write)
         return outcome
 
     runner.hooks["create-order"] = hook
@@ -221,6 +243,19 @@ def test_business_error_message_like_git(runner: Runner) -> None:
     assert "error: failed to push some refs: 门店已打烊" in out
     assert "remote: 门店已打烊（code 600031" in out
     assert "什么都没下单" in out  # 服务端明确拒绝，才能这么说
+
+
+@pytest.mark.parametrize("rpc_code", [-32700, -32600, -32601, -32602])
+def test_jsonrpc_request_not_accepted_counts_as_rejected(runner: Runner, rpc_code: int) -> None:
+    """JSON-RPC 层没受理这次请求（解析失败、请求无效、方法不存在、参数无效）：可以断定什么都没下单。"""
+    short = _setup(runner)
+    runner.run(*PUSH, mock=True)
+    runner.hooks["create-order"] = _jsonrpc_error(rpc_code, "Invalid params")
+    code, data = runner.json(*PUSH, "--confirm", short, mock=True)
+    assert code == 1 and data["ok"] is False
+    assert data["error"]["hints"] == ["什么都没下单；处理完上面的问题后重新 git mcd push 预览"]
+    assert data["error"]["remote"] == [f"tools/call：Invalid params（code {rpc_code}）"]
+    assert runner.count("create-order") == 1
 
 
 def test_take_way_and_remark_validation(runner: Runner) -> None:
