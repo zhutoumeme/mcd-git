@@ -200,6 +200,32 @@ def test_push_to_closed_store_fails_like_git(runner: Runner) -> None:
     assert data["data"]["ahead"] == 1 and data["data"]["pendingPayment"] is None
 
 
+def test_cherry_pick_unpushed_head_is_refused(runner: Runner) -> None:
+    """HEAD 还没 push 时它本来就是这一单：cherry-pick 它会把同样的餐品再放一份进购物车，commit --amend 之后这一单就翻倍了，所以拒绝。
+    push 之后 cherry-pick HEAD（再来一单）照常。"""
+    runner.run("--demo", "add", "巨无霸", "中薯条", "中可乐", "--no-pickle")
+    runner.run("--demo", "rebase")
+    code, data = runner.json("--demo", "commit", "-m", "午饭")
+    short = data["data"]["short"]
+    code, out = runner.run("--demo", "cherry-pick", "HEAD")
+    assert code == 1
+    assert f"error: HEAD {short}（午饭）还没 push，它本来就是这一单，不用 cherry-pick" in out
+    assert "hint: 直接下单：git mcd push" in out
+    assert "hint: 想多点一份：git mcd add <餐品> -n 2，再 git mcd commit --amend" in out
+    for target in ("HEAD", short):  # 写哈希也一样
+        code, data = runner.json("--demo", "cherry-pick", target)
+        assert code == 1 and data["ok"] is False and data["error"]["type"] == "error"
+        assert data["error"]["detail"] == {"code": "empty_cherry_pick", "commit": short}
+    code, data = runner.json("--demo", "status")
+    assert data["data"]["index"] == []  # 购物车没动
+
+    code, data = runner.json("--demo", "push")
+    code, data = runner.json("--demo", "push", "--confirm", data["data"]["confirm"])
+    assert code == 0 and data["data"]["status"] == "pushed"
+    code, data = runner.json("--demo", "cherry-pick", "HEAD")
+    assert code == 0 and [x["name"] for x in data["data"]["index"]] == ["巨无霸套餐"]
+
+
 def test_cherry_pick_reports_conflicts(runner: Runner) -> None:
     code, out = runner.run("--demo", "cherry-pick", "1024202610230812000000000003")
     assert code == 0

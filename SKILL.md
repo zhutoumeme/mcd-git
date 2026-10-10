@@ -49,7 +49,7 @@ mcd-git 把麦当劳中国 MCP Server 包装成 git 风格的命令：`add` 放�
 | 用户同意后 | 原样运行 `data.next` 里的命令（已经带好 `--confirm <哈希>` 和 `--json`） | `data.status == "pushed"`、`data.payH5Url`、`data.expirePayTime` |
 | 查取餐码 | `git mcd show --json` | `data.order.statusLabel`、`pickupCode`、`lockerCode`、`delivery` |
 | 历史 | `git mcd log --oneline --json` | `data.entries[]`（最多最近 10 单） |
-| 再来一单 | `git mcd cherry-pick HEAD --json`，再 `git mcd commit -m 再来一单 --json`，然后按「下单预览」走 | `data.index`、`data.conflicts`（本店买不到的会列出来）。cherry-pick 只放回购物车，不 commit 就 push 会报「购物车还没 commit」 |
+| 再来一单 | `git mcd cherry-pick HEAD --json`，再 `git mcd commit -m 再来一单 --json`，然后按「下单预览」走 | `data.index`、`data.conflicts`（本店买不到的会列出来）。cherry-pick 只放回购物车，不 commit 就 push 会报「购物车还没 commit」。只用于已经 push 过的单：HEAD 还没 push 时它本来就是这一单，`cherry-pick HEAD` 会被拒绝（`error.detail.code == "empty_cherry_pick"`，购物车不动），直接按「下单预览」走；用户要多点就 `add` 后 `commit --amend` |
 | 取消 | `git mcd revert --reason 3 --json` | 预览后用户同意，再运行 `data.next` |
 | 活动和可领券 | `git mcd fetch --json` | `data.events`、`data.claimable`（只读，领券请用户去 App） |
 

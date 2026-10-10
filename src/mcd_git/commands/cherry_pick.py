@@ -60,6 +60,15 @@ def run(ctx: Context, args: Any) -> Result:
     lines: List[Dict[str, Any]] = []
     conflicts: List[str] = []
     commit = src.get("commit")
+    head = head_commit(state)
+    if commit is not None and head is not None and commit["id"] == head["id"] and not head.get("pushed"):
+        # 还没 push 的 HEAD 就是「这一单」本身：再拣一份进购物车，commit --amend 之后这一单就翻倍了
+        short = R.short(head["id"])
+        raise GitMcdError(
+            f"HEAD {short}（{head['message']}）还没 push，它本来就是这一单，不用 cherry-pick",
+            hint=["直接下单：git mcd push", "想多点一份：git mcd add <餐品> -n 2，再 git mcd commit --amend"],
+            detail={"code": "empty_cherry_pick", "commit": short},
+        )
     if commit is not None and same_scope(commit.get("remote"), remote):
         for line in commit.get("lines") or []:
             plain = strip_coupon(line)  # 券是一次性的，不跟着拣回来
