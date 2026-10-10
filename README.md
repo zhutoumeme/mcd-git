@@ -250,6 +250,7 @@ Token 我会自己配置到 ~/.config/mcd-mcp/token，不用在对话里发给�
 
 - [MCP_INTEGRATION.md](MCP_INTEGRATION.md)：用到的 MCP tool、命令和 tool 的对应关系、调用时序图、业务价值和写操作边界
 - [SKILL.md](SKILL.md)：给 Agent 的使用说明
+- [CHANGELOG.md](CHANGELOG.md)：版本更新记录
 - [CONTEST_DECLARATION.md](CONTEST_DECLARATION.md)：参赛声明
 - 截图和动图可以复现：`python scripts/make_screenshots.py`、`vhs scripts/demo.tape`
 

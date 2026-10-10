@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "mcd-git"
-version = "0.1.0"
+version = "0.2.0"
 description = "用 git 命令点麦当劳：add 进购物车，rebase 凑最省，push 才真正下单（非官方，基于麦当劳 MCP Server）"
 readme = "README.md"
 requires-python = ">=3.9"
