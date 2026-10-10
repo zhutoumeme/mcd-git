@@ -5,6 +5,9 @@
 #
 # 录制时用临时 HOME 和 MCD_GIT_DEMO=1：git mcd 在 PATH 里找到 .venv/bin/git-mcd，
 # 状态写进临时目录，录完即丢。
+#
+# 标题注释和第一条 git mcd status 在 Hide 里先跑完：GitHub 在动图加载前只显示第一帧，
+# 这样第一帧就是完整的 status 输出，而不是空屏。
 
 Output assets/demo.gif
 
@@ -21,14 +24,14 @@ Hide
 Type "unset PROMPT_COMMAND; export PATH=$PWD/.venv/bin:$PATH HOME=$(mktemp -d) MCD_GIT_DEMO=1 PS1='$ '; clear"
 Enter
 Sleep 500ms
-Show
-
 Type "# demo 模式：合成数据，不需要 Token，也不会真的下单"
-Sleep 300ms
 Enter
 Type "git mcd status"
 Enter
-Sleep 1.1s
+Sleep 2s
+Show
+
+Sleep 1.6s
 
 Type "git mcd add 巨无霸 中薯条 中可乐 --no-pickle"
 Enter

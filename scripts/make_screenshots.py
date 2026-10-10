@@ -43,7 +43,7 @@ THEME = TerminalTheme(
 # (文件名, 一条或几条命令, 交互时自动回答的内容)；按顺序在同一个 demo 状态里执行
 STEPS = [
     ("help", ["help"], None),
-    ("init", ["init", "init --pick 1"], None),
+    ("init", ["init --city 示例市 --keyword 码农路", "init --pick 1"], None),
     ("status", ["status"], None),
     ("add", ["add 巨无霸 中薯条 中可乐 --no-pickle"], None),
     ("diff", ["diff"], None),
