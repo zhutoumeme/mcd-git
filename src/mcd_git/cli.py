@@ -5,6 +5,7 @@ import argparse
 import json
 import os
 import sys
+from datetime import datetime
 from typing import Any, Callable, Dict, List, Mapping, Optional
 
 from rich.console import Console
@@ -108,6 +109,7 @@ def main(
     client_factory: Optional[Callable[[Context], Any]] = None,
     input_fn: Optional[Callable[[str], str]] = None,
     interactive: Optional[bool] = None,
+    now: Optional[datetime] = None,
 ) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     env = os.environ if env is None else env
@@ -155,6 +157,7 @@ def main(
         interactive=bool(interactive),
         input_fn=input_fn or input,
         client_factory=client_factory,
+        now=now,
     )
     try:
         result = args.func(ctx, args)

@@ -4,6 +4,7 @@ from __future__ import annotations
 import io
 import json
 import urllib.request
+from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 import pytest
@@ -11,6 +12,10 @@ from rich.console import Console
 
 from mcd_git.cli import main
 from mcd_git.demo import DemoClient
+from mcd_git.state import CN_TZ
+
+# 固定时钟（程序员节午饭时间），预约时间才稳定；经 main(now=...) 注入，不走环境变量
+FIXED_NOW = datetime(2026, 10, 24, 11, 50, 0, tzinfo=CN_TZ)
 
 
 @pytest.fixture(autouse=True)
@@ -71,14 +76,21 @@ class Runner:
     def count(self, tool: str) -> int:
         return sum(client.count(tool) for client in self.clients)
 
-    def run(self, *argv: str, mock: bool = False, interactive: bool = False, answers: Optional[List[str]] = None, env: Optional[Dict[str, str]] = None) -> Tuple[int, str]:
+    def run(
+        self,
+        *argv: str,
+        mock: bool = False,
+        interactive: bool = False,
+        answers: Optional[List[str]] = None,
+        env: Optional[Dict[str, str]] = None,
+        now: Optional[datetime] = None,
+    ) -> Tuple[int, str]:
         import os
 
         buf = io.StringIO()
         console = Console(file=buf, width=120, highlight=False, markup=False, emoji=False, color_system=None)
         feed = list(answers or [])
         merged = dict(os.environ)
-        merged.setdefault("MCD_GIT_NOW", "2026-10-24 11:50:00")  # 固定时钟，预约时间才稳定
         merged.update(self.env_overrides)
         merged.update(env or {})
         code = main(
@@ -88,6 +100,7 @@ class Runner:
             client_factory=self.factory if mock else None,
             input_fn=lambda prompt: feed.pop(0) if feed else "",
             interactive=interactive,
+            now=now or FIXED_NOW,
         )
         return code, buf.getvalue()
 

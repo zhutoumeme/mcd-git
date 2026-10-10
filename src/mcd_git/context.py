@@ -3,13 +3,15 @@ from __future__ import annotations
 
 import copy
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any, Callable, Dict, Mapping, Optional
 
 from rich.console import Console
 
 from .api import MODES, McdApi, normalize_store
 from .errors import GitMcdError
-from .state import BRANCH_LABELS, StateStore, meal_branch, now, state_root
+from .state import BRANCH_LABELS, StateStore, meal_branch, state_root
+from .state import now as current_time
 
 
 @dataclass
@@ -30,6 +32,7 @@ class Context:
         interactive: bool,
         input_fn: Callable[[str], str] = input,
         client_factory: Optional[Callable[["Context"], Any]] = None,
+        now: Optional[datetime] = None,
     ) -> None:
         self.demo = demo
         self.json = json_mode
@@ -40,7 +43,7 @@ class Context:
         self._client_factory = client_factory
         self.store = StateStore(state_root(demo, env))
         self.state: Dict[str, Any] = self.store.load()
-        self.now = now(demo, env)
+        self.now = now if now is not None else current_time(demo, env)  # now 只给测试注入
         self._api: Optional[McdApi] = None
         self._client: Any = None
 

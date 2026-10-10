@@ -40,12 +40,14 @@ def display_path(path: Path) -> str:
 
 
 def now(demo: bool, env: Mapping[str, str]) -> datetime:
+    """真实模式只认系统时钟：确认有效期、--at 校验和订单记录都靠它，不给环境变量改写的口子。
+    demo 默认停在 DEMO_NOW，录演示时可以用 MCD_GIT_NOW 换个时段。测试通过 main(now=...) 注入时钟。"""
+    if not demo:
+        return datetime.now(CN_TZ)
     override = env.get("MCD_GIT_NOW")
     if override:
         return datetime.strptime(override, TIME_FMT).replace(tzinfo=CN_TZ)
-    if demo:
-        return DEMO_NOW
-    return datetime.now(CN_TZ)
+    return DEMO_NOW
 
 
 def fmt_time(dt: datetime) -> str:

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import http.client
+from datetime import datetime
 from typing import Any, Dict
 
 import pytest
@@ -9,6 +10,7 @@ import pytest
 from mcd_git import gate
 from mcd_git.api import McdApi
 from mcd_git.errors import GitMcdError, McdError
+from mcd_git.state import CN_TZ, DEMO_NOW, now
 
 from .conftest import Runner
 
@@ -118,9 +120,17 @@ def test_confirmed_push_places_exactly_one_order(runner: Runner) -> None:
 def test_preview_expires_after_ten_minutes(runner: Runner) -> None:
     short = _setup(runner)
     runner.run(*PUSH, mock=True)
-    code, out = runner.run(*PUSH, "--confirm", short, mock=True, env={"MCD_GIT_NOW": "2026-10-24 12:01:00"})
+    code, out = runner.run(*PUSH, "--confirm", short, mock=True, now=datetime(2026, 10, 24, 12, 1, tzinfo=CN_TZ))
     assert code == 1 and "过期" in out
     assert runner.count("create-order") == 0
+
+
+def test_fake_clock_env_only_works_in_demo() -> None:
+    env = {"MCD_GIT_NOW": "2026-10-24 11:51:00"}
+    assert now(True, env) == datetime(2026, 10, 24, 11, 51, tzinfo=CN_TZ)
+    assert now(True, {}) == DEMO_NOW
+    # 真实模式无视它：不能借此把过期的预览「拉回」10 分钟内，也不能往订单记录里写假时间
+    assert abs((now(False, env) - datetime.now(CN_TZ)).total_seconds()) < 60
 
 
 def test_force_and_dry_run_confirm_are_refused(runner: Runner) -> None:
