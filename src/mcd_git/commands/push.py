@@ -239,6 +239,9 @@ def render_summary(console: Console, s: Dict[str, Any], *, demo: bool) -> None:
 # ---------------------------------------------------------------- 下单
 
 
+UNKNOWN_RESULT_HINT = "不确定订单有没有建成：先运行 git mcd log 看最新订单，不要直接重试（避免重复下单）"
+
+
 def _place(ctx: Context, head: Dict[str, Any], args_: Dict[str, Any], s: Dict[str, Any]) -> Result:
     api = ctx.api()
     scope = head["remote"]
@@ -247,14 +250,17 @@ def _place(ctx: Context, head: Dict[str, Any], args_: Dict[str, Any], s: Dict[st
     ctx.save()
     try:
         created = api.create_order(approval, args_)
+    except GitMcdError:
+        raise  # 确认闸校验、调用上限：请求还没发出去
     except McdError as err:
-        unknown = err.transport or (err.http_status or 0) >= 500
-        hint = (
-            ["不确定订单有没有建成：先运行 git mcd log 看最新订单，不要直接重试（避免重复下单）"]
-            if unknown
-            else ["什么都没下单；处理完上面的问题后重新 git mcd push 预览"]
-        )
+        # 只有服务端明确拒绝（带业务错误码，或 HTTP 4xx）才能断定没下单；超时、5xx、返回看不懂都当结果未知
+        rejected = not err.transport and (err.code not in (None, "") or 400 <= (err.http_status or 0) < 500)
+        hint = ["什么都没下单；处理完上面的问题后重新 git mcd push 预览"] if rejected else [UNKNOWN_RESULT_HINT]
         raise GitMcdError(f"failed to push some refs: {err.message}", remote=err.remote_lines(), hint=hint) from None
+    except KeyboardInterrupt:
+        raise GitMcdError("failed to push some refs: 已中断，没等到下单结果", hint=UNKNOWN_RESULT_HINT, exit_code=130) from None
+    except Exception as err:  # noqa: BLE001（请求可能已经发出去了，不能让 traceback 盖住「先核对」的提示）
+        raise GitMcdError(f"failed to push some refs: 没拿到下单结果（{err.__class__.__name__}）", hint=UNKNOWN_RESULT_HINT) from None
     order = created.get("order") or {}
     order_id = created.get("orderId") or order.get("orderId") or ""
     expire = order.get("expirePayTime") or fmt_time(ctx.now + timedelta(minutes=15))

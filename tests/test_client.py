@@ -1,6 +1,7 @@
 """MCP 传输层：Token 读取、JSON / SSE 响应、401 / 429、写操作拦截、Token 不外泄。"""
 from __future__ import annotations
 
+import http.client
 import io
 import json
 import os
@@ -22,6 +23,13 @@ class FakeResponse(io.BytesIO):
 
     def __iter__(self):  # type: ignore[override]
         return iter(self.getvalue().splitlines(keepends=True))
+
+
+class TruncatedResponse(FakeResponse):
+    """响应头正常，读响应体时连接断了。"""
+
+    def read(self, *args: Any) -> bytes:  # type: ignore[override]
+        raise http.client.IncompleteRead(b'{"jsonrpc": "2.0", "id"', 200)
 
 
 class FakeServer:
@@ -131,6 +139,15 @@ def test_network_error_is_transport() -> None:
     with pytest.raises(McdError) as err:
         client.call_tool("order-list")
     assert err.value.transport
+
+
+def test_truncated_response_is_transport_and_not_retried() -> None:
+    server = FakeServer([lambda payload: TruncatedResponse(b"")])
+    client = McdMcpClient(TOKEN, opener=server, min_interval=0)
+    with pytest.raises(McdError) as err:
+        client.call_tool("create-order", {"storeCode": "1"}, allow_write=True)
+    assert err.value.transport and "IncompleteRead" in err.value.message
+    assert [r["method"] for r in server.requests].count("tools/call") == 1
 
 
 def test_mcp_url_env_is_ignored(monkeypatch: pytest.MonkeyPatch) -> None:

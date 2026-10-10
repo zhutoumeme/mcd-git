@@ -1,6 +1,7 @@
 """push / revert 的确认闸：走 demo=False 的真实代码路径，MCP 换成 mock（RecordingClient），绝不联网。"""
 from __future__ import annotations
 
+import http.client
 from typing import Any, Dict
 
 import pytest
@@ -157,6 +158,43 @@ def test_transport_error_is_not_retried(runner: Runner) -> None:
     assert code == 1 and runner.count("create-order") == 1
 
 
+def _mcp(envelope: Dict[str, Any]) -> Dict[str, Any]:
+    return {"content": [{"type": "text", "text": ""}], "isError": False, "structuredContent": envelope}
+
+
+@pytest.mark.parametrize(
+    "outcome, exit_code",
+    [
+        pytest.param(http.client.IncompleteRead(b'{"success": true', 300), 1, id="truncated-response"),
+        pytest.param(_mcp({"success": True, "code": 200, "data": ["not", "a", "dict"]}), 1, id="data-not-a-dict"),
+        pytest.param(_mcp({"success": True, "code": 200, "data": {"payH5Url": "https://example.com/x"}}), 1, id="no-order-id"),
+        pytest.param({"content": [{"type": "text", "text": "502 Bad Gateway"}], "isError": False}, 1, id="unparseable"),
+        pytest.param(KeyboardInterrupt(), 130, id="ctrl-c"),
+    ],
+)
+def test_unknown_create_order_result_says_check_log_first(runner: Runner, outcome: Any, exit_code: int) -> None:
+    """请求已经发出去、结果却说不清：不出 traceback，提示先 git mcd log 核对，也不留下能再确认一次的预览。"""
+    short = _setup(runner)
+    runner.run(*PUSH, mock=True)
+
+    def hook(args: Dict[str, Any], allow_write: bool) -> Dict[str, Any]:
+        if isinstance(outcome, BaseException):
+            raise outcome
+        return outcome
+
+    runner.hooks["create-order"] = hook
+    code, data = runner.json(*PUSH, "--confirm", short, mock=True)
+    assert code == exit_code and data["ok"] is False
+    assert data["error"]["message"].startswith("failed to push some refs")
+    assert any("git mcd log" in h and "不要直接重试" in h for h in data["error"]["hints"])
+    assert runner.count("create-order") == 1
+    code, out = runner.run(*PUSH, "--confirm", short, mock=True)  # 预览已消费，不能原样再下一次
+    assert code == 1 and "确认摘要" in out
+    assert runner.count("create-order") == 1
+    code, data = runner.json("status", mock=True)
+    assert data["data"]["ahead"] == 1 and data["data"]["pendingPayment"] is None
+
+
 def test_business_error_message_like_git(runner: Runner) -> None:
     short = _setup(runner)
     runner.run(*PUSH, mock=True)
@@ -170,6 +208,7 @@ def test_business_error_message_like_git(runner: Runner) -> None:
     assert code == 1
     assert "error: failed to push some refs: 门店已打烊" in out
     assert "remote: 门店已打烊（code 600031" in out
+    assert "什么都没下单" in out  # 服务端明确拒绝，才能这么说
 
 
 def test_take_way_and_remark_validation(runner: Runner) -> None:

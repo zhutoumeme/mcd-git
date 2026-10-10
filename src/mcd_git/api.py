@@ -441,10 +441,15 @@ class McdApi:
 
     def create_order(self, approval: Any, args: Dict[str, Any]) -> Dict[str, Any]:
         approval.check("create-order", args)
-        data = self._call("create-order", args, cache=False, approval=approval) or {}
+        data = self._call("create-order", args, cache=False, approval=approval)
+        if not isinstance(data, dict):
+            # 请求已经发出去了，返回却看不懂：订单可能已经建成，按结果未知处理（调用方不会重试）
+            raise McdError("create-order 的返回看不懂", transport=True)
         detail = data.get("orderDetail") if isinstance(data.get("orderDetail"), dict) else {}
         order = normalize_order(detail) if detail else None
         order_id = str(data.get("orderId") or (detail or {}).get("orderId") or "")
+        if not order_id:
+            raise McdError("create-order 没有返回订单号", transport=True)
         if order is not None and not order["orderId"]:
             order["orderId"] = order_id
         return {"orderId": order_id, "payId": data.get("payId"), "payH5Url": data.get("payH5Url"), "order": order}

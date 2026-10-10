@@ -8,6 +8,7 @@
 """
 from __future__ import annotations
 
+import http.client
 import json
 import os
 import re
@@ -263,6 +264,9 @@ class McdMcpClient:
             except (urllib.error.URLError, socket.timeout, TimeoutError, ConnectionError, OSError) as err:
                 reason = getattr(err, "reason", None) or err.__class__.__name__
                 raise McdError(f"网络错误：{self._scrub(str(reason))}", transport=True) from None
+            except http.client.HTTPException as err:
+                # 响应被截断（IncompleteRead）、BadStatusLine、LineTooLong……请求可能已经送达，结果未知
+                raise McdError(f"网络错误：响应不完整（{err.__class__.__name__}）", transport=True) from None
             except ValueError:
                 raise McdError("服务端返回的不是合法 JSON", transport=True) from None
 
