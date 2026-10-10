@@ -102,6 +102,38 @@ def test_pending_hint_points_at_the_pushed_order(runner: Runner) -> None:
     assert f'付完运行 "git mcd show {order_id}" 查看取餐码' in out
 
 
+def test_cherry_pick_then_push_asks_for_commit(runner: Runner) -> None:
+    """再来一单：cherry-pick 只放回购物车，不 commit 就 push 要报错，不能回 up-to-date 让人以为下好了。"""
+    runner.run("--demo", "add", "热拿铁", mock=True)
+    runner.run("--demo", "commit", "-m", "下午茶", mock=True)
+    code, data = runner.json("--demo", "push", mock=True)
+    code, data = runner.json("--demo", "push", "--confirm", data["data"]["confirm"], mock=True)
+    assert code == 0 and data["data"]["status"] == "pushed"
+    placed = runner.count("create-order")
+    assert placed == 1
+
+    runner.run("--demo", "cherry-pick", "HEAD", mock=True)
+    code, data = runner.json("--demo", "push", mock=True)
+    assert code == 128 and data["ok"] is False and "购物车还没 commit" in data["error"]["message"]
+    assert any("git mcd commit" in h for h in data["error"]["hints"])
+    code, out = runner.run("--demo", "push", mock=True)
+    assert code == 128 and "fatal: 购物车还没 commit" in out and "Everything up-to-date" not in out
+    assert runner.count("create-order") == placed  # cherry-pick 之后直接 push：一次 create-order 都没调
+
+    # README 里的命令链：cherry-pick HEAD → commit → push（预览）→ 用户同意后 --confirm
+    code, data = runner.json("--demo", "commit", "-m", "再来一单", mock=True)
+    assert code == 0
+    code, data = runner.json("--demo", "push", mock=True)
+    assert data["data"]["status"] == "confirmation_required"
+    code, data = runner.json("--demo", "push", "--confirm", data["data"]["confirm"], mock=True)
+    assert code == 0 and data["data"]["status"] == "pushed"
+    assert runner.count("create-order") == placed + 1
+
+    # 购物车空着、HEAD 也下过单：up-to-date，提示怎么再来一单
+    code, out = runner.run("--demo", "push", mock=True)
+    assert code == 0 and "Everything up-to-date" in out and "cherry-pick HEAD" in out and "git mcd commit" in out
+
+
 def test_push_to_closed_store_fails_like_git(runner: Runner) -> None:
     runner.run("--demo", "add", "巨无霸")
     runner.run("--demo", "commit", "-m", "夜里")

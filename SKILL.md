@@ -48,12 +48,13 @@ mcd-git 把麦当劳中国 MCP Server 包装成 git 风格的命令：`add` 放�
 | 用户同意后 | 原样运行 `data.next` 里的命令（已经带好 `--confirm <哈希>` 和 `--json`） | `data.status == "pushed"`、`data.payH5Url`、`data.expirePayTime` |
 | 查取餐码 | `git mcd show --json` | `data.order.statusLabel`、`pickupCode`、`lockerCode`、`delivery` |
 | 历史 | `git mcd log --oneline --json` | `data.entries[]`（最多最近 10 单） |
-| 再来一单 | `git mcd cherry-pick HEAD --json` | `data.index`、`data.conflicts`（本店买不到的会列出来） |
+| 再来一单 | `git mcd cherry-pick HEAD --json`，再 `git mcd commit -m 再来一单 --json`，然后按「下单预览」走 | `data.index`、`data.conflicts`（本店买不到的会列出来）。cherry-pick 只放回购物车，不 commit 就 push 会报「购物车还没 commit」 |
 | 取消 | `git mcd revert --reason 3 --json` | 预览后用户同意，再运行 `data.next` |
 | 活动和可领券 | `git mcd fetch --json` | `data.events`、`data.claimable`（只读，领券请用户去 App） |
 
 - `--remark` 只用于麦乐送；`--locker` 要门店有取餐柜，没有会报错，把可选的取餐方式告诉用户。
 - `--at` 写 `HH:MM`（今天）或 `"YYYY-MM-DD HH:MM"`；预览和确认时要用完全相同的参数。
+- `push` 返回 `data.status == "up-to-date"` 说明 HEAD 早就下过单，这次**没有新下单**，不要告诉用户「已下单」。只有 `data.status == "pushed"` 才是新下了一单。
 - 每条命令的结果都在 `ok` 字段：`false` 时读 `error.message` 和 `error.hints` 转告用户，退出码非 0。
 
 ## 一个完整例子

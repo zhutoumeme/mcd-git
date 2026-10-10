@@ -179,7 +179,7 @@ Token 我会自己配置到 ~/.config/mcd-mcp/token，不用在对话里发给�
 
 - **天天开终端的开发者**：不想切到手机上凑券、比价，`git mcd status && git mcd rebase` 一气呵成。
 - **想让 Agent 代点餐、但每一步都要看得见管得住的人**：Agent 只能用带确认闸的命令，下单前一定先问你。
-- **常点固定几样的人**：`git mcd cherry-pick HEAD && git mcd push` 就是再来一单；预约、取餐柜、不要餐具一条命令说清楚。
+- **常点固定几样的人**：`git mcd cherry-pick HEAD && git mcd commit -m 再来一单 && git mcd push` 就是再来一单；预约、取餐柜、不要餐具一条命令说清楚。
 
 它解决两件事：自己算「单点还是套餐、用哪张券」太费劲；把下单交给 Agent 又怕它自作主张。
 

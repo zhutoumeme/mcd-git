@@ -327,15 +327,17 @@ def run(ctx: Context, args: Any) -> Result:
         raise GitMcdError("--dry-run 和 --confirm 不能一起用")
     state = ctx.state
     head = head_commit(state)
-    if head is None:
+    if head is None or head.get("pushed"):
+        # 购物车里有东西（比如刚 cherry-pick 回来）却没有新 commit：明确报错，别回一个 up-to-date 让人以为下好了
         if state.get("index"):
-            raise GitMcdError("购物车还没 commit", fatal=True, hint="先 git mcd commit -m <说明>")
+            raise GitMcdError("购物车还没 commit", fatal=True, hint="先 git mcd commit -m <说明>，再 git mcd push")
+    if head is None:
         raise GitMcdError("还没有可以 push 的 commit", fatal=True, hint="git mcd add <餐品> && git mcd commit -m <说明>")
     if head.get("pushed"):
 
         def draw_up(console: Console) -> None:
             console.print("Everything up-to-date")
-            R.hints(console, ["HEAD 已经下过单了；再来一单：git mcd cherry-pick HEAD"])
+            R.hints(console, ["HEAD 已经下过单了；再来一单：git mcd cherry-pick HEAD，再 git mcd commit -m <说明>，然后 git mcd push"])
 
         return Result({"status": "up-to-date", "orderId": head["pushed"].get("orderId")}, draw_up)
     if not verify_commit(head):
