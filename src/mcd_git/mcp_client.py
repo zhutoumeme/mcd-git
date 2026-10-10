@@ -2,7 +2,7 @@
 
 - Token 读取顺序：环境变量 MCD_MCP_TOKEN → ~/.config/mcd-mcp/token。Token 只放进请求头，
   不打印、不写日志、不出现在异常信息和 repr 里。
-- 地址写死为 https://mcp.mcd.cn，不读任何环境变量；别的协议或主机在发请求前就拒绝，Token 不会被带去别处。
+- 地址写死为 https://mcp.mcd.cn，不读任何环境变量；别的协议或主机在发请求前就拒绝，也不跟随重定向，Token 不会被带去别处。
 - 写操作 tool（下单、取消、领券……）默认拒绝；只有 push / revert 的确认闸会带 allow_write=True。
 - 返回解包优先用 structuredContent，缺失时才从 Markdown 文本里找 JSON 信封（三种布局都兼容）。
 """
@@ -172,8 +172,20 @@ def check_url(url: str) -> str:
     return url
 
 
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    """不跟随重定向。urllib 默认会把 POST 的 301/302/303 改成 GET 跟去任意主机，Authorization 头也原样带过去；
+    redirect_request 返回 None，30x 就落到默认的错误处理，以 HTTPError 抛出（再由 _http_error 转成 McdError）。"""
+
+    def redirect_request(self, req: Any, fp: Any, code: int, msg: str, headers: Any, newurl: str) -> None:
+        return None
+
+
+# 默认 handler 链（代理、HTTPS 证书校验都和 urlopen 一样），只把重定向处理换成 _NoRedirect
+_OPENER = urllib.request.build_opener(_NoRedirect)
+
+
 def _default_opener(request: urllib.request.Request, timeout: float):
-    return urllib.request.urlopen(request, timeout=timeout)  # noqa: S310（地址经 check_url 校验，只会是 https://mcp.mcd.cn）
+    return _OPENER.open(request, timeout=timeout)  # noqa: S310（地址经 check_url 校验，只会是 https://mcp.mcd.cn；不跟随重定向）
 
 
 class McdMcpClient:

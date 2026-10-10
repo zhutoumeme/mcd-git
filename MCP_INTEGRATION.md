@@ -7,7 +7,7 @@ mcd-git 是麦当劳中国 MCP Server 的一个命令行客户端：把 MCP 的 
 | 项 | 内容 |
 |---|---|
 | Server | 麦当劳中国 MCP Server（`serverInfo`：`mcd-mcp` 1.0.0） |
-| 地址 | `https://mcp.mcd.cn`（写死在代码里，不读环境变量；别的协议或主机在发请求前就拒绝，Token 不会被带去别处） |
+| 地址 | `https://mcp.mcd.cn`（写死在代码里，不读环境变量；别的协议或主机在发请求前就拒绝；不跟随重定向，服务端回 30x 直接报错，Token 不会被带去别处） |
 | 传输 | Streamable HTTP，JSON-RPC 2.0，协议版本 `2025-06-18`；兼容 `application/json` 和 SSE 两种响应 |
 | 认证 | `Authorization: Bearer <MCP Token>`；Token 读取顺序：环境变量 `MCD_MCP_TOKEN` → `~/.config/mcd-mcp/token` |
 | 配置示例 | [mcp-config.example.json](mcp-config.example.json)（只含 `${MCD_MCP_TOKEN}` 占位符） |

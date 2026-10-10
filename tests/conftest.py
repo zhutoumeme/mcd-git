@@ -1,8 +1,9 @@
-"""测试全部离线：禁掉真实网络，状态目录指到临时目录，Token 环境清空。"""
+"""测试全部离线：禁掉真实网络（只有重定向单测会连自己起的本机端口），状态目录指到临时目录，Token 环境清空。"""
 from __future__ import annotations
 
 import io
 import json
+import socket
 import urllib.request
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
@@ -17,6 +18,8 @@ from mcd_git.state import CN_TZ
 # 固定时钟（程序员节午饭时间），预约时间才稳定；经 main(now=...) 注入，不走环境变量
 FIXED_NOW = datetime(2026, 10, 24, 11, 50, 0, tzinfo=CN_TZ)
 
+_REAL_CONNECT = socket.create_connection  # 原始实现，只交给 allow_loopback() 用
+
 
 @pytest.fixture(autouse=True)
 def offline(monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> None:
@@ -24,11 +27,25 @@ def offline(monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> None:
         raise AssertionError("测试里不允许真实网络请求")
 
     monkeypatch.setattr(urllib.request, "urlopen", blocked)
+    # 默认 opener 是模块级的 build_opener，不经过 urlopen：在建连接这一层再拦一道（连 DNS 都不会查）
+    monkeypatch.setattr(socket, "create_connection", blocked)
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
     monkeypatch.setenv("USERPROFILE", str(tmp_path / "home"))  # Windows 上 Path.home() 读的是它
     monkeypatch.setenv("MCD_GIT_HOME", str(tmp_path / "mcd-git"))
     for key in ("MCD_MCP_TOKEN", "MCD_GIT_DEMO", "MCD_GIT_NOW", "MCD_MCP_URL"):
         monkeypatch.delenv(key, raising=False)
+
+
+def allow_loopback(monkeypatch: pytest.MonkeyPatch, port: int) -> None:
+    """只放行 127.0.0.1:<port>（单测自己起的本地 http.server），别的连接照样拦，本机代理也连不上。"""
+
+    def connect(address: Any, *args: Any, **kwargs: Any) -> Any:
+        if tuple(address[:2]) != ("127.0.0.1", port):
+            raise AssertionError("测试里不允许真实网络请求")
+        return _REAL_CONNECT(address, *args, **kwargs)
+
+    monkeypatch.setattr(socket, "create_connection", connect)
+    monkeypatch.setenv("no_proxy", "*")  # 本地回环直连，不走代理
 
 
 class RecordingClient(DemoClient):

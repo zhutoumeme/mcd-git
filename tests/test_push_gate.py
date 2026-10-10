@@ -179,6 +179,8 @@ def _mcp(envelope: Dict[str, Any]) -> Dict[str, Any]:
         pytest.param(_mcp({"success": True, "code": 200, "data": ["not", "a", "dict"]}), 1, id="data-not-a-dict"),
         pytest.param(_mcp({"success": True, "code": 200, "data": {"payH5Url": "https://example.com/x"}}), 1, id="no-order-id"),
         pytest.param({"content": [{"type": "text", "text": "502 Bad Gateway"}], "isError": False}, 1, id="unparseable"),
+        # 默认 opener 不跟随重定向，30x 经 _http_error 变成这个（见 test_client 的重定向用例）
+        pytest.param(McdError("服务端返回 HTTP 302", http_status=302), 1, id="redirect-302"),
         pytest.param(KeyboardInterrupt(), 130, id="ctrl-c"),
     ],
 )

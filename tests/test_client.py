@@ -1,18 +1,23 @@
-"""MCP 传输层：Token 读取、JSON / SSE 响应、401 / 429、写操作拦截、Token 不外泄。"""
+"""MCP 传输层：Token 读取、JSON / SSE 响应、401 / 429、写操作拦截、不跟随重定向、Token 不外泄。"""
 from __future__ import annotations
 
 import http.client
+import http.server
 import io
 import json
 import os
+import threading
 import urllib.error
+import urllib.request
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, Iterator, List
 
 import pytest
 
 from mcd_git.errors import GitMcdError, McdError
-from mcd_git.mcp_client import DEFAULT_URL, McdMcpClient, load_token
+from mcd_git.mcp_client import DEFAULT_URL, McdMcpClient, _default_opener, load_token
+
+from .conftest import allow_loopback
 
 TOKEN = "unit-test-token-0000"
 
@@ -187,3 +192,91 @@ def test_official_url_variants_are_accepted() -> None:
         server = FakeServer([RESULT])
         McdMcpClient(TOKEN, url, opener=server, min_interval=0).call_tool("now-time-info")
         assert len(server.requests) == 3
+
+
+# ---------------------------------------------------------------- 重定向（本地回环 http.server，不出本机）
+
+
+class _Redirector(http.server.BaseHTTPRequestHandler):
+    """/mcp 回 30x，Location 指到同一个本地服务的 /elsewhere；每个请求都记下路径、方法和请求头。"""
+
+    def do_POST(self) -> None:
+        self._handle()
+
+    def do_GET(self) -> None:
+        self._handle()
+
+    def _handle(self) -> None:
+        length = int(self.headers.get("Content-Length") or 0)
+        if length:
+            self.rfile.read(length)
+        server: Any = self.server
+        server.seen.append({"path": self.path, "method": self.command, "headers": {k.lower(): v for k, v in self.headers.items()}})
+        if self.path == "/mcp":
+            self.send_response(server.status)
+            self.send_header("Location", f"http://127.0.0.1:{server.server_port}/elsewhere")
+        else:
+            self.send_response(200)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def log_message(self, *args: Any) -> None:  # 不往 stderr 打访问日志
+        pass
+
+
+@pytest.fixture
+def redirector(monkeypatch: pytest.MonkeyPatch) -> Iterator[Any]:
+    server: Any = http.server.HTTPServer(("127.0.0.1", 0), _Redirector)
+    server.seen, server.status = [], 302
+    allow_loopback(monkeypatch, server.server_port)
+    thread = threading.Thread(target=server.serve_forever, kwargs={"poll_interval": 0.05}, daemon=True)
+    thread.start()
+    try:
+        yield server
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(5)
+
+
+def _local_url(server: Any) -> str:
+    return f"http://127.0.0.1:{server.server_port}/mcp"
+
+
+def _post(server: Any) -> urllib.request.Request:
+    headers = {"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"}
+    return urllib.request.Request(_local_url(server), data=b"{}", headers=headers, method="POST")
+
+
+@pytest.mark.parametrize("status", [301, 302, 303, 307, 308])
+def test_default_opener_does_not_follow_redirects(redirector: Any, status: int) -> None:
+    redirector.status = status
+    with pytest.raises(urllib.error.HTTPError) as err:
+        _default_opener(_post(redirector), 5)
+    err.value.close()
+    assert err.value.code == status
+    assert [r["path"] for r in redirector.seen] == ["/mcp"]  # 没跟去 /elsewhere，Token 也就没被带过去
+
+
+def test_stock_urllib_would_carry_the_token_along(redirector: Any) -> None:
+    """对照：换成 urllib 默认的 handler 链，POST 的 302 会被改成 GET 跟过去，Authorization 原样带上。"""
+    with urllib.request.build_opener().open(_post(redirector), timeout=5) as resp:
+        resp.read()
+    assert [(r["path"], r["method"]) for r in redirector.seen] == [("/mcp", "POST"), ("/elsewhere", "GET")]
+    assert redirector.seen[1]["headers"]["authorization"] == f"Bearer {TOKEN}"
+
+
+def test_redirect_reaches_the_client_as_http_error(redirector: Any) -> None:
+    """经 McdMcpClient 发出：30x 变成 McdError(http_status=30x)，不算 transport；create-order 遇到它按结果未知处理。"""
+
+    def to_local(request: urllib.request.Request, timeout: float) -> Any:
+        # 客户端地址只能是 https://mcp.mcd.cn：把同一个请求（请求头、body 都不变）改发到本地服务，仍走默认 opener
+        local = urllib.request.Request(_local_url(redirector), data=request.data, headers=dict(request.header_items()), method="POST")
+        return _default_opener(local, timeout)
+
+    client = McdMcpClient(TOKEN, opener=to_local, min_interval=0)
+    with pytest.raises(McdError) as err:
+        client.call_tool("now-time-info")
+    assert err.value.http_status == 302 and not err.value.transport
+    assert TOKEN not in err.value.message
+    assert [(r["path"], r["headers"]["authorization"]) for r in redirector.seen] == [("/mcp", f"Bearer {TOKEN}")]
