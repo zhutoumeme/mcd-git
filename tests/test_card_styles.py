@@ -180,8 +180,9 @@ def test_terminal_previews(runner: Runner, tmp_path: Path) -> None:
     assert code == 0 and "少 ·░▒▓█ 多" in out and "终端画不出 3D" in out and "麦门天际线（--style skyline）" in out
     code, out = runner.run("--demo", "card", "--style", "receipt", "-o", str(tmp_path / "r.svg"))
     assert code == 0
-    for text in ("git mcd · 吃麦小票", "COMMIT  0x400", "BRANCH  lunch", "QTY  ITEM", "TOTAL", "111 单", "*** HAPPY 0x400 DAY ***", "◉", "非麦当劳官方票据"):
+    for text in ("git mcd · 吃麦小票", "COMMIT  0x400", "BRANCH  lunch", "QTY  ITEM", "TOTAL", "111 单", "*** HAPPY 0x400 DAY ***", "@ 是 10-24", "非麦当劳官方票据"):
         assert text in out
+    assert not any(ch in out for ch in "•●◉")  # 点阵只用 ASCII，避免歧义宽度字符错位
     assert "少 ·░▒▓█ 多" not in out and "发朋友圈" in out and "GitHub Actions" in out
     assert not any(word in out for word in BANNED)
     code, out = runner.run("--demo", "card", "--style", "grid", "-o", str(tmp_path / "g.svg"))

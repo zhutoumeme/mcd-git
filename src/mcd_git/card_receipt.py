@@ -249,12 +249,13 @@ def render_terminal(console: Console, model: Dict[str, Any]) -> None:
             if day is None:
                 line.append(" ", style=ink)
             elif day["mark"]:
-                line.append("◉", style=("bold #d9342b " + paper).strip() if color else "bold")
+                line.append("@", style=("bold #d9342b " + paper).strip() if color else "bold")
             else:
-                line.append("·•●"[min(day["count"], 2)], style=(muted if day["count"] == 0 else ink))
+                # 点阵只用 ASCII：·•●◉ 是东亚歧义宽度字符，在把歧义宽度当双宽的终端里会错位
+                line.append(".oO"[min(day["count"], 2)], style=(muted if day["count"] == 0 else ink))
         line.append(" " * (WIDTH - 2 - len(model["weeks"])), style=ink)
         console.print(line, no_wrap=True)
-    show(_center("每个点是一天 · ◉ 是 10-24"), muted)
+    show(_center("每个点是一天 · @ 是 10-24"), muted)
     show(dashed)
     slots = slot_rows(model)
     most = max([n for _, n in slots] or [1])
