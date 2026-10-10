@@ -196,8 +196,9 @@ def render_svg(model: Dict[str, Any]) -> str:
 
 # ---------------------------------------------------------------- 终端
 
-# 终端背景深浅未知：0 单用默认前景色的 dim（深浅背景都看得清），1～4 单用由暗到亮的暖色（按深色终端调的）
-_TERM_COLORS = ("dim", "#7a4a12", "#b0661a", "#e0861f", "#ffb340")
+# 终端背景深浅未知：0 单是一个 dim 的「·」（深浅背景上都不抢眼），1～4 单是由暗到亮的暖色小方块（按深色终端调的）。
+# 用「▪」不用「■」：一格一个字符，■ 在不少字体里撑满整格，连成一条看不出格子
+_TERM_COLORS = ("dim", "#8a5518", "#b8691c", "#e0861f", "#ffb340")
 _PLAIN = "·░▒▓█"  # 没有颜色时（管道、NO_COLOR）靠字符疏密分档
 
 
@@ -206,7 +207,7 @@ def _glyph(lvl: int, mark: bool, color: bool) -> Tuple[str, str]:
         return "◆", ("bold " + _TERM_COLORS[lvl]) if color and lvl else "bold"
     if not color:
         return _PLAIN[lvl], ""
-    return "■", _TERM_COLORS[lvl]
+    return ("▪" if lvl else "·"), _TERM_COLORS[lvl]
 
 
 def render_terminal(console: Console, model: Dict[str, Any]) -> None:

@@ -45,17 +45,22 @@ def test_year_orders_are_deterministic_and_modest() -> None:
     assert 95 <= len(orders) <= 115
     days: Counter = Counter()
     weeks: Counter = Counter()
+    weekend = 0
     breaks = {date(2026, 2, 16), date(2026, 7, 27)}
     for o in orders:
         when = parse_time(o["time"])
-        assert when is not None and date(2025, 10, 20) <= when.date() <= date(2026, 10, 16)
+        assert when is not None and date(2025, 10, 20) <= when.date() <= date(2026, 10, 18)
         monday = when.date() - timedelta(days=when.weekday())
-        assert monday not in breaks and when.weekday() < 5  # 只在工作日，休假周空着
+        assert monday not in breaks  # 春节、暑假各空一周
         assert stats.slot_of(o["time"]) != "night"  # 不生成夜宵
+        if when.weekday() >= 5:
+            weekend += 1
+            assert stats.slot_of(o["time"]) in ("breakfast", "tea")  # 周末只有零星的早餐、下午茶
         assert set(o) - {"orderId"} <= set(FIELDS)
         days[when.date()] += 1
         weeks[monday] += 1
     assert max(days.values()) == 2 and max(weeks.values()) <= 3  # 好看不夸张：同一天最多 2 单、一周最多 3 单
+    assert 12 <= weekend <= 24  # 大约每月一两次
     lunch = sum(1 for o in orders if stats.slot_of(o["time"]) == "lunch")
     assert lunch / len(orders) > 0.55
     ids = [o["orderId"] for o in orders]
@@ -105,7 +110,8 @@ def test_grid_has_53_aligned_weeks() -> None:
     assert marked == ["2026-10-24"] and model["is1024"] is True
     assert weeks[-1][4]["count"] == 2 and weeks[-1][4]["level"] == 2  # 10-23 早饭 + 午饭
     assert weeks[-1][1]["count"] == 0  # 10-20 那单取消了，不算
-    assert model["total"] == sum(model["days"].values()) == 105
+    assert weeks[-1][5]["count"] == 0 and weeks[-1][5]["mark"] is True  # 今天（10-24）还没吃，只描边
+    assert model["total"] == sum(model["days"].values()) == 111
     assert model["topSlot"]["slot"] == "lunch" and model["topItem"]["name"] == "巨无霸套餐"
     assert model["savings"] is None and model["earliest"] == "2025-10-21"
 
@@ -143,7 +149,7 @@ def test_svg_is_self_contained_and_deterministic() -> None:
     assert svg == card.render_svg(card.build(_demo_entries(), today=TODAY, with_savings=False, demo=True))  # 同数据逐字节相同
     root = ET.fromstring(svg)
     assert root.tag == SVG + "svg" and root.get("role") == "img" and root.get("aria-labelledby") == "t d"
-    assert root.find(SVG + "title").text == "过去一年吃麦 105 次"
+    assert root.find(SVG + "title").text == "过去一年吃麦 111 次"
     assert "2025-10-20 至 2026-10-24" in root.find(SVG + "desc").text
     assert "prefers-color-scheme:dark" in svg and "<!-- 0x400 = 1024 -->" in svg
     for font in ("-apple-system", '"PingFang SC"', '"Microsoft YaHei"', "sans-serif"):
@@ -162,7 +168,7 @@ def test_svg_is_self_contained_and_deterministic() -> None:
     assert "数据：演示合成数据，最早到 2025-10-21 · git mcd card 生成" in texts
     assert not any("¥" in (t or "") for t in texts)  # 默认不出现金额
     with_savings = card.render_svg(card.build(_demo_entries(), today=TODAY, with_savings=True, demo=True))
-    assert "用券省下" in with_savings and "¥88.30" in with_savings
+    assert "用券省下" in with_savings and "¥79.40" in with_savings
 
 
 # ---------------------------------------------------------------- 命令
@@ -195,7 +201,7 @@ def test_card_in_real_mode_keeps_private_things_off_the_card(runner: Runner, tmp
 def test_demo_card_terminal_preview(runner: Runner, tmp_path: Path) -> None:
     code, out = runner.run("--demo", "card", "-o", str(tmp_path / "c.svg"))
     assert code == 0
-    for text in ("过去一年吃麦 105 次", "Happy 0x400 Day · 1024 程序员节快乐", "最常时段 午饭", "最常点 巨无霸套餐", "少 ·░▒▓█ 多", "◆ 10-24 程序员节"):
+    for text in ("过去一年吃麦 111 次", "Happy 0x400 Day · 1024 程序员节快乐", "最常时段 午饭", "最常点 巨无霸套餐", "少 ·░▒▓█ 多", "◆ 10-24 程序员节"):
         assert text in out
     lines = out.splitlines()
     grid = [line for line in lines if re.match(r"^(一  |三  |五  | {4})[·░▒▓█◆]", line)]

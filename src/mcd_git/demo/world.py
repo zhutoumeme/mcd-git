@@ -497,7 +497,9 @@ _YEAR_WEEKS = 52
 _BREAK_WEEKS = ("2026-02-16", "2026-07-27")  # 春节、暑假各歇一周
 _MUFFIN = ("猪柳蛋麦满分", 1300)  # 早餐单品：价格同 HISTORY 里那一单（演示菜单没有它）
 _COMBO_WEIGHTS = (("9900001001", 0.40), ("9900001002", 0.25), ("9900001004", 0.20), ("9900001003", 0.15))
+# (开始分钟, 时长分钟)：工作日早饭赶在上班前；周末只有零星的早餐和下午茶，时间也晚一些
 _SLOT_WINDOWS = {"breakfast": (7 * 60 + 50, 60), "lunch": (11 * 60 + 40, 70), "tea": (15 * 60, 60), "dinner": (18 * 60, 90)}
+_WEEKEND_WINDOWS = {"breakfast": (8 * 60 + 30, 70), "tea": (14 * 60 + 30, 90)}
 
 
 def _roll(tag: str, key: str) -> float:
@@ -547,8 +549,9 @@ def _slot(day: str) -> str:
 
 
 def year_orders() -> List[Dict[str, Any]]:
-    """2025-10-20 那周到 2026-10-12 那周的合成订单：每周 1～3 单（平均 2 单）、只在工作日、以午饭为主，
-    偶尔同一天早饭加午饭；不生成夜宵。返回本机账本的样子（带 orderId，播种时换成哈希）；价格、券、订单号全是编的。"""
+    """2025-10-20 那周到 2026-10-12 那周的合成订单：每周 1～3 单（平均两单左右），以工作日午饭为主，偶尔同一天早饭加午饭；
+    周末零星一顿早餐或下午茶（大约每月一两次）；不生成夜宵。返回本机账本的样子（带 orderId，播种时换成哈希）；
+    价格、券、订单号全是编的。"""
     orders: List[Dict[str, Any]] = []
     seq = 100  # 订单号序号从 100 起，避开 HISTORY
     for week in range(_YEAR_WEEKS):
@@ -556,33 +559,38 @@ def year_orders() -> List[Dict[str, Any]]:
         if monday.isoformat() in _BREAK_WEEKS:
             continue
         roll = _roll("week", monday.isoformat())
-        count = 1 if roll < 0.25 else (2 if roll < 0.75 else 3)
+        count = 1 if roll < 0.35 else (2 if roll < 0.80 else 3)
         weekdays = sorted((monday + timedelta(days=i) for i in range(5)), key=lambda d: _roll("day", d.isoformat()))
+        meals: List[Tuple[date, str, bool]] = []  # (日期, 时段, 是不是周末)
         for day in sorted(weekdays[:count]):
+            slot = _slot(day.isoformat())
+            if count < 3 and slot == "lunch" and _roll("extra-breakfast", day.isoformat()) < 0.12:
+                meals.append((day, "breakfast", False))  # 同一天早饭加午饭
+            meals.append((day, slot, False))
+        if len(meals) < 3 and _roll("weekend", monday.isoformat()) < 0.5:
+            day = monday + timedelta(days=5 if _roll("weekend-day", monday.isoformat()) < 0.5 else 6)
+            meals.append((day, "breakfast" if _roll("weekend-slot", day.isoformat()) < 0.5 else "tea", True))
+        for day, slot, weekend in meals:  # 一周最多 3 单
             iso = day.isoformat()
-            slots = [_slot(iso)]
-            if count < 3 and slots[0] == "lunch" and _roll("extra-breakfast", iso) < 0.12:
-                slots.insert(0, "breakfast")  # 同一天早饭加午饭；一周最多还是 3 单
-            for slot in slots:
-                start, span = _SLOT_WINDOWS[slot]
-                minute = start + int(_roll(f"minute-{slot}", iso) * span)
-                time = f"{iso} {minute // 60:02d}:{minute % 60:02d}:00"
-                items, original, discount = _meal(slot, iso)
-                cancelled = _roll("cancel", f"{iso} {slot}") < 0.03
-                dine_in = slot in ("lunch", "dinner") and _roll("way", iso) < 0.7
-                orders.append(
-                    {
-                        "orderId": "1024" + iso.replace("-", "") + time[11:].replace(":", "") + f"{seq:010d}",
-                        "time": time,
-                        "state": "cancelled" if cancelled else "completed",
-                        "status": "订单已取消" if cancelled else "订单已完成",
-                        "items": items,
-                        "original": original,
-                        "discount": discount,
-                        "paid": original - discount,
-                        "way": "到店自取 · " + ("堂食" if dine_in else "外带"),
-                        "source": "demo",
-                    }
-                )
-                seq += 1
+            start, span = (_WEEKEND_WINDOWS if weekend else _SLOT_WINDOWS)[slot]
+            minute = start + int(_roll(f"minute-{slot}", iso) * span)
+            time = f"{iso} {minute // 60:02d}:{minute % 60:02d}:00"
+            items, original, discount = _meal(slot, iso)
+            cancelled = _roll("cancel", f"{iso} {slot}") < 0.03
+            dine_in = (weekend or slot in ("lunch", "dinner")) and _roll("way", iso) < 0.7
+            orders.append(
+                {
+                    "orderId": "1024" + iso.replace("-", "") + time[11:].replace(":", "") + f"{seq:010d}",
+                    "time": time,
+                    "state": "cancelled" if cancelled else "completed",
+                    "status": "订单已取消" if cancelled else "订单已完成",
+                    "items": items,
+                    "original": original,
+                    "discount": discount,
+                    "paid": original - discount,
+                    "way": "到店自取 · " + ("堂食" if dine_in else "外带"),
+                    "source": "demo",
+                }
+            )
+            seq += 1
     return orders
