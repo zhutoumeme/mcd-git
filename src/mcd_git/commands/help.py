@@ -27,6 +27,7 @@ COMMANDS: List[Tuple[str, str, bool]] = [
     ("commit -m <说明>", "锁定这一单（本地快照 + 核价）", False),
     ("push", "真正下单，出支付二维码", True),
     ("log --graph", "吃麦提交历史", False),
+    ("log --stat", "吃麦统计：餐品、实付、省了多少、按时段分布", False),
     ("show [HEAD]", "订单详情、取餐码", False),
     ("cherry-pick HEAD", "再来一单（拣回购物车）", False),
     ("revert", "取消订单", True),

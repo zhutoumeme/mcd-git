@@ -234,7 +234,7 @@ def test_cherry_pick_reports_conflicts(runner: Runner) -> None:
 
 def test_every_command_speaks_json(runner: Runner, tmp_path: Path) -> None:
     runner.run("--demo", "add", "热拿铁")
-    commands = (["status"], ["ls-remote", "薯条"], ["diff"], ["rebase"], ["log", "--oneline"], ["fetch"], ["pull"], ["show", "1024202610221205000000000002"], ["card", "-o", str(tmp_path / "c.svg")])
+    commands = (["status"], ["ls-remote", "薯条"], ["diff"], ["rebase"], ["log", "--oneline"], ["log", "--stat"], ["fetch"], ["pull"], ["show", "1024202610221205000000000002"], ["card", "-o", str(tmp_path / "c.svg")])
     for argv in commands:
         code, data = runner.json("--demo", *argv)
         assert code == 0 and data["ok"] is True and data["demo"] is True, argv

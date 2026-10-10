@@ -14,6 +14,7 @@ from ..context import Context, Result
 from ..errors import GitMcdError, McdError
 from ..money import fmt
 from ..state import head_commit, last_order, order_record
+from . import log_stat
 from .common import scope_gap
 
 _LANE_STYLES = ["", "red", "green", "yellow", "blue", "magenta"]
@@ -21,9 +22,17 @@ _STATE_STYLES = {"pending": "bold yellow", "preparing": "cyan", "delivering": "c
 
 
 def register(sub: Any, common: Any) -> None:
-    p = sub.add_parser("log", parents=[common], help="吃麦提交历史（--graph 按时段分支画图）", description="本地 commit + 最近 10 单（order-list 没有分页）合成的提交历史。")
+    p = sub.add_parser(
+        "log",
+        parents=[common],
+        help="吃麦提交历史（--graph 按时段分支画图，--stat 吃麦统计）",
+        description="本地 commit + 最近 10 单（order-list 没有分页）合成的提交历史。--stat 改看吃麦统计：数据来自本机账本，记得越久越全。",
+    )
     p.add_argument("--graph", action="store_true", help="按时段（breakfast / lunch / tea / dinner）画分支图")
     p.add_argument("--oneline", action="store_true", help="一行一单")
+    p.add_argument("--stat", action="store_true", help="吃麦统计：每单餐品、实付和省下的钱，按时段分布")
+    p.add_argument("--since", metavar="YYYY-MM-DD", default=None, help="（配合 --stat）从这天起，含当天")
+    p.add_argument("--until", metavar="YYYY-MM-DD", default=None, help="（配合 --stat）到这天为止，含当天")
     p.add_argument("-n", "--max-count", type=int, default=10, metavar="N", help="最多显示几条（默认 10）")
     p.set_defaults(func=run_log)
 
@@ -103,6 +112,12 @@ def _entry_line(e: Dict[str, Any]) -> Text:
 
 
 def run_log(ctx: Context, args: Any) -> Result:
+    if args.stat and (args.graph or args.oneline):
+        raise GitMcdError("--stat 不能和 --graph / --oneline 一起用")
+    if not args.stat and (args.since is not None or args.until is not None):
+        raise GitMcdError("--since / --until 目前只和 --stat 一起用", hint="git mcd log --stat --since 2026-10-01")
+    if args.stat:
+        return log_stat.run(ctx, args)
     warning = None
     try:
         remote_orders: Optional[List[Dict[str, Any]]] = ctx.order_list()
