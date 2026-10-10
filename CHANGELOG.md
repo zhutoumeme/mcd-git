@@ -7,6 +7,12 @@
 - `git mcd card`：1024 吃麦贡献图。7 行 × 最近 53 周的 GitHub 风格格子，终端里预览，同时在本机写一个自包含的 SVG（默认 `./mcd-contributions.svg`，`-o` 改路径；浅色 / 深色自动切换，不引用外部字体、图片和脚本）。统计只放总单数、最常点、最常时段，`--with-savings` 才显示用券省下的钱；卡片上没有门店、订单号、具体时刻和总消费。10-24 那格单独描边，当天副标题是「Happy 0x400 Day · 1024 程序员节快乐」。支持 `--demo` 和 `--json`。
 - 本机订单账本 `~/.config/mcd-git/ledger.json`（demo 另有一份，文件权限 600）：`log`、`cherry-pick`、`card` 查 `order-list` 时顺手合并最近 10 单，`show` 补上那一单的原价和优惠，`push` 成功时记一笔并关联本地 commit，`revert` 成功时标成已取消。只存下单时间、状态、餐品名和份数、原价 / 优惠 / 实付、取餐方式；写不进去也不影响原来的命令；删掉文件即清空。
 - `--demo` 补了一年的合成订单（每周 1～3 单，以工作日午饭为主，周末零星几顿早餐和下午茶），`git mcd --demo card` 直接能看到效果。
+- `git mcd pull`：领券，和 push 一样先确认。像 `git pull` 一样 fetch + merge：先用 `available-coupons` 列出麦麦省里可领的券，确认后调一次 `auto-bind-coupons` 全部领取（接口没有参数，不支持只领其中几张，摘要里会写明）。终端里问 y/N；非交互和 `--json` 只出摘要，`data.next` 给出带 `--confirm <指纹>` 的完整命令。指纹由可领券列表算出，预览 10 分钟有效、只能用一次；确认时重新拉一次列表，变了就拒绝。结果未知（超时、响应不完整、看不懂、Ctrl+C）不重试，提示先 `git mcd status` 或 `git mcd fetch` 核对。输出仿 git pull（`From mcd.cn:麦麦省`、`* [new coupon] <券名> -> coupons/<短名>`、领到 / 失败几张）；没有可领的券时输出 `Already up to date.`；`--force` 一律拒绝，`--dry-run` 只出预览。支持 `--demo` 和 `--json`。
+
+### 变化
+
+- 写操作放行收紧：客户端只放行 `create-order`、`cancel-order`、`auto-bind-coupons` 三个写操作，确认闸签发的许可也必须和要调用的 tool 一致；积分兑换、抽奖、派对订单、新建地址带着许可也调不出去。
+- `fetch` 有可领券时的提示从「请在麦当劳 App 里领」改成「git mcd pull 领取：会先确认，一次领全部」。
 
 ## 0.1.0（2026-10-10）
 

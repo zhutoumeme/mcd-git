@@ -1,6 +1,6 @@
 ---
 name: mcd-git
-description: 用本地命令行 mcd-git（git mcd --json）帮用户点麦当劳：选门店、看菜单、加购物车（去酸黄瓜、少冰、套餐换搭）、自动凑套餐挑最省的券、核价、下单拿支付链接、查取餐码、再来一单、取消订单，以及生成 1024 吃麦贡献图（card）。用户提到点麦当劳、麦当劳到店 / 得来速 / 麦乐送、取餐码、再来一单、取消麦当劳订单、吃麦贡献图时使用。下单和取消必须先把确认摘要给用户看，用户明确同意后才能带 --confirm 执行。
+description: 用本地命令行 mcd-git（git mcd --json）帮用户点麦当劳：选门店、看菜单、加购物车（去酸黄瓜、少冰、套餐换搭）、自动凑套餐挑最省的券、核价、下单拿支付链接、查取餐码、再来一单、取消订单、领券（pull，先确认），以及生成 1024 吃麦贡献图（card）。用户提到点麦当劳、麦当劳到店 / 得来速 / 麦乐送、取餐码、再来一单、取消麦当劳订单、领麦当劳的券、吃麦贡献图时使用。下单、取消和领券都必须先把确认摘要给用户看，用户明确同意后才能带 --confirm 执行。
 ---
 
 # mcd-git：用 git 命令点麦当劳
@@ -25,10 +25,11 @@ mcd-git 把麦当劳中国 MCP Server 包装成 git 风格的命令：`add` 放�
 1. **只通过 `git mcd … --json` 操作。** 一律带 `--json`：输出稳定好解析，而且不会弹出 y/N 交互提示（交互提示是留给真人的，不要替用户回答）。不要直接调用 MCP 的写操作 tool（`create-order`、`cancel-order`、`auto-bind-coupons`、`mall-create-order`、`draw-lottery`、`party-order-create`、`delivery-create-address`），即使你的环境里配了麦当劳 MCP 连接器。
 2. **下单前必须确认。** 先不带 `--confirm` 运行 `git mcd push … --json`，把返回的确认摘要（门店、取餐方式、时间、餐具、每样商品、券、应付金额）如实告诉用户，并说明「会生成一笔待支付订单，付款要你自己完成」。只有用户明确说「确认 / 下单 / 可以」之后，才运行 JSON 里 `data.next` 给出的那条命令（带 `--confirm <commit 哈希>`）。用户没明确同意、或改了任何条件（时间、取餐方式、餐品），都要重新预览、重新确认；改餐品要先并进这一单，见常用流程「下单前改餐品」。`push` 返回 `error.detail.code == "uncommitted_changes"`，说明购物车里还有没并进这一单的餐品（列在 `error.detail.uncommitted`），这次什么都没下单：**先问用户**这些要不要加进这一单，要就运行 `error.detail.amend`（`commit --amend`），不要就运行 `error.detail.discard`（`reset` 清空购物车）。`error.detail.amend` 是 null 时，HEAD 是另一家店（或另一种取餐方式）的单，购物车没法并进去：**先问用户**是放弃购物车（`error.detail.discard`），还是撤回那一单（`error.detail.withdraw`，即 `reset --soft HEAD~1`：那一单的餐品放回购物车，再按现在的门店重新 commit）。两种情况都不要替用户选，处理完都要重新预览、重新确认。
 3. **取消订单同理。** `git mcd revert --reason <编号> --json` 先预览，用户同意后运行 `data.next`（带 `--confirm <订单号>`）。取消原因要让用户选：1 改主意了、2 重复下单、3 点错了/点多了/点少了、4 地址/电话填错了、5 送达时间选错了、-1 其它原因。
-4. **不代付、不轮询。** 只把 `payH5Url` 和付款截止时间交给用户；用户说付好了，再运行一次 `git mcd show --json` 查取餐码。不要循环查询订单状态。
-5. **出错不盲目重试。** `push` 报「不确定订单有没有建成」时，先 `git mcd log --json` 核对最新订单，再和用户商量，绝不直接再 push 一次。
-6. **不替用户多点。** 份数、餐品都以用户说的为准；`rebase` 只会在不加东西的前提下省钱，你也不要主动加购。
-7. **金额单位是「分」。** JSON 里的金额（`payable`、`price`、`subtotal`、`unitPrice` 等）都是整数分，告诉用户时除以 100，写成 ¥33.50。
+4. **领券也一样先确认。** 只用 `git mcd pull`，不要直接调 `auto-bind-coupons`。先运行 `git mcd pull --json` 预览，把 `data.summary` 如实告诉用户：一共 `count` 张、每张叫什么（`coupons[].name`），以及「会一次全部领进你的账户，接口不支持只领其中几张」。用户明确同意后才运行 `data.next`（带 `--confirm <指纹>`）；用户只想要其中几张、或者没表态，就不要领。`data.status == "up-to-date"` 说明现在没有可领的券。`--confirm` 报「可领券列表变了」时什么都没领，要重新预览、重新确认。报「不确定券有没有领到」时先 `git mcd fetch --json` 核对还剩哪些可领，不要重试。不要定时、循环或者批量领券，每次都由用户发起。
+5. **不代付、不轮询。** 只把 `payH5Url` 和付款截止时间交给用户；用户说付好了，再运行一次 `git mcd show --json` 查取餐码。不要循环查询订单状态。
+6. **出错不盲目重试。** `push` 报「不确定订单有没有建成」时，先 `git mcd log --json` 核对最新订单，再和用户商量，绝不直接再 push 一次。
+7. **不替用户多点。** 份数、餐品都以用户说的为准；`rebase` 只会在不加东西的前提下省钱，你也不要主动加购。
+8. **金额单位是「分」。** JSON 里的金额（`payable`、`price`、`subtotal`、`unitPrice` 等）都是整数分，告诉用户时除以 100，写成 ¥33.50。
 
 ## 常用流程
 
@@ -51,7 +52,9 @@ mcd-git 把麦当劳中国 MCP Server 包装成 git 风格的命令：`add` 放�
 | 历史 | `git mcd log --oneline --json` | `data.entries[]`（最多最近 10 单） |
 | 再来一单 | `git mcd cherry-pick HEAD --json`，再 `git mcd commit -m 再来一单 --json`，然后按「下单预览」走 | `data.index`、`data.conflicts`（本店买不到的会列出来）。cherry-pick 只放回购物车，不 commit 就 push 会报「购物车还没 commit」。只用于已经 push 过的单：HEAD 还没 push 时它本来就是这一单，`cherry-pick HEAD` 会被拒绝（`error.detail.code == "empty_cherry_pick"`，购物车不动），直接按「下单预览」走；用户要多点就 `add` 后 `commit --amend` |
 | 取消 | `git mcd revert --reason 3 --json` | 预览后用户同意，再运行 `data.next` |
-| 活动和可领券 | `git mcd fetch --json` | `data.events`、`data.claimable`（只读，领券请用户去 App） |
+| 活动和可领券 | `git mcd fetch --json` | `data.events`、`data.claimable`（只读；要领就按下面「领券」走） |
+| 领券预览 | `git mcd pull --json` | `data.status == "confirmation_required"`、`data.summary`（`count`、`coupons[]`、`note`）、`data.next`；`"up-to-date"` 表示没有可领的券 |
+| 用户同意领券后 | 原样运行 `data.next` 里的命令（已经带好 `--confirm <指纹>` 和 `--json`） | `data.status == "pulled"`、`data.successCount`、`data.failedCount`、`data.claimed[]`、`data.failed[]`（`reason`）；领到之后下单前照常 `git mcd rebase` 挑最省的券 |
 | 吃麦贡献图 | `git mcd card -o <路径> --json` | `data.path`（写好的 SVG）、`data.stats`（`total`、`topItem`、`topSlot`、`earliest`）；`data.status == "empty"` 说明还没有记录，没写文件。只在本机写文件：不要替用户把图提交或上传到 GitHub，也不要设置定时任务；默认不加 `--with-savings`，用户想看省了多少钱再加 |
 
 - `--remark` 只用于麦乐送；`--locker` 要门店有取餐柜，没有会报错，把可选的取餐方式告诉用户。

@@ -85,7 +85,8 @@ git mcd card --with-savings        # 卡片上多一项「用券省下 ¥X」（
 | `show [HEAD]` | 订单状态、取餐码、取餐柜、外送进度（只在你运行时查一次） | 否 |
 | `cherry-pick HEAD` | 再来一单：把上一单拣回购物车，换了门店也会按新菜单重新对齐 | 否 |
 | `revert` | 取消订单，必须选原因 | ✎ 会，先确认 |
-| `fetch` | 今日活动、可领的券（只读，不替你领） | 否 |
+| `fetch` | 今日活动、可领的券（只读） | 否 |
+| `pull` | 领券：先列出可领券，确认后一次领取全部（接口不支持只领几张） | ✎ 会，先确认 |
 | `card` | 1024 吃麦贡献图：终端预览 + 本机 SVG（见上面「1024 特别版」） | 否 |
 
 所有命令都支持 `--demo`（合成数据，不需要 Token）和 `--json`（给 Agent 和脚本用）。对照表随时看：`git mcd help`。
@@ -112,6 +113,7 @@ git mcd --demo push --at 12:20 --locker --no-tableware   # 终端里会问 y/N
 git mcd --demo log --graph
 git mcd --demo show
 git mcd --demo cherry-pick HEAD
+git mcd --demo pull                                      # 领券，终端里会问 y/N
 git mcd --demo card                                      # 吃麦贡献图，写到当前目录的 mcd-contributions.svg
 ```
 
@@ -163,6 +165,12 @@ git mcd --demo card                                      # 吃麦贡献图，写
 
 ![git mcd cherry-pick HEAD](assets/cherry-pick.svg)
 
+### pull：领券，同样先确认
+
+像 `git pull` 一样 fetch + merge：先列出麦麦省里可领的券，你确认后调一次 `auto-bind-coupons` 把它们领进账户。这个接口没有参数，只能一次领全部、不能只挑其中几张，所以摘要里会把要领的每一张都列出来。非交互环境只出摘要，用户同意后再用 `--confirm <指纹>` 执行；确认时会重新拉一次列表，和预览时不一样就拒绝。没有可领的券时输出 `Already up to date.`。领到之后，下单前跑一次 `git mcd rebase` 就会自动挑最省的那张。
+
+![git mcd pull](assets/pull.svg)
+
 ### card：1024 吃麦贡献图
 
 终端里一周一列：有颜色时一格一个小方块，管道和 `NO_COLOR` 下用 `· ░ ▒ ▓ █` 分档。卡片本身写成 SVG，见上面「1024 特别版」。
@@ -189,7 +197,7 @@ git mcd --demo card                                      # 吃麦贡献图，写
 
 [mcp-config.example.json](mcp-config.example.json) 是比赛要求的脱敏配置示例，只有 `${MCD_MCP_TOKEN}` 占位符。mcd-git 自己不需要它，想让其他 MCP 客户端直连时可以照着配。
 
-**只有 `push` 和 `revert` 会改动你的账户，每次都会先出确认摘要；不会自动付款；没有后台任务、定时或轮询，每一次调用都由你的命令触发。**
+**只有 `push`、`revert` 和 `pull` 会改动你的账户，每次都会先出确认摘要；不会自动付款；没有后台任务、定时或轮询，每一次调用都由你的命令触发。**
 
 ## 交给你的 Agent
 
@@ -199,16 +207,16 @@ git mcd --demo card                                      # 吃麦贡献图，写
 请帮我安装 mcd-git 这个点麦当劳的 Skill：
 1. 运行 uv tool install git+https://github.com/zhutoumeme/mcd-git（没有 uv 就用 pip install "git+https://github.com/zhutoumeme/mcd-git"），然后运行 git mcd help 确认装好了；
 2. 把 https://github.com/zhutoumeme/mcd-git 仓库根目录的 SKILL.md 装进你的 Skill 目录（Claude Code 是 ~/.claude/skills/mcd-git/SKILL.md，Kiro 是 ~/.kiro/skills/mcd-git/SKILL.md，WorkBuddy 在「技能」里导入）；
-3. 以后我说要点麦当劳，就按 SKILL.md 用 git mcd --json 操作。下单和取消前必须把确认摘要给我看，我明确同意后才能加 --confirm。
+3. 以后我说要点麦当劳，就按 SKILL.md 用 git mcd --json 操作。下单、取消和领券前必须把确认摘要给我看，我明确同意后才能加 --confirm。
 Token 我会自己配置到 ~/.config/mcd-mcp/token，不用在对话里发给你。没有 Token 时先用 --demo 给我演示。
 ```
 
 ## 安全边界
 
-- **写操作只有两个**：`create-order`（push）和 `cancel-order`（revert），都要经过确认闸：预览 → 用户同意 → `--confirm`。领券、积分兑换、抽奖、新建地址这些写操作，代码里一律拦截，不调用。
-- **确认闸由代码执行**：`--confirm` 必须对得上 10 分钟内的预览（同一个 commit、同样的参数）；真正下单前重新算价，应付金额和下单参数的指纹都要和预览时一致；同一份确认只能用一次；`push --force` 一律拒绝。
-- **结果未知不重试**：网络超时、响应不完整、返回看不懂、按了 Ctrl+C，这些情况都不会自动重发 `create-order`，会提示先 `git mcd log` 核对，避免重复下单。
-- **低频、手动**：每条命令由你触发；`calculate-price` 每条命令最多 20 次，带缓存；遇到 429 只对只读请求退避重试。
+- **写操作只有三个**：`create-order`（push）、`cancel-order`（revert）、`auto-bind-coupons`（pull），都要经过确认闸：预览 → 用户同意 → `--confirm`。积分兑换、抽奖、派对订单、新建地址这些写操作，代码里一律拦截，不调用；确认闸签发的许可也只对它对应的那一个 tool 有效。
+- **确认闸由代码执行**：`--confirm` 必须对得上 10 分钟内的预览（同一个 commit、同样的参数）；真正下单前重新算价，应付金额和下单参数的指纹都要和预览时一致；`pull --confirm` 要对得上可领券列表的指纹，领之前重新拉一次列表，变了就拒绝；同一份确认只能用一次；`push --force`、`pull --force` 一律拒绝。
+- **结果未知不重试**：网络超时、响应不完整、返回看不懂、按了 Ctrl+C，这些情况都不会自动重发 `create-order`，会提示先 `git mcd log` 核对，避免重复下单；`pull` 同样不会重发 `auto-bind-coupons`，会提示先 `git mcd status` 或 `git mcd fetch` 核对。
+- **低频、手动**：每条命令由你触发；领券每次都由你手动触发，只领你自己账户的券，不做定时或循环领取；`calculate-price` 每条命令最多 20 次，带缓存；遇到 429 只对只读请求退避重试。
 - **隐私**：Token 只在请求头里，只发给 `https://mcp.mcd.cn`（地址写死在代码里，不能用环境变量改）；收货地址只保留 addressId 和打码提示；状态文件在 `~/.config/mcd-git/`（目录 700、文件 600），本机订单账本 `ledger.json` 也在这里，只存贡献图要用的字段（见「1024 特别版」）；`card` 生成的 SVG 只写在你的电脑上，mcd-git 不会替你上传。
 
 ## 目标用户
@@ -241,7 +249,7 @@ Token 我会自己配置到 ~/.config/mcd-mcp/token，不用在对话里发给�
 
 ## 路线图
 
-- **P1**：`log --stat` 汇总最近订单的单数和金额；`stash` / `stash pop` 暂存购物车；`pull` 领券（写操作，同样走确认闸）；`rebase -i` 手动挑方案；预约时段在本地先校验。
+- **P1**：`log --stat` 汇总最近订单的单数和金额；`stash` / `stash pop` 暂存购物车；`rebase -i` 手动挑方案；预约时段在本地先校验。
 - **P2**：`ship --team` 发版庆功的团餐方案（下单仍走 push）；`push --at next-gap` 读本地 .ics 找会议空档。
 
 欢迎提 Issue 和 PR，新命令请保持「只读命令零副作用、写操作必须过确认闸」这条规矩。

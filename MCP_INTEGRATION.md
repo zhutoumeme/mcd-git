@@ -1,6 +1,6 @@
 # MCP 集成说明
 
-mcd-git 是麦当劳中国 MCP Server 的一个命令行客户端：把 MCP 的 tool 包装成 git 风格的子命令，只读操作随便用，写操作（下单、取消）必须过一道由代码执行的确认闸。
+mcd-git 是麦当劳中国 MCP Server 的一个命令行客户端：把 MCP 的 tool 包装成 git 风格的子命令，只读操作随便用，写操作（下单、取消、领券）必须过一道由代码执行的确认闸。
 
 ## 1. 使用的 MCP Server
 
@@ -15,7 +15,7 @@ mcd-git 是麦当劳中国 MCP Server 的一个命令行客户端：把 MCP 的 
 
 每个进程只 `initialize` 一次。服务端实测是无状态的（不返回 `Mcp-Session-Id`），客户端仍然兼容会话头。
 
-## 2. 实际用到的 tool（13 个）
+## 2. 实际用到的 tool（14 个）
 
 | tool | 读 / 写 | 用在哪些命令 | 用途 |
 |---|---|---|---|
@@ -29,11 +29,12 @@ mcd-git 是麦当劳中国 MCP Server 的一个命令行客户端：把 MCP 的 
 | `order-list` | 读 | `log`、`show`、`cherry-pick`、`card` | 最近 10 单（接口没有分页），合进本地提交历史，并顺手记进本机订单账本 |
 | `query-order` | 读 | `show`、`revert` | 订单状态、取餐码、取餐柜、外送进度；`show` 时顺手把这一单的原价、优惠记进本机订单账本 |
 | `campaign-calendar` | 读 | `fetch` | 今日和近期活动 |
-| `available-coupons` | 读 | `fetch` | 可领的券（只展示，不领） |
+| `available-coupons` | 读 | `fetch`、`pull` | 可领的券（fetch 展示、pull 预览和确认前复核） |
 | `create-order` | **写** | `push`（确认之后） | 生成待支付订单，返回 `payH5Url`，终端里渲染二维码 |
 | `cancel-order` | **写** | `revert`（确认之后） | 取消订单，`cancelReasonCode` 由用户选 |
+| `auto-bind-coupons` | **写** | `pull`（确认之后） | 一次领取全部可领券（没有参数，不能只领其中几张） |
 
-明确不用、并在客户端里统一拦截的写操作：`auto-bind-coupons`、`mall-create-order`、`draw-lottery`、`party-order-create`、`delivery-create-address`。它们在 `WRITE_TOOLS` 里，没有确认闸签发的许可就调不出去。
+明确不用、并在客户端里统一拦截的写操作：`mall-create-order`、`draw-lottery`、`party-order-create`、`delivery-create-address`。它们在 `WRITE_TOOLS` 里，但不在确认闸能放行的 `GATED_WRITE_TOOLS`（`create-order`、`cancel-order`、`auto-bind-coupons`）里，所以即使带着确认闸的许可也调不出去。许可还绑定了 tool 名：push / revert 的许可不能拿去领券，pull 的许可也不能拿去下单。
 
 ## 3. 命令与 tool 的对应（每条命令的调用次数）
 
@@ -54,6 +55,9 @@ mcd-git 是麦当劳中国 MCP Server 的一个命令行客户端：把 MCP 的 
 | `cherry-pick` | 本地同店的 commit：0；否则 order-list + query-meals + query-meal-detail | 0～N |
 | `revert`（预览 / --confirm） | query-order；确认后再加 cancel-order | 1 / 2 |
 | `fetch` | campaign-calendar + available-coupons | 2 |
+| `pull`（预览 / `--dry-run`） | available-coupons | 1 |
+| `pull`（终端里答 y） | available-coupons + auto-bind-coupons | 1 + 1 |
+| `pull --confirm` | available-coupons（复核列表）+ auto-bind-coupons | 1 + 1 |
 | `card` | order-list（刷新本机账本，格子来自账本） | 1 |
 
 每条命令的 MCP 调用总数上限 60，`calculate-price` 上限 20；超过就停下并如实提示。
@@ -101,6 +105,20 @@ sequenceDiagram
     U->>G: git mcd show（用户付完款后手动运行）
     G->>M: query-order
     M-->>G: 订单状态、取餐码、取餐柜信息
+
+    U->>G: git mcd pull（预览）
+    G->>M: available-coupons
+    M-->>G: 可领券列表（没有 couponId，同名券会重复）
+    G->>S: 记录预览：可领券列表的指纹、张数、时间
+    G-->>U: 摘要（一次领全部 N 张，不能只领几张）+ 「同意后运行 … --confirm 8262581」
+
+    U->>G: git mcd pull --confirm 8262581
+    G->>G: 校验指纹、10 分钟有效期
+    G->>M: available-coupons（复核：列表变了就拒绝）
+    G->>S: 消费预览（同一份确认只能用一次）
+    G->>M: auto-bind-coupons（确认闸签发的一次性许可）
+    M-->>G: successCount、failedCount、successCoupons、failedCoupons
+    G-->>U: [new coupon] 逐张列出，领到 S 张、失败 F 张（结果未知时提示先 status / fetch 核对）
 ```
 
 ## 5. 返回解析要点（来自实测）
@@ -115,9 +133,9 @@ sequenceDiagram
 
 ## 6. 写操作边界（确认闸）
 
-实现见 `src/mcd_git/gate.py` 和 `src/mcd_git/commands/push.py`、`revert.py`。
+实现见 `src/mcd_git/gate.py` 和 `src/mcd_git/commands/push.py`、`revert.py`、`pull.py`。
 
-1. 写 tool 只能拿着 `Approval` 调用；`Approval` 只由确认闸签发，绑定 tool 名和参数指纹，用一次就作废。
+1. 写 tool 只能拿着 `Approval` 调用；`Approval` 只由确认闸签发，绑定 tool 名和参数指纹，用一次就作废。`McdApi` 发请求前还会核对许可的 tool 和要调用的 tool 一致；客户端只放行 `GATED_WRITE_TOOLS` 里的三个写操作。
 2. 交互终端：先出确认摘要，再问 `y/N`，默认 N。
 3. 非交互（Agent、管道、`--json`）：只出摘要和下一步命令，把预览记进本地状态，不下单。
 4. `--confirm <commit 哈希>`：必须有 10 分钟内、同一 commit、同样参数的预览；重新算价后应付金额不变、下单参数指纹不变，才会调用 `create-order`。任何一项不符都拒绝，并要求重新预览。
@@ -125,12 +143,14 @@ sequenceDiagram
 6. `create-order` 只有在服务端明确拒绝时才提示「什么都没下单」：信封里的业务错误码、HTTP 4xx，或 JSON-RPC 层没受理这次请求（-32700 / -32600 / -32601 / -32602）。网络超时、30x、5xx、其余 JSON-RPC 错误（如 -32603 Internal error、-32000～-32099）、响应被截断、返回看不懂或没有订单号、Ctrl+C 中断，一律按结果未知处理：不自动重试，提示先 `git mcd log` 核对。
 7. 只生成待支付订单，只返回支付链接，**不代付**；付款后由用户自己运行 `git mcd show` 查取餐码，不轮询。
 8. `revert`（cancel-order）同样：必须选取消原因（1 改主意了、2 重复下单、3 点错了、4 地址电话填错、5 送达时间选错、-1 其它），预览 → 同意 → `--confirm <订单号>`。
+9. `pull`（auto-bind-coupons）同样：预览 → 同意 → `--confirm <指纹>`。这个 tool 没有参数，一次领取全部可领券，不能只领其中几张，摘要里逐张列出并写明这一点。指纹按可领券列表（名称、状态、标签的多重集合，稳定排序）算出；`--confirm` 必须对得上 10 分钟内的预览，确认时重新拉一次 `available-coupons`，指纹变了就拒绝并要求重新预览，列表空了就输出 `Already up to date.`；预览在发请求前被消费，只能用一次。只有服务端明确拒绝（判断同第 6 条）才提示「什么都没领」，其余一律按结果未知处理：不自动重试，提示先 `git mcd status` 或 `git mcd fetch` 核对。`--force` 一律拒绝，`--dry-run` 只出预览；返回里的 couponId、券码不展示，也不进 `--json` 输出。
 
-自动化测试全部离线：push / revert 的真实下单链路只用 mock 客户端测试（`tests/test_push_gate.py`），从不对真实账户调用写操作。
+自动化测试全部离线：push / revert / pull 的真实链路只用 mock 客户端测试（`tests/test_push_gate.py`、`tests/test_pull_gate.py`），从不对真实账户调用写操作。
 
 ## 7. 调用频率与合规
 
 - 每一次调用都由用户的命令触发；没有后台进程、定时任务或轮询。
+- 领券只在用户运行 `git mcd pull` 并确认之后发生，只领用户自己账户的券；不做定时、循环或批量领券。
 - `calculate-price` 每条命令最多 20 次并缓存相同参数；遇到 HTTP 429 只对只读 tool 做两次指数退避（1 秒、2 秒），写操作不重试。
 - Token 只放在本机、只出现在请求头里，不进日志、不进仓库、不上传任何第三方平台，也不需要放进 CI。
 - 个人信息：收货地址只保留 addressId 和打码提示；外送订单里的地址、手机号、骑手信息在解析时就丢弃，不展示、不进 `--json` 输出。
@@ -148,6 +168,7 @@ sequenceDiagram
 - 0 元订单（全额预付券）是否返回 `payH5Url` 未实测；没有链接时会提示去麦当劳 App 的订单页查看。
 - 取餐柜订单里 `lockerCode` / `lockerQrCode` 的真实形态未实测，按可选字段处理。
 - 特制（`--no-pickle`、`--with 少冰`、`--with 加一份浓缩` 等）按 schema 传 `modification`，多选组里没选中的项传 `quantity: 0`。`calculate-price` 既不校验也不回显特制，真实下单实测（见 §10）的那一单又没有特制，所以特制在真实订单里是否生效**尚未实测**。下单后可以用 `git mcd show` 核对子项名称（来自 `query-order` 的 `comboItemList`）。
+- `auto-bind-coupons` 只按 outputSchema 实现（`successCount`、`failedCount`、`totalCount`、`successCoupons`、`failedCoupons`），真实账户还没调用过。解析做了容错：计数缺失就用名单长度，名单缺失就只显示张数，`data` 看不懂按结果未知处理。
 - 随单购（withOrder）、团餐（beType=6）暂不支持。
 
 ## 10. 真实下单实测（2026-10-10）
