@@ -6,12 +6,13 @@ import io
 import json
 import os
 import urllib.error
+from pathlib import Path
 from typing import Any, Dict, List
 
 import pytest
 
 from mcd_git.errors import GitMcdError, McdError
-from mcd_git.mcp_client import DEFAULT_URL, McdMcpClient, load_token, token_file
+from mcd_git.mcp_client import DEFAULT_URL, McdMcpClient, load_token
 
 TOKEN = "unit-test-token-0000"
 
@@ -61,8 +62,10 @@ def _http_error(code: int, body: bytes = b"") -> urllib.error.HTTPError:
 RESULT = {"content": [{"type": "text", "text": "ok"}], "isError": False, "structuredContent": {"success": True, "code": 200, "data": {"ok": 1}}}
 
 
-def test_token_env_first_then_file(monkeypatch: pytest.MonkeyPatch) -> None:
-    path = token_file()
+def test_token_env_first_then_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    path = tmp_path / "mcd-mcp" / "token"
+    # 直接把 Token 文件指到临时目录：不靠 HOME 隔离，哪个系统上都碰不到开发者真实的 Token
+    monkeypatch.setattr("mcd_git.mcp_client.token_file", lambda: path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("file-token\n", encoding="utf-8")
     assert load_token({"MCD_MCP_TOKEN": " env-token "}) == "env-token"

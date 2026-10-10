@@ -25,6 +25,7 @@ def offline(monkeypatch: pytest.MonkeyPatch, tmp_path: Any) -> None:
 
     monkeypatch.setattr(urllib.request, "urlopen", blocked)
     monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("USERPROFILE", str(tmp_path / "home"))  # Windows 上 Path.home() 读的是它
     monkeypatch.setenv("MCD_GIT_HOME", str(tmp_path / "mcd-git"))
     for key in ("MCD_MCP_TOKEN", "MCD_GIT_DEMO", "MCD_GIT_NOW", "MCD_MCP_URL"):
         monkeypatch.delenv(key, raising=False)
