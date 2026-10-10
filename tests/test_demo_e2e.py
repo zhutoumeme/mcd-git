@@ -151,6 +151,43 @@ def test_cart_changes_after_commit_block_push(runner: Runner) -> None:
     assert runner.count("create-order") == 0
 
 
+def test_unpushed_head_with_cart_points_to_amend_not_push(runner: Runner) -> None:
+    """HEAD 没 push、购物车里又有东西时直接 push 会报 uncommitted_changes：commit / status / show 都先提示 amend / reset，
+    不再让人先去 git mcd push。购物车空着时提示照旧。"""
+    runner.run("--demo", "add", "热拿铁")
+    code, data = runner.json("--demo", "commit", "-m", "下午茶")
+    short = data["data"]["short"]
+    code, data = runner.json("--demo", "commit", "-m", "再来")
+    assert code == 1 and data["error"]["hints"] == ["先 git mcd push 下单", "或 git mcd commit --amend 把购物车并进去", "或 git mcd reset --soft HEAD~1 撤回重来"]
+    code, out = runner.run("--demo", "status")
+    assert '(use "git mcd push" to place the order)' in out and "--amend" not in out
+    code, out = runner.run("--demo", "show")
+    assert "hint: 还没 push：git mcd push 下单（会先确认）" in out
+
+    runner.run("--demo", "add", "菠萝派")
+    code, data = runner.json("--demo", "commit", "-m", "再来")
+    assert code == 1 and data["error"]["message"] == f"HEAD {short}（下午茶）还没 push"
+    assert data["error"]["hints"] == ["git mcd commit --amend 把购物车并进这一单", "不要购物车里的：git mcd reset，再 git mcd push 下单", "git mcd reset --soft HEAD~1 撤回重来"]
+    code, out = runner.run("--demo", "commit", "-m", "再来")
+    assert code == 1 and "hint: git mcd commit --amend 把购物车并进这一单" in out and "先 git mcd push" not in out
+    code, out = runner.run("--demo", "status")
+    assert code == 0
+    assert '(use "git mcd commit --amend" to add the cart to this order)' in out
+    assert '(use "git mcd reset" to drop the cart, then "git mcd push" to place the order)' in out
+    assert '(use "git mcd push" to place the order)' not in out
+    code, out = runner.run("--demo", "show")
+    assert code == 0
+    assert "hint: 还没 push，购物车里还有没 commit 的东西：git mcd commit --amend 并进这一单" in out
+    assert "hint: 不要购物车里的：git mcd reset，再 git mcd push 下单" in out
+    assert "还没 push：git mcd push 下单" not in out
+
+    # 照第一条提示做，就能预览下单了
+    code, data = runner.json("--demo", "commit", "--amend")
+    assert code == 0 and [x["name"] for x in data["data"]["lines"]] == ["热拿铁", "菠萝派"]
+    code, data = runner.json("--demo", "push")
+    assert code == 0 and data["data"]["status"] == "confirmation_required"
+
+
 def test_push_to_closed_store_fails_like_git(runner: Runner) -> None:
     runner.run("--demo", "add", "巨无霸")
     runner.run("--demo", "commit", "-m", "夜里")

@@ -80,7 +80,12 @@ def run(ctx: Context, args: Any) -> Result:
             console.print("No commits yet")
         elif ahead:
             console.print(Text.assemble("Your branch is ahead of ", (f"'origin/{head.get('branch') or branch}'", R.REMOTE), " by 1 commit."))
-            console.print('  (use "git mcd push" to place the order)', style=R.DIM)
+            if lines:
+                # 购物车里有东西时直接 push 会报 uncommitted_changes：先 amend 并进这一单，或者 reset 放弃
+                console.print('  (use "git mcd commit --amend" to add the cart to this order)', style=R.DIM)
+                console.print('  (use "git mcd reset" to drop the cart, then "git mcd push" to place the order)', style=R.DIM)
+            else:
+                console.print('  (use "git mcd push" to place the order)', style=R.DIM)
         else:
             console.print(Text.assemble("Your branch is up to date with ", (f"'origin/{head.get('branch') or branch}'", R.REMOTE), "."))
         if pay:

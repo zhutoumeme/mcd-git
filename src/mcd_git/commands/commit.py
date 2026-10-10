@@ -49,10 +49,12 @@ def run(ctx: Context, args: Any) -> Result:
         scope = head["remote"]
     else:
         if head and not head.get("pushed"):
-            raise GitMcdError(
-                f"HEAD {R.short(head['id'])}（{head['message']}）还没 push",
-                hint=["先 git mcd push 下单", "或 git mcd commit --amend 把购物车并进去", "或 git mcd reset --soft HEAD~1 撤回重来"],
-            )
+            if lines:
+                # 购物车里有东西时直接 push 会报 uncommitted_changes，所以先给 amend / reset，不再让人先去 push
+                hint = ["git mcd commit --amend 把购物车并进这一单", "不要购物车里的：git mcd reset，再 git mcd push 下单", "git mcd reset --soft HEAD~1 撤回重来"]
+            else:
+                hint = ["先 git mcd push 下单", "或 git mcd commit --amend 把购物车并进去", "或 git mcd reset --soft HEAD~1 撤回重来"]
+            raise GitMcdError(f"HEAD {R.short(head['id'])}（{head['message']}）还没 push", hint=hint)
         if not lines:
             raise GitMcdError('nothing to commit (use "git mcd add <餐品>" to stage)')
     message = message or ctx.branch_label
