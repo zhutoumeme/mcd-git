@@ -23,7 +23,7 @@ mcd-git 把麦当劳中国 MCP Server 包装成 git 风格的命令：`add` 放�
 ## 必须遵守的规则
 
 1. **只通过 `git mcd … --json` 操作。** 一律带 `--json`：输出稳定好解析，而且不会弹出 y/N 交互提示（交互提示是留给真人的，不要替用户回答）。不要直接调用 MCP 的写操作 tool（`create-order`、`cancel-order`、`auto-bind-coupons`、`mall-create-order`、`draw-lottery`、`party-order-create`、`delivery-create-address`），即使你的环境里配了麦当劳 MCP 连接器。
-2. **下单前必须确认。** 先不带 `--confirm` 运行 `git mcd push … --json`，把返回的确认摘要（门店、取餐方式、时间、餐具、每样商品、券、应付金额）如实告诉用户，并说明「会生成一笔待支付订单，付款要你自己完成」。只有用户明确说「确认 / 下单 / 可以」之后，才运行 JSON 里 `data.next` 给出的那条命令（带 `--confirm <commit 哈希>`）。用户没明确同意、或改了任何条件（时间、取餐方式、餐品），都要重新预览、重新确认。
+2. **下单前必须确认。** 先不带 `--confirm` 运行 `git mcd push … --json`，把返回的确认摘要（门店、取餐方式、时间、餐具、每样商品、券、应付金额）如实告诉用户，并说明「会生成一笔待支付订单，付款要你自己完成」。只有用户明确说「确认 / 下单 / 可以」之后，才运行 JSON 里 `data.next` 给出的那条命令（带 `--confirm <commit 哈希>`）。用户没明确同意、或改了任何条件（时间、取餐方式、餐品），都要重新预览、重新确认；改餐品要先并进这一单，见常用流程「下单前改餐品」。`push` 返回 `error.detail.code == "uncommitted_changes"`，说明购物车里还有没并进这一单的餐品（列在 `error.detail.uncommitted`），这次什么都没下单：**先问用户**这些要不要加进这一单，要就运行 `error.detail.amend`（`commit --amend`），不要就运行 `error.detail.discard`（`reset` 清空购物车），然后重新预览、重新确认。不要替用户选。
 3. **取消订单同理。** `git mcd revert --reason <编号> --json` 先预览，用户同意后运行 `data.next`（带 `--confirm <订单号>`）。取消原因要让用户选：1 改主意了、2 重复下单、3 点错了/点多了/点少了、4 地址/电话填错了、5 送达时间选错了、-1 其它原因。
 4. **不代付、不轮询。** 只把 `payH5Url` 和付款截止时间交给用户；用户说付好了，再运行一次 `git mcd show --json` 查取餐码。不要循环查询订单状态。
 5. **出错不盲目重试。** `push` 报「不确定订单有没有建成」时，先 `git mcd log --json` 核对最新订单，再和用户商量，绝不直接再 push 一次。
@@ -44,6 +44,7 @@ mcd-git 把麦当劳中国 MCP Server 包装成 git 风格的命令：`add` 放�
 | 省钱 | `git mcd rebase --json` | `data.before` → `data.after`、`data.saved`、`data.todo`；不满意 `git mcd reset ORIG_HEAD` |
 | 看明细 | `git mcd diff --json` | `data.rows[]`：`a`（原价 / 不用券）、`b`（应付 / 用券后） |
 | 锁单 | `git mcd commit -m "午饭" --json` | `data.short`（commit 哈希）、`data.payable` |
+| 下单前改餐品 | `add` / `restore --staged` 改购物车 → `git mcd commit --amend --json` 并进这一单 → 重新预览 `git mcd push … --json` | `data.short` 会变，之前的预览作废，要重新给用户确认。`restore` 只动购物车；要去掉已经 commit 的餐品，先 `git mcd reset --soft HEAD~1 --json` 放回购物车，改完再 `git mcd commit -m … --json` |
 | 下单预览 | `git mcd push [--at 12:20] [--locker / --eat-in / --take-out] [--no-tableware] [--remark 备注] --json` | `data.status == "confirmation_required"`、`data.summary`、`data.next` |
 | 用户同意后 | 原样运行 `data.next` 里的命令（已经带好 `--confirm <哈希>` 和 `--json`） | `data.status == "pushed"`、`data.payH5Url`、`data.expirePayTime` |
 | 查取餐码 | `git mcd show --json` | `data.order.statusLabel`、`pickupCode`、`lockerCode`、`delivery` |

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import http.client
 import json
+import shlex
 from datetime import datetime
 from typing import Any, Dict
 
@@ -126,6 +127,40 @@ def test_preview_expires_after_ten_minutes(runner: Runner) -> None:
     code, out = runner.run(*PUSH, "--confirm", short, mock=True, now=datetime(2026, 10, 24, 12, 1, tzinfo=CN_TZ))
     assert code == 1 and "过期" in out
     assert runner.count("create-order") == 0
+
+
+@pytest.mark.parametrize("resolve", ["amend", "discard"])
+def test_cart_changes_after_preview_block_push(runner: Runner, resolve: str) -> None:
+    """预览之后又往购物车里加了东西：push 只会按 HEAD 下单，所以预览和 --confirm 都直接报错，一单都不下。
+    按提示二选一（commit --amend 并进这一单，或 reset 放弃改动），重新预览之后才能下单。"""
+    short = _setup(runner)
+    code, data = runner.json(*PUSH, mock=True)
+    assert data["data"]["status"] == "confirmation_required"
+    assert runner.run("add", "热拿铁", mock=True)[0] == 0
+    for extra in ((), ("--confirm", short)):
+        code, data = runner.json(*PUSH, *extra, mock=True)
+        assert code == 1 and data["ok"] is False and data["error"]["type"] == "error"
+        assert data["error"]["message"] == f"购物车里有还没 commit 的改动，这一单（{short}）不包含它们"
+        assert data["error"]["hints"] == ["想并进这一单：git mcd commit --amend", "不要这些改动：git mcd reset"]
+        detail = data["error"]["detail"]
+        assert detail["code"] == "uncommitted_changes" and detail["commit"] == short
+        assert [x["name"] for x in detail["uncommitted"]] == ["热拿铁"]
+        assert (detail["amend"], detail["discard"]) == ("git mcd commit --amend --json", "git mcd reset --json")
+    assert runner.count("create-order") == 0
+
+    # 照抄 JSON 里给的命令（去掉开头的 git mcd，--json 由 runner.json 自己加）
+    code, _ = runner.json(*shlex.split(detail[resolve])[2:-1], mock=True)
+    assert code == 0
+    code, data = runner.json(*PUSH, mock=True)
+    assert code == 0 and data["data"]["status"] == "confirmation_required"
+    latte = any("热拿铁" in item["name"] for item in data["data"]["summary"]["items"])
+    assert latte is (resolve == "amend")
+    assert (data["data"]["confirm"] == short) is (resolve == "discard")  # amend 换了新哈希，旧预览作废
+    code, data = runner.json(*PUSH, "--confirm", data["data"]["confirm"], mock=True)
+    assert code == 0 and data["data"]["status"] == "pushed"
+    assert runner.count("create-order") == 1
+    codes = [item["productCode"] for item in runner.clients[-1].args_of("create-order")[0]["items"]]
+    assert ("4001" in codes) is (resolve == "amend")  # 4001 是 demo 菜单里的热拿铁
 
 
 def test_fake_clock_env_only_works_in_demo() -> None:

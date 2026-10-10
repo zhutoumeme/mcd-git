@@ -20,6 +20,7 @@ from ..context import Context, Result
 from ..errors import GitMcdError, McdError
 from ..money import fmt
 from ..state import CN_TZ, fmt_time, head_commit, parse_time, verify_commit
+from .common import line_json
 from .diff import match_rows
 
 
@@ -334,6 +335,31 @@ def _place(ctx: Context, head: Dict[str, Any], args_: Dict[str, Any], s: Dict[st
     return Result(data, draw)
 
 
+def _agent_command(ctx: Context, *argv: str) -> str:
+    """给 Agent 照抄的命令：和 data.next 一样，--demo / --json 原样带上。"""
+    parts = ["git", "mcd"] + (["--demo"] if ctx.demo else []) + list(argv) + (["--json"] if ctx.json else [])
+    return " ".join(shlex.quote(p) for p in parts)
+
+
+def _uncommitted_changes(ctx: Context, head: Optional[Dict[str, Any]]) -> GitMcdError:
+    """购物车相对 HEAD 有没 commit 的改动。HEAD 还没 push：可以 amend 进这一单，或者 reset 放弃；
+    没有 HEAD、或者 HEAD 已经下过单（比如刚 cherry-pick 回来）：只能先 commit 成新的一单。"""
+    if head is None or head.get("pushed"):
+        return GitMcdError("购物车还没 commit", fatal=True, hint="先 git mcd commit -m <说明>，再 git mcd push")
+    short = R.short(head["id"])
+    return GitMcdError(
+        f"购物车里有还没 commit 的改动，这一单（{short}）不包含它们",
+        hint=["想并进这一单：git mcd commit --amend", "不要这些改动：git mcd reset"],
+        detail={
+            "code": "uncommitted_changes",
+            "commit": short,
+            "uncommitted": [line_json(line) for line in ctx.state.get("index") or []],
+            "amend": _agent_command(ctx, "commit", "--amend"),
+            "discard": _agent_command(ctx, "reset"),
+        },
+    )
+
+
 def run(ctx: Context, args: Any) -> Result:
     if args.force:
         raise GitMcdError(
@@ -345,10 +371,10 @@ def run(ctx: Context, args: Any) -> Result:
         raise GitMcdError("--dry-run 和 --confirm 不能一起用")
     state = ctx.state
     head = head_commit(state)
-    if head is None or head.get("pushed"):
-        # 购物车里有东西（比如刚 cherry-pick 回来）却没有新 commit：明确报错，别回一个 up-to-date 让人以为下好了
-        if state.get("index"):
-            raise GitMcdError("购物车还没 commit", fatal=True, hint="先 git mcd commit -m <说明>，再 git mcd push")
+    if state.get("index"):
+        # push 只按 HEAD 下单：购物车里还有没 commit 的东西就直接报错（预览、--confirm、交互确认都一样），
+        # 不能悄悄把它们漏掉，也别回一个 up-to-date 让人以为下好了
+        raise _uncommitted_changes(ctx, head)
     if head is None:
         raise GitMcdError("还没有可以 push 的 commit", fatal=True, hint="git mcd add <餐品> && git mcd commit -m <说明>")
     if head.get("pushed"):

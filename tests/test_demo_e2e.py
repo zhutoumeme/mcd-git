@@ -134,6 +134,23 @@ def test_cherry_pick_then_push_asks_for_commit(runner: Runner) -> None:
     assert code == 0 and "Everything up-to-date" in out and "cherry-pick HEAD" in out and "git mcd commit" in out
 
 
+def test_cart_changes_after_commit_block_push(runner: Runner) -> None:
+    """commit 之后又 add：push 只按 HEAD 下单，所以直接报错（git 风格文案）；给 Agent 的两条命令带上 --demo。"""
+    runner.run("--demo", "add", "巨无霸", mock=True)
+    code, data = runner.json("--demo", "commit", "-m", "午饭", mock=True)
+    short = data["data"]["short"]
+    runner.run("--demo", "add", "热拿铁", mock=True)
+    code, out = runner.run("--demo", "push", "--dry-run", mock=True)
+    assert code == 1
+    assert f"error: 购物车里有还没 commit 的改动，这一单（{short}）不包含它们" in out
+    assert "hint: 想并进这一单：git mcd commit --amend" in out and "hint: 不要这些改动：git mcd reset" in out
+    code, data = runner.json("--demo", "push", mock=True)
+    assert code == 1 and data["error"]["detail"]["code"] == "uncommitted_changes"
+    assert data["error"]["detail"]["amend"] == "git mcd --demo commit --amend --json"
+    assert data["error"]["detail"]["discard"] == "git mcd --demo reset --json"
+    assert runner.count("create-order") == 0
+
+
 def test_push_to_closed_store_fails_like_git(runner: Runner) -> None:
     runner.run("--demo", "add", "巨无霸")
     runner.run("--demo", "commit", "-m", "夜里")
