@@ -37,7 +37,7 @@ Agent：（git mcd push --at 12:20 --locker --no-tableware --confirm bfc651c --j
        付完跟我说一声，我帮你查取餐码。
 ```
 
-**和普通 Skill 的区别：确认由代码强制执行。** 普通 Skill 只是一段提示词，Agent 手里有 MCP 连接器就能随时直接调 `create-order`。mcd-git 的 Skill 不需要给 Agent 配 MCP 连接器，Token 只给 mcd-git 用，Agent 手里只有 `git mcd` 这一套命令：下单必须先出确认摘要，再用 `--confirm <commit 哈希>` 执行；哈希、参数、重新算出的应付金额，任何一项和预览时对不上，代码都会拒绝。
+**和普通 Skill 的区别：确认由代码强制执行。** 普通 Skill 只是一段提示词，Agent 手里有 MCP 连接器就能随时直接调 `create-order`。mcd-git 的 Skill 不需要给 Agent 配 MCP 连接器，Token 只给 mcd-git 用，Agent 手里只有 `git mcd` 这一套命令：下单必须先出确认摘要，再用 `--confirm <commit 哈希>` 执行；哈希、参数、重新算出的应付金额，任何一项和预览时对不上，代码都会拒绝。代码保证的是这三件事：一定先出预览，确认时不能换参数，价格会复核。至于 Agent 有没有先把摘要拿给你看、等你点头，代码分辨不出来，这一步靠 SKILL.md 的规则约束 Agent。
 
 ## git 命令 ↔ 点餐动作
 
@@ -153,7 +153,7 @@ git mcd --demo cherry-pick HEAD
 
 [mcp-config.example.json](mcp-config.example.json) 是比赛要求的脱敏配置示例，只有 `${MCD_MCP_TOKEN}` 占位符。mcd-git 自己不需要它，想让其他 MCP 客户端直连时可以照着配。
 
-**只有 `push` 和 `revert` 会改动你的账户，每次都会先给你看确认摘要；不会自动付款；没有后台任务、定时或轮询，每一次调用都由你的命令触发。**
+**只有 `push` 和 `revert` 会改动你的账户，每次都会先出确认摘要；不会自动付款；没有后台任务、定时或轮询，每一次调用都由你的命令触发。**
 
 ## 交给你的 Agent
 
@@ -178,7 +178,7 @@ Token 我会自己配置到 ~/.config/mcd-mcp/token，不用在对话里发给�
 ## 目标用户
 
 - **天天开终端的开发者**：不想切到手机上凑券、比价，`git mcd status && git mcd rebase` 一气呵成。
-- **想让 Agent 代点餐、但每一步都要看得见管得住的人**：Agent 只能用带确认闸的命令，下单前一定先问你。
+- **想让 Agent 代点餐、但每一步都要看得见管得住的人**：Agent 只能用带确认闸的命令，下单前一定会先出确认摘要，参数或价格一变就作废；先问你这一步由 SKILL.md 约束 Agent。
 - **常点固定几样的人**：`git mcd cherry-pick HEAD && git mcd commit -m 再来一单 && git mcd push` 就是再来一单；预约、取餐柜、不要餐具一条命令说清楚。
 
 它解决两件事：自己算「单点还是套餐、用哪张券」太费劲；把下单交给 Agent 又怕它自作主张。
@@ -193,6 +193,8 @@ Token 我会自己配置到 ~/.config/mcd-mcp/token，不用在对话里发给�
 
 **价格准吗？** 一切以 `calculate-price` 的实时结果为准。`commit` 时核一次价，`push` 预览和确认时各核一次，价格变了会拦下来让你重新确认。
 
+**去酸黄瓜、少冰这类特制一定生效吗？** mcd-git 只接受 `query-meal-detail` 里真实存在的选项，按 MCP 的参数格式传过去。但算价接口既不校验也不回显特制，真实订单里会不会照做还没实测过。下单后用 `git mcd show` 核对子项名称，以门店实际出餐为准。
+
 **为什么一单只能用一张券？** 这是 MCP 的规则：两张券会返回「暂不支持多张券使用」（600022）。
 
 **`log` 为什么最多只有 10 单？** `order-list` 没有分页参数，只返回最近 10 单。
@@ -203,7 +205,7 @@ Token 我会自己配置到 ~/.config/mcd-mcp/token，不用在对话里发给�
 
 ## 路线图
 
-- **P1**：`stash` / `stash pop` 暂存购物车；`pull` 领券（写操作，同样走确认闸）；`rebase -i` 手动挑方案；预约时段在本地先校验。
+- **P1**：`log --stat` 汇总最近订单的单数和金额；`stash` / `stash pop` 暂存购物车；`pull` 领券（写操作，同样走确认闸）；`rebase -i` 手动挑方案；预约时段在本地先校验。
 - **P2**：`card` 在本地生成 SVG「吃麦贡献图」；`ship --team` 发版庆功的团餐方案（下单仍走 push）；`push --at next-gap` 读本地 .ics 找会议空档。
 
 欢迎提 Issue 和 PR，新命令请保持「只读命令零副作用、写操作必须过确认闸」这条规矩。

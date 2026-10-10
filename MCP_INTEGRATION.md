@@ -145,4 +145,5 @@ sequenceDiagram
 - `order-list` 只有最近 10 单，`log` 拿不到更早的历史。
 - 0 元订单（全额预付券）是否返回 `payH5Url` 未实测；没有链接时会提示去麦当劳 App 的订单页查看。
 - 取餐柜订单里 `lockerCode` / `lockerQrCode` 的真实形态未实测，按可选字段处理。
+- 特制（`--no-pickle`、`--with 少冰`、`--with 加一份浓缩` 等）按 schema 传 `modification`，多选组里没选中的项传 `quantity: 0`。`calculate-price` 既不校验也不回显特制，本项目也没有对真实账户调用过 `create-order`，所以特制在真实订单里是否生效**尚未实测**。下单后可以用 `git mcd show` 核对子项名称（来自 `query-order` 的 `comboItemList`）。
 - 随单购（withOrder）、团餐（beType=6）暂不支持。
