@@ -55,7 +55,7 @@ mcd-git 把麦当劳中国 MCP Server 包装成 git 风格的命令：`add` 放�
 | 活动和可领券 | `git mcd fetch --json` | `data.events`、`data.claimable`（只读；要领就按下面「领券」走） |
 | 领券预览 | `git mcd pull --json` | `data.status == "confirmation_required"`、`data.summary`（`count`、`coupons[]`、`note`）、`data.next`；`"up-to-date"` 表示没有可领的券 |
 | 用户同意领券后 | 原样运行 `data.next` 里的命令（已经带好 `--confirm <指纹>` 和 `--json`） | `data.status == "pulled"`、`data.successCount`、`data.failedCount`、`data.claimed[]`、`data.failed[]`（`reason`）；领到之后下单前照常 `git mcd rebase` 挑最省的券 |
-| 吃麦贡献图 | `git mcd card -o <路径> --json` | `data.path`（写好的 SVG）、`data.stats`（`total`、`topItem`、`topSlot`、`earliest`）；`data.status == "empty"` 说明还没有记录，没写文件。只在本机写文件：不要替用户把图提交或上传到 GitHub，也不要设置定时任务；默认不加 `--with-savings`，用户想看省了多少钱再加 |
+| 吃麦贡献图 | `git mcd card -o <路径> --json`；`--style skyline`（默认，麦门天际线，贴 GitHub 主页）/ `receipt`（年度吃麦小票，发朋友圈）/ `grid`（平面格子），用户没说就用默认 | `data.style`、`data.path`（写好的 SVG）、`data.stats`（`total`、`topItem`、`topSlot`、`earliest`）；`data.status == "empty"` 说明还没有记录，没写文件。只在本机写文件：不要替用户把图提交或上传到 GitHub，也不要设置定时任务；默认不加 `--with-savings`，用户想看省了多少钱再加 |
 
 - `--remark` 只用于麦乐送；`--locker` 要门店有取餐柜，没有会报错，把可选的取餐方式告诉用户。
 - `--at` 写 `HH:MM`（今天）或 `"YYYY-MM-DD HH:MM"`；预览和确认时要用完全相同的参数。

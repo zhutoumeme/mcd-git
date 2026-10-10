@@ -41,16 +41,35 @@ Agent：（git mcd push --at 12:20 --locker --no-tableware --confirm bfc651c --j
 
 ## 1024 特别版：生成你的吃麦贡献图
 
-![过去一年吃麦贡献图（demo 合成数据）](assets/card-demo.svg)
+![麦门天际线：过去一年吃麦贡献图（demo 合成数据）](assets/card-demo.svg)
 
-把过去一年的吃麦记录画成 GitHub 风格的贡献图：7 行 × 最近 53 周，一格一天，颜色深浅表示那天吃了几单，10-24 那格单独描了边。终端里先出预览，同时在本机写一个 SVG：自包含（不引用外部字体、图片和脚本），跟着系统切换浅色 / 深色，二十几 KB。
+把过去一年的吃麦记录画成一张卡片，有三种样式，用 `--style` 选：
+
+- **麦门天际线**（`skyline`，默认）：等距 3D 的 53 周 × 7 天，每天吃了几次就叠几层汉堡（底面包、肉饼、芝士、生菜、顶面包），超过 4 层只画 4 层、顶上标一个「+」；10-24 那格插一面「0x400」小旗。打开时汉堡按周从左到右落下叠好，只播一次、3 秒内停在完整状态，系统开了「减弱动态效果」就直接显示完成状态。默认深色夜景，浅色模式下换成奶油底。宽版，适合贴在 GitHub 个人主页。
+- **年度吃麦小票**（`receipt`）：竖版热敏小票，最常点 TOP 5 当商品行，中间一块点阵热力图（红圈是 10-24），下面是时段分布、TOTAL 和一根装饰条形码。适合发朋友圈、小红书。
+- **平面格子**（`grid`）：GitHub 风格的 7 行 × 53 周格子，颜色深浅表示那天吃了几单，10-24 那格单独描边。最朴素，放进文档里也不扎眼。
+
+<p align="center"><img src="assets/card-receipt-demo.svg" width="360" alt="年度吃麦小票（demo 合成数据）"></p>
+
+<details>
+<summary>平面格子（--style grid）</summary>
+
+![平面格子版吃麦贡献图（demo 合成数据）](assets/card-grid-demo.svg)
+
+</details>
+
+终端里先出预览（终端画不出 3D，天际线和格子都用格子预览；小票直接打印文字版），同时在本机写一个 SVG：自包含（不引用外部字体、图片和脚本，重复的图形用 `<defs>` + `<use>` 复用），跟着系统切换浅色 / 深色，二三十 KB。同样的数据每次生成的文件都一样。
 
 ```bash
-git mcd --demo card                # 先用合成数据看看效果（上面这张就是），写到当前目录的 mcd-contributions.svg
-git mcd card                       # 用你自己的记录
-git mcd card -o ~/Desktop/mcd.svg  # 换个地方写
-git mcd card --with-savings        # 卡片上多一项「用券省下 ¥X」（默认不出现任何金额）
+git mcd --demo card                    # 先用合成数据看看效果（上面这张就是），写到当前目录的 mcd-contributions.svg
+git mcd card                           # 用你自己的记录，默认麦门天际线
+git mcd card --style receipt           # 年度吃麦小票，默认写到 mcd-receipt.svg
+git mcd card --style grid              # 平面格子
+git mcd card -o ~/Desktop/mcd.svg      # 换个地方写
+git mcd card --with-savings            # 卡片上多一项「用券省下 ¥X」（默认不出现任何金额）
 ```
+
+`--with-savings` 的数是下限：`order-list` 不返回优惠明细，只有 push 过或 `show` 过的单才知道省了多少。天际线和小票上有单缺明细时会写「只算有优惠明细的 N 单，是下限」，终端里也会提示。
 
 **贴到 GitHub 个人主页**（全程在本机手动完成）：
 
@@ -61,7 +80,7 @@ git mcd card --with-savings        # 卡片上多一项「用券省下 ¥X」（
 
 **不要用 GitHub Actions 定时生成。** MCP Token 不能放进 CI（服务规则不允许把凭证托管到第三方平台），也不允许自动化调用。想更新就在本机再跑一次 `git mcd card`。
 
-**卡片上有什么**：日期级的格子、总单数、最常点、最常时段，以及数据范围（比如「数据：麦当劳最近 10 单 + 本机记录，最早到 2026-10-21」）。没有门店、地址、订单号、手机号、具体下单时刻和总消费；只有加了 `--with-savings` 才显示省下的钱。公开之前自己再看一眼。
+**卡片上有什么**：日期级的格子（或汉堡、点阵）、总单数、最常点（小票是 TOP 5 和次数）、最常时段，以及数据范围（比如「数据：麦当劳最近 10 单 + 本机记录，最早到 2026-10-21」）。没有门店、地址、订单号、手机号、具体下单时刻和总消费；只有加了 `--with-savings` 才显示省下的钱。公开之前自己再看一眼。
 
 **数据从哪来**：`order-list` 只返回最近 10 单，所以刚开始用时格子会比较空。mcd-git 会把看到的订单记进本机账本，用得越久越全；取消的和没付款的单不算。
 
@@ -87,7 +106,7 @@ git mcd card --with-savings        # 卡片上多一项「用券省下 ¥X」（
 | `revert` | 取消订单，必须选原因 | ✎ 会，先确认 |
 | `fetch` | 今日活动、可领的券（只读） | 否 |
 | `pull` | 领券：先列出可领券，确认后一次领取全部（接口不支持只领几张） | ✎ 会，先确认 |
-| `card` | 1024 吃麦贡献图：终端预览 + 本机 SVG（见上面「1024 特别版」） | 否 |
+| `card` | 1024 吃麦贡献图：终端预览 + 本机 SVG，`--style skyline / receipt / grid` 选天际线、小票或格子（见上面「1024 特别版」） | 否 |
 
 所有命令都支持 `--demo`（合成数据，不需要 Token）和 `--json`（给 Agent 和脚本用）。对照表随时看：`git mcd help`。
 
@@ -114,7 +133,8 @@ git mcd --demo log --graph
 git mcd --demo show
 git mcd --demo cherry-pick HEAD
 git mcd --demo pull                                      # 领券，终端里会问 y/N
-git mcd --demo card                                      # 吃麦贡献图，写到当前目录的 mcd-contributions.svg
+git mcd --demo card                                      # 吃麦贡献图（麦门天际线），写到当前目录的 mcd-contributions.svg
+git mcd --demo card --style receipt                      # 年度吃麦小票，终端里也会打印一张
 ```
 
 装完会有两个等价的命令：`git-mcd`（git 会把 `git mcd` 分发给它）和 `mcd-git`。demo 的状态单独放在 `~/.config/mcd-git/demo/`，想从头再来就 `git mcd --demo init --pick 1`。嫌每条都敲 `--demo` 麻烦，可以先 `export MCD_GIT_DEMO=1`（首屏动图就是这么录的）。
@@ -173,9 +193,13 @@ git mcd --demo card                                      # 吃麦贡献图，写
 
 ### card：1024 吃麦贡献图
 
-终端里一周一列：有颜色时一格一个小方块，管道和 `NO_COLOR` 下用 `· ░ ▒ ▓ █` 分档。卡片本身写成 SVG，见上面「1024 特别版」。
+终端里一周一列：有颜色时一格一个小方块，管道和 `NO_COLOR` 下用 `· ░ ▒ ▓ █` 分档。终端画不出 3D，默认的麦门天际线也用这份格子预览；卡片本身写成 SVG，见上面「1024 特别版」。
 
 ![git mcd card](assets/card.svg)
+
+`--style receipt` 在终端里直接打印一张文字小票：
+
+![git mcd card --style receipt](assets/card-receipt.svg)
 
 ### help：对照表
 
@@ -231,7 +255,7 @@ Token 我会自己配置到 ~/.config/mcd-mcp/token，不用在对话里发给�
 
 **真的会下单吗？** 只有 `push` 并且你确认之后才会。生成的是待支付订单，付款要你自己在支付页或麦当劳 App 里完成。付款窗口是下单后 15 分钟（用真实账户实测过），不想要了就 `git mcd revert` 取消。
 
-**会读写我的代码仓库吗？** 不会。mcd-git 不碰任何 `.git` 目录，状态只放在 `~/.config/mcd-git/`。唯一会往别处写文件的是 `card`：只在你指定的位置写一个 SVG（默认当前目录的 `mcd-contributions.svg`）。
+**会读写我的代码仓库吗？** 不会。mcd-git 不碰任何 `.git` 目录，状态只放在 `~/.config/mcd-git/`。唯一会往别处写文件的是 `card`：只在你指定的位置写一个 SVG（默认当前目录的 `mcd-contributions.svg`，小票是 `mcd-receipt.svg`）。
 
 **rebase 会不会为了省钱让我多吃？** 不会。只有购物车里的东西正好凑满一个套餐时才换，不会额外加任何餐品。
 
