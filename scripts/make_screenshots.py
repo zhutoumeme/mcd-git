@@ -56,6 +56,7 @@ STEPS = [
     ("show", ["show"], None),
     ("cherry-pick", ["cherry-pick HEAD"], None),
     ("pull", ["pull"], "y"),
+    ("log-stat", ["log --stat -n 3"], None),
 ]
 
 

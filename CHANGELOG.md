@@ -12,6 +12,7 @@
 - 本机订单账本 `~/.config/mcd-git/ledger.json`（demo 另有一份，文件权限 600）：`log`、`cherry-pick`、`card` 查 `order-list` 时顺手合并最近 10 单，`show` 补上那一单的原价和优惠，`push` 成功时记一笔并关联本地 commit，`revert` 成功时标成已取消。只存下单时间、状态、餐品名和份数、原价 / 优惠 / 实付、取餐方式；写不进去也不影响原来的命令；删掉文件即清空。
 - `--demo` 补了一年的合成订单（每周 1～3 单，以工作日午饭为主，周末零星几顿早餐和下午茶），`git mcd --demo card` 直接能看到效果。
 - `git mcd pull`：领券，和 push 一样先确认。像 `git pull` 一样 fetch + merge：先用 `available-coupons` 列出麦麦省里可领的券，确认后调一次 `auto-bind-coupons` 全部领取（接口没有参数，不支持只领其中几张，摘要里会写明）。终端里问 y/N；非交互和 `--json` 只出摘要，`data.next` 给出带 `--confirm <指纹>` 的完整命令。指纹由可领券列表算出，预览 10 分钟有效、只能用一次；确认时重新拉一次列表，变了就拒绝。结果未知（超时、响应不完整、看不懂、Ctrl+C）不重试，提示先 `git mcd status` 或 `git mcd fetch` 核对。输出仿 git pull（`From mcd.cn:麦麦省`、`* [new coupon] <券名> -> coupons/<短名>`、领到 / 失败几张）；没有可领的券时输出 `Already up to date.`；`--force` 一律拒绝，`--dry-run` 只出预览。支持 `--demo` 和 `--json`。
+- `git mcd log --stat`：吃麦统计。仿 `git log --stat`，每单列出餐品行（` 巨无霸套餐 | 1 +`）和一行小结（几样、实付、用券省了多少）；最后仿 `diff --stat` 汇总几单（其中几单已取消、几单待支付）、几样、实付、省下的钱，再按早餐 / 午饭 / 下午茶 / 晚饭 / 夜宵画时段分布，列出最常点的前 3 名（`shortlog -sn` 风格）。已取消的单照常显示但不计入金额，待支付的单单独标出、也不计入，口径和 `card` 一样。数据来自本机账本，运行时先调一次 `order-list` 刷新；支持 `-n`、`--since`、`--until`（含当天）、`--demo` 和 `--json`。没有优惠明细的单会在汇总里提示，省下的钱是下限。不显示热量。
 
 ### 变化
 

@@ -101,6 +101,7 @@ git mcd card --with-savings            # 卡片上多一项「用券省下 ¥X�
 | `commit -m <说明>` | 锁定这一单：本地快照 + 核价，哈希由内容决定 | 否 |
 | `push` | **真正下单**，出支付链接和二维码；支持 `--at 12:20` 预约、`--locker` 取餐柜、`--no-tableware`、`--remark` | ✎ 会，先确认 |
 | `log --graph` | 吃麦提交历史，按时段画分支图 | 否 |
+| `log --stat` | 吃麦统计：每单列出餐品、实付和省下的钱，最后汇总单数、金额、时段分布和最常点；支持 `-n`、`--since`、`--until` | 否 |
 | `show [HEAD]` | 订单状态、取餐码、取餐柜、外送进度（只在你运行时查一次） | 否 |
 | `cherry-pick HEAD` | 再来一单：把上一单拣回购物车，换了门店也会按新菜单重新对齐 | 否 |
 | `revert` | 取消订单，必须选原因 | ✎ 会，先确认 |
@@ -130,6 +131,7 @@ git mcd --demo rebase
 git mcd --demo commit -m "发版前的午饭"
 git mcd --demo push --at 12:20 --locker --no-tableware   # 终端里会问 y/N
 git mcd --demo log --graph
+git mcd --demo log --stat                                # 吃麦统计：每单餐品、实付、省了多少，按时段汇总
 git mcd --demo show
 git mcd --demo cherry-pick HEAD
 git mcd --demo pull                                      # 领券，终端里会问 y/N
@@ -176,6 +178,12 @@ git mcd --demo card --style receipt                      # 年度吃麦小票，
 ### log --graph：吃麦提交历史
 
 ![git mcd log --graph](assets/log-graph.svg)
+
+### log --stat：吃麦统计
+
+像 `git log --stat` 一样，每单下面列出餐品行和一行小结（几样、实付、用券省了多少），最后像 `diff --stat` 一样汇总：几单（其中几单已取消、几单待支付）、几样、实付、省下的钱，再按早餐 / 午饭 / 下午茶 / 晚饭 / 夜宵画分布，列出最常点的前 3 名。已取消的单照常显示但不计入金额，待支付的单单独标出、也不计入。数据来自本机账本，运行时先调一次 `order-list` 刷新最近 10 单；`-n 20` 看更多，`--since 2026-10-01 --until 2026-10-31` 按日期筛（含当天）。`order-list` 不返回原价和优惠，没 push 或 show 过的单省了多少不知道，汇总里会提示有几单没算进去。不显示热量。
+
+![git mcd log --stat](assets/log-stat.svg)
 
 ### show：取餐码在这里
 
@@ -265,7 +273,7 @@ Token 我会自己配置到 ~/.config/mcd-mcp/token，不用在对话里发给�
 
 **为什么一单只能用一张券？** 这是 MCP 的规则：两张券会返回「暂不支持多张券使用」（600022）。
 
-**`log` 为什么最多只有 10 单？** `order-list` 没有分页参数，只返回最近 10 单。`card` 会再加上本机账本里记下的订单，用得越久越全。
+**`log` 为什么最多只有 10 单？** `order-list` 没有分页参数，只返回最近 10 单。`log --stat` 和 `card` 会再加上本机账本里记下的订单，用得越久越全。
 
 **`show` 会一直刷新订单状态吗？** 不会。只在你运行时查一次，不轮询。
 
@@ -273,7 +281,7 @@ Token 我会自己配置到 ~/.config/mcd-mcp/token，不用在对话里发给�
 
 ## 路线图
 
-- **P1**：`log --stat` 汇总最近订单的单数和金额；`stash` / `stash pop` 暂存购物车；`rebase -i` 手动挑方案；预约时段在本地先校验。
+- **P1**：`stash` / `stash pop` 暂存购物车；`rebase -i` 手动挑方案；预约时段在本地先校验。
 - **P2**：`ship --team` 发版庆功的团餐方案（下单仍走 push）；`push --at next-gap` 读本地 .ics 找会议空档。
 
 欢迎提 Issue 和 PR，新命令请保持「只读命令零副作用、写操作必须过确认闸」这条规矩。
