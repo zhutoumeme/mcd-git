@@ -25,7 +25,8 @@ from ..state import fmt_time, parse_time
 
 TOOL = "auto-bind-coupons"
 SOURCE = "mcd.cn:麦麦省"
-NOTE = "auto-bind-coupons 一次领取当前所有可领券，不能只领其中几张"
+NOTE = "会一次领取下面全部 {count} 张券（麦当劳接口不支持只领其中几张）"
+EMPTY_BIND_HINT = "git mcd fetch 核对一下：确认前列表里还有券，服务端却说一张都没发"
 REJECTED_HINT = "什么都没领；处理完上面的问题后重新 git mcd pull 预览"
 UNKNOWN_RESULT_HINT = "不确定券有没有领到：先运行 git mcd status 或 git mcd fetch 核对，不要直接重试"
 REBASE_HINT = "下单前跑一次 git mcd rebase，会自动挑最省的那张券"
@@ -93,7 +94,7 @@ def render_summary(console: Console, coupons: List[Dict[str, Any]], *, demo: boo
         if c.get("label") and c["label"] != "可领取":
             names.append(f"  {c['label']}", style=R.DIM)
     title = f"即将 pull：一次领取全部 {len(coupons)} 张可领券" + ("（demo）" if demo else "")
-    body = Group(names, Text(""), Text(NOTE, style=R.DIM))
+    body = Group(names, Text(""), Text(NOTE.format(count=len(coupons)), style=R.DIM))
     console.print(Panel(body, title=Text(title), title_align="left", border_style="yellow", expand=False))
 
 
@@ -124,8 +125,14 @@ def _bind(ctx: Context) -> Result:
     data: Dict[str, Any] = {"successCount": got, "failedCount": lost, "totalCount": result["totalCount"], "claimed": claimed, "failed": failed}
 
     if got == 0 and lost == 0:
+        # 服务端明确回了 0 张成功、0 张失败。确认前刚拉的列表里明明还有券，所以照样提示去 fetch 核对
         note = "服务端这次没有发券，可能刚刚已经领过"
-        return Result(dict(data, status="up-to-date", note=note), lambda console: console.print(f"Already up to date.（{note}）"))
+
+        def draw_empty(console: Console) -> None:
+            console.print(f"Already up to date.（{note}）")
+            R.hints(console, [EMPTY_BIND_HINT])
+
+        return Result(dict(data, status="up-to-date", note=note, next=EMPTY_BIND_HINT), draw_empty)
     if got == 0:
         # 一张都没领到：服务端明确说了失败，按 error 退出（JSON 里 ok 为 false），原因按 remote: 行列出来
         reasons = [f"{c['name'] or NO_NAME}：{c['reason'] or '没给原因'}" for c in failed]
@@ -193,7 +200,7 @@ def run(ctx: Context, args: Any) -> Result:
 
     fingerprint = _fingerprint(coupons)
     count = len(coupons)
-    summary = {"count": count, "coupons": _rows(coupons), "note": f"会一次领取全部 {count} 张券；{NOTE}"}
+    summary = {"count": count, "coupons": _rows(coupons), "note": NOTE.format(count=count)}
 
     if args.confirm:
         if fingerprint != pending.get("fingerprint"):
@@ -211,6 +218,7 @@ def run(ctx: Context, args: Any) -> Result:
 
     if ctx.interactive and not args.dry_run:
         render_summary(ctx.console, coupons, demo=ctx.demo)
+        # 和 push 的交互路径一样，回答 y 就直接领：领的是发请求那一刻的全部可领券（README / MCP_INTEGRATION 已写明）
         answer = ctx.ask(f"确认领券？{tell}[y/N] ").strip().lower()
         if answer not in ("y", "yes"):
             state["pending_pull"] = None

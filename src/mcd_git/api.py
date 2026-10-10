@@ -321,10 +321,22 @@ def _count(value: Any) -> Optional[int]:
     return None
 
 
+def bind_recognized(data: Dict[str, Any]) -> bool:
+    """successCount / failedCount 是非负整数，或 successCoupons / failedCoupons 是列表：至少有一个才算看得懂。
+    一个都没有（{}、只有 totalCount、类型全不对、字段名和 outputSchema 不一样）时，调用方按结果未知处理。"""
+    return (
+        _count(data.get("successCount")) is not None
+        or _count(data.get("failedCount")) is not None
+        or isinstance(data.get("successCoupons"), list)
+        or isinstance(data.get("failedCoupons"), list)
+    )
+
+
 def normalize_bind(data: Dict[str, Any]) -> Dict[str, Any]:
     """auto-bind-coupons 的 data。字段按 outputSchema，真实账户没调过，所以样样容错：
     列表不是列表就当空；计数缺失或不是整数就用列表长度；计数比列表短时以列表为准。
-    只留券名和失败原因，couponId / couponCode（券码）/ couponImage 都不往上传。"""
+    只留券名和失败原因，couponId / couponCode（券码）/ couponImage 都不往上传。
+    先用 bind_recognized 判断看不看得懂：一个可识别字段都没有时这里会归零，不能拿来下「没发券」的结论。"""
 
     def rows(key: str) -> List[Dict[str, Any]]:
         value = data.get(key)
@@ -500,7 +512,8 @@ class McdApi:
         """一次领取当前所有可领券（没有参数，不能只领其中几张）。"""
         approval.check("auto-bind-coupons", {})
         data = self._call("auto-bind-coupons", {}, cache=False, approval=approval)
-        if not isinstance(data, dict):
-            # 请求已经发出去了，返回却看不懂：券可能已经领到，按结果未知处理（调用方不会重试）
+        if not isinstance(data, dict) or not bind_recognized(data):
+            # 请求已经发出去了，返回却看不懂（不是对象，或者四个字段一个合法值都没有）：
+            # 券可能已经领到，按结果未知处理（调用方不会重试），不能当成「这次没发券」
             raise McdError("auto-bind-coupons 的返回看不懂", transport=True)
         return normalize_bind(data)

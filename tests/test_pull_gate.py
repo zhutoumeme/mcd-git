@@ -15,7 +15,7 @@ import pytest
 from rich.console import Console
 
 from mcd_git import gate
-from mcd_git.api import McdApi, normalize_bind
+from mcd_git.api import McdApi, bind_recognized, normalize_bind
 from mcd_git.cli import main
 from mcd_git.demo import DemoClient
 from mcd_git.errors import GitMcdError, McdError
@@ -129,6 +129,11 @@ def test_normalize_bind_shapes() -> None:
     weird = {"successCount": "lots", "failedCount": True, "totalCount": -1, "successCoupons": "A,B", "failedCoupons": [None, "x", {"couponName": "C"}]}
     assert normalize_bind(weird) == {"success": [], "failed": [{"name": "C", "reason": ""}], "successCount": 0, "failedCount": 1, "totalCount": 1}
     assert normalize_bind({"successCount": 1, "successCoupons": [{"couponName": "A"}, {"couponName": "B"}]})["successCount"] == 2
+    # 看不看得懂：四个字段至少一个合法值；否则调用方按结果未知处理，不拿归零的结果下「没发券」的结论
+    for ok in (full, {"successCount": 0}, {"failedCount": "0"}, {"successCoupons": []}, {"failedCoupons": [None]}, weird):
+        assert bind_recognized(ok), ok
+    for bad in ({}, {"totalCount": 3}, {"successCount": "lots", "successCoupons": "A,B"}, {"successCount": True, "failedCount": -1}, {"successList": [{"couponName": "A"}]}):
+        assert not bind_recognized(bad), bad
 
 
 # ---------------------------------------------------------------- 预览
@@ -140,7 +145,7 @@ def test_preview_never_claims(runner: Runner) -> None:
     summary = data["data"]["summary"]
     assert summary["count"] == 3
     assert [c["name"] for c in summary["coupons"]] == COUPONS and [c["short"] for c in summary["coupons"]] == SHORTS
-    assert "一次" in summary["note"] and "不能只领" in summary["note"]
+    assert summary["note"] == "会一次领取下面全部 3 张券（麦当劳接口不支持只领其中几张）"  # 需求原文
     fp = data["data"]["confirm"]
     assert len(fp) == 7 and data["data"]["next"] == f"git mcd pull --confirm {fp} --json"
     assert data["data"]["expiresInMinutes"] == 10
@@ -151,7 +156,7 @@ def test_preview_never_claims(runner: Runner) -> None:
     assert code == 0 and data["data"]["status"] == "confirmation_required"
     assert data["data"]["confirm"] == fp  # 同一份列表，同一个指纹
     code, out = runner.run("pull", "--dry-run", mock=True, interactive=True, answers=["y"])  # --dry-run 连问都不问
-    assert code == 0 and "即将 pull：一次领取全部 3 张可领券" in out and "不能只领其中几张" in out
+    assert code == 0 and "即将 pull：一次领取全部 3 张可领券" in out and "会一次领取下面全部 3 张券（麦当劳接口不支持只领其中几张）" in out
     assert f"用户确认无误后运行：git mcd pull --confirm {fp}" in out
     code, out = runner.run("pull", mock=True)  # 管道里（非交互）也只出摘要
     assert code == 0 and all(name in out for name in COUPONS) and "一次全部领进你的麦当劳账户" in out
@@ -324,6 +329,10 @@ def test_help(runner: Runner, capsys: pytest.CaptureFixture) -> None:
         pytest.param(_jsonrpc_error("auto-bind-coupons", -32603, "Internal error"), 1, id="jsonrpc-internal-error"),
         pytest.param(_jsonrpc_error("auto-bind-coupons", -32000, "Server error"), 1, id="jsonrpc-server-error"),
         pytest.param(_envelope("领好了"), 1, id="data-is-a-string"),
+        pytest.param(_envelope({}), 1, id="data-is-an-empty-object"),
+        pytest.param(_envelope({"totalCount": 3}), 1, id="only-total-count"),
+        pytest.param(_envelope({"successCount": "lots", "successCoupons": "A,B"}), 1, id="fields-of-the-wrong-type"),
+        pytest.param(_envelope({"successList": [{"couponName": "示例·新品尝鲜券"}], "count": 1}), 1, id="fields-not-in-schema"),
         pytest.param(mcp_result({"success": True, "code": 200, "message": "请求成功"}), 1, id="no-data"),
         pytest.param(mcp_result(text="502 Bad Gateway", structured=False), 1, id="unparseable"),
         pytest.param(KeyboardInterrupt(), 130, id="ctrl-c"),
@@ -419,7 +428,10 @@ def test_partial_and_total_failure(runner: Runner) -> None:
     runner.hooks["auto-bind-coupons"] = bound([], [], successCount=0, failedCount=0, totalCount=0)  # 服务端说这次没发券
     code, data = runner.json(*_preview(runner), mock=True)
     assert code == 0 and data["data"]["status"] == "up-to-date" and "可能刚刚已经领过" in data["data"]["note"]
-    assert runner.count("auto-bind-coupons") == 6
+    assert "git mcd fetch 核对" in data["data"]["next"]
+    code, out = runner.run(*_preview(runner), mock=True)
+    assert code == 0 and "Already up to date.（服务端这次没有发券，可能刚刚已经领过）" in out and "hint: git mcd fetch 核对" in out
+    assert runner.count("auto-bind-coupons") == 7
 
 
 # ---------------------------------------------------------------- 和 push、demo 的配合
