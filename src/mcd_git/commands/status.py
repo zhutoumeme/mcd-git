@@ -13,7 +13,7 @@ from ..context import Context, Result, remote_brief
 from ..errors import McdError
 from ..money import fmt
 from ..state import head_commit, last_order, parse_time
-from .common import index_total_hint, line_json, remote_desc, remote_url
+from .common import index_total_hint, line_json, remote_desc, remote_url, scope_gap
 
 
 def register(sub: Any, common: Any) -> None:
@@ -80,12 +80,18 @@ def run(ctx: Context, args: Any) -> Result:
             console.print("No commits yet")
         elif ahead:
             console.print(Text.assemble("Your branch is ahead of ", (f"'origin/{head.get('branch') or branch}'", R.REMOTE), " by 1 commit."))
-            if lines:
-                # 购物车里有东西时直接 push 会报 uncommitted_changes：先 amend 并进这一单，或者 reset 放弃
+            # 购物车里有东西时直接 push 会报 uncommitted_changes：先 amend 并进这一单，或者 reset 放弃；
+            # HEAD 是另一家店 / 另一种取餐方式的单时 amend 会被拒绝，改给 reset --soft HEAD~1 撤回 HEAD
+            gap = scope_gap(head["remote"], remote) if lines else None
+            if not lines:
+                console.print('  (use "git mcd push" to place the order)', style=R.DIM)
+            elif gap is None:
                 console.print('  (use "git mcd commit --amend" to add the cart to this order)', style=R.DIM)
                 console.print('  (use "git mcd reset" to drop the cart, then "git mcd push" to place the order)', style=R.DIM)
             else:
-                console.print('  (use "git mcd push" to place the order)', style=R.DIM)
+                console.print(f"  (HEAD 是{gap}，购物车没法并进去)", style=R.DIM)
+                console.print('  (use "git mcd reset" to drop the cart, then "git mcd push" to place the order)', style=R.DIM)
+                console.print('  (use "git mcd reset --soft HEAD~1" to withdraw HEAD)', style=R.DIM)
         else:
             console.print(Text.assemble("Your branch is up to date with ", (f"'origin/{head.get('branch') or branch}'", R.REMOTE), "."))
         if pay:

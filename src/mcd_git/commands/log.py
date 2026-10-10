@@ -14,6 +14,7 @@ from ..context import Context, Result
 from ..errors import GitMcdError, McdError
 from ..money import fmt
 from ..state import head_commit, last_order, order_record
+from .common import scope_gap
 
 _LANE_STYLES = ["", "red", "green", "yellow", "blue", "magenta"]
 _STATE_STYLES = {"pending": "bold yellow", "preparing": "cyan", "delivering": "cyan", "completed": "green", "cancelled": "red", "local": "yellow"}
@@ -309,8 +310,13 @@ def _show_commit(ctx: Context, commit: Dict[str, Any], decor: List[str]) -> Resu
             console.print(row)
         console.print(f"  应付 {fmt(price.get('price'))}（commit 时核价）", style="bold")
         if ctx.state.get("index"):
-            # 购物车里有东西时直接 push 会报 uncommitted_changes：先 amend 并进这一单，或者 reset 放弃
-            tips = ["还没 push，购物车里还有没 commit 的东西：git mcd commit --amend 并进这一单", "不要购物车里的：git mcd reset，再 git mcd push 下单"]
+            # 购物车里有东西时直接 push 会报 uncommitted_changes：先 amend 并进这一单，或者 reset 放弃；
+            # 它是另一家店 / 另一种取餐方式的单时 amend 会被拒绝，改给 reset --soft HEAD~1 撤回
+            gap = scope_gap(commit.get("remote"), ctx.state.get("remote"))
+            if gap is None:
+                tips = ["还没 push，购物车里还有没 commit 的东西：git mcd commit --amend 并进这一单", "不要购物车里的：git mcd reset，再 git mcd push 下单"]
+            else:
+                tips = [f"还没 push；它是{gap}，购物车没法并进去", "不要购物车里的：git mcd reset，再 git mcd push 下单", "git mcd reset --soft HEAD~1 撤回重来"]
         else:
             tips = ["还没 push：git mcd push 下单（会先确认）"]
         latest = last_order(ctx.state)

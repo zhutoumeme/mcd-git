@@ -11,6 +11,7 @@ import pytest
 
 from mcd_git import gate
 from mcd_git.api import McdApi
+from mcd_git.commands.common import scope_gap
 from mcd_git.errors import GitMcdError, McdError
 from mcd_git.mcp_client import McdMcpClient
 from mcd_git.state import CN_TZ, DEMO_NOW, now
@@ -146,6 +147,7 @@ def test_cart_changes_after_preview_block_push(runner: Runner, resolve: str) -> 
         assert detail["code"] == "uncommitted_changes" and detail["commit"] == short
         assert [x["name"] for x in detail["uncommitted"]] == ["热拿铁"]
         assert (detail["amend"], detail["discard"]) == ("git mcd commit --amend --json", "git mcd reset --json")
+        assert detail["withdraw"] == "git mcd reset --soft 'HEAD~1' --json"
     assert runner.count("create-order") == 0
 
     # 照抄 JSON 里给的命令（去掉开头的 git mcd，--json 由 runner.json 自己加）
@@ -161,6 +163,50 @@ def test_cart_changes_after_preview_block_push(runner: Runner, resolve: str) -> 
     assert runner.count("create-order") == 1
     codes = [item["productCode"] for item in runner.clients[-1].args_of("create-order")[0]["items"]]
     assert ("4001" in codes) is (resolve == "amend")  # 4001 是 demo 菜单里的热拿铁
+
+
+def test_cart_from_another_store_is_not_offered_amend(runner: Runner) -> None:
+    """真实模式下 commit 之后 init 换店：只清购物车、不动 HEAD。在新店 add 之后 commit --amend 会拒绝（HEAD 是另一家店的单），
+    所以 push 不给 amend（detail.amend 是 null），只给 reset 放弃购物车和 reset --soft HEAD~1 撤回 HEAD；
+    换店前已经预览过，预览和 --confirm 也都一单不下。commit / status / show 的提示同样不提 amend。"""
+    short = _setup(runner)  # 演示·代码港店
+    code, data = runner.json(*PUSH, mock=True)
+    assert data["data"]["status"] == "confirmation_required"
+    assert runner.run("init", "--pick", "2", mock=True)[0] == 0  # 换到 演示·提交大道店
+    assert runner.run("add", "热拿铁", mock=True)[0] == 0
+    note = "HEAD 是另一家店的单（演示·代码港店 · 到店自取），购物车没法并进去"
+    for extra in ((), ("--confirm", short)):
+        code, data = runner.json(*PUSH, *extra, mock=True)
+        assert code == 1 and data["ok"] is False and data["error"]["type"] == "error"
+        assert data["error"]["hints"] == [note, "放弃购物车：git mcd reset", "撤回 HEAD（餐品放回购物车）：git mcd reset --soft HEAD~1"]
+        detail = data["error"]["detail"]
+        assert detail["code"] == "uncommitted_changes" and detail["commit"] == short
+        assert [x["name"] for x in detail["uncommitted"]] == ["热拿铁"]
+        assert detail["amend"] is None
+        assert detail["discard"] == "git mcd reset --json"
+        assert detail["withdraw"] == "git mcd reset --soft 'HEAD~1' --json"
+    assert runner.count("create-order") == 0
+
+    code, out = runner.run("commit", "--amend", mock=True)  # 这就是不给 amend 的原因
+    assert code == 1 and "不能 amend" in out
+    code, data = runner.json("commit", "-m", "换了店", mock=True)
+    assert code == 1 and data["error"]["hints"] == [note, "不要购物车里的：git mcd reset，再 git mcd push 下单", "git mcd reset --soft HEAD~1 撤回重来"]
+    code, out = runner.run("status", mock=True)
+    assert f"  ({note})" in out and '(use "git mcd reset --soft HEAD~1" to withdraw HEAD)' in out and "--amend" not in out
+    code, out = runner.run("show", mock=True)
+    assert "hint: 还没 push；它是另一家店的单（演示·代码港店 · 到店自取），购物车没法并进去" in out and "--amend" not in out
+
+    # 照抄 withdraw：HEAD 撤回，那一单的餐品放回购物车，可以按现在这家店重新 commit
+    code, _ = runner.json(*shlex.split(detail["withdraw"])[2:-1], mock=True)
+    assert code == 0
+    code, data = runner.json("status", mock=True)
+    assert data["data"]["head"] is None and [x["name"] for x in data["data"]["index"]] == ["巨无霸套餐", "热拿铁"]
+    assert runner.count("create-order") == 0
+
+    # 同一家店换了取餐方式也一样，提示里说的是「另一种取餐方式」
+    pickup = {"storeCode": "1000001", "storeName": "演示·代码港店", "modeLabel": "到店自取", "beType": 1, "orderType": 1, "beCode": None}
+    assert scope_gap(pickup, dict(pickup)) is None
+    assert scope_gap(pickup, dict(pickup, modeLabel="麦乐送", beType=2, orderType=2, beCode="100000102")) == "另一种取餐方式的单（演示·代码港店 · 到店自取）"
 
 
 def test_fake_clock_env_only_works_in_demo() -> None:

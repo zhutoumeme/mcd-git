@@ -23,6 +23,17 @@ def same_scope(a: Optional[Dict[str, Any]], b: Optional[Dict[str, Any]]) -> bool
     return all(a.get(k) == b.get(k) for k in ("storeCode", "beType", "orderType", "beCode"))
 
 
+def scope_gap(scope: Optional[Dict[str, Any]], remote: Optional[Dict[str, Any]]) -> Optional[str]:
+    """购物车能不能 commit --amend 进这个 scope 下的 commit：判断和 commit --amend 一样（same_scope），能就返回 None；
+    不能就返回给提示用的说明，比如「另一家店的单（演示·代码港店 · 到店自取）」。"""
+    if remote and same_scope(scope, order_scope(remote)):
+        return None
+    scope = scope or {}
+    kind = "另一种取餐方式" if remote and scope.get("storeCode") == remote.get("storeCode") else "另一家店"
+    where = " · ".join(str(x) for x in (scope.get("storeName"), scope.get("modeLabel")) if x)
+    return f"{kind}的单（{where}）" if where else f"{kind}的单"
+
+
 def remote_url(remote: Dict[str, Any]) -> str:
     return f"mcd.cn:{remote.get('storeName') or remote.get('storeCode')}"
 

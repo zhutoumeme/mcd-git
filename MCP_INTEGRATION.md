@@ -120,7 +120,7 @@ sequenceDiagram
 2. 交互终端：先出确认摘要，再问 `y/N`，默认 N。
 3. 非交互（Agent、管道、`--json`）：只出摘要和下一步命令，把预览记进本地状态，不下单。
 4. `--confirm <commit 哈希>`：必须有 10 分钟内、同一 commit、同样参数的预览；重新算价后应付金额不变、下单参数指纹不变，才会调用 `create-order`。任何一项不符都拒绝，并要求重新预览。
-5. `--dry-run` 只出摘要；`--force` 一律拒绝；HEAD 已经 push 过、购物车也空着，就输出 `Everything up-to-date`；购物车里还有没 commit 的餐品（比如刚 `cherry-pick` 回来），直接报「购物车还没 commit」，不会返回 up-to-date。HEAD 还没 push、购物车里又有了改动（比如预览之后又 `add`）时，push 只会按 HEAD 下单，所以预览和 `--confirm` 都直接报错、不下单，提示 `git mcd commit --amend` 并进这一单或 `git mcd reset` 放弃改动；`--json` 里 `error.detail.code` 是 `uncommitted_changes`。
+5. `--dry-run` 只出摘要；`--force` 一律拒绝；HEAD 已经 push 过、购物车也空着，就输出 `Everything up-to-date`；购物车里还有没 commit 的餐品（比如刚 `cherry-pick` 回来），直接报「购物车还没 commit」，不会返回 up-to-date。HEAD 还没 push、购物车里又有了改动（比如预览之后又 `add`）时，push 只会按 HEAD 下单，所以预览和 `--confirm` 都直接报错、不下单，提示 `git mcd commit --amend` 并进这一单或 `git mcd reset` 放弃改动；`--json` 里 `error.detail.code` 是 `uncommitted_changes`。HEAD 是另一家店或另一种取餐方式的单时（比如 commit 之后 `init` 换了店），`commit --amend` 会拒绝，所以不提示 amend（`error.detail.amend` 为 null），只给 `git mcd reset` 放弃购物车和 `git mcd reset --soft HEAD~1` 撤回 HEAD（`error.detail.withdraw`）。
 6. `create-order` 只有在服务端明确拒绝时才提示「什么都没下单」：信封里的业务错误码、HTTP 4xx，或 JSON-RPC 层没受理这次请求（-32700 / -32600 / -32601 / -32602）。网络超时、30x、5xx、其余 JSON-RPC 错误（如 -32603 Internal error、-32000～-32099）、响应被截断、返回看不懂或没有订单号、Ctrl+C 中断，一律按结果未知处理：不自动重试，提示先 `git mcd log` 核对。
 7. 只生成待支付订单，只返回支付链接，**不代付**；付款后由用户自己运行 `git mcd show` 查取餐码，不轮询。
 8. `revert`（cancel-order）同样：必须选取消原因（1 改主意了、2 重复下单、3 点错了、4 地址电话填错、5 送达时间选错、-1 其它），预览 → 同意 → `--confirm <订单号>`。

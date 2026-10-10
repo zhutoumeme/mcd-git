@@ -148,6 +148,7 @@ def test_cart_changes_after_commit_block_push(runner: Runner) -> None:
     assert code == 1 and data["error"]["detail"]["code"] == "uncommitted_changes"
     assert data["error"]["detail"]["amend"] == "git mcd --demo commit --amend --json"
     assert data["error"]["detail"]["discard"] == "git mcd --demo reset --json"
+    assert data["error"]["detail"]["withdraw"] == "git mcd --demo reset --soft 'HEAD~1' --json"
     assert runner.count("create-order") == 0
 
 

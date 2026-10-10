@@ -20,7 +20,7 @@ from ..context import Context, Result
 from ..errors import GitMcdError, McdError
 from ..money import fmt
 from ..state import CN_TZ, fmt_time, head_commit, parse_time, verify_commit
-from .common import line_json
+from .common import line_json, scope_gap
 from .diff import match_rows
 
 
@@ -343,19 +343,27 @@ def _agent_command(ctx: Context, *argv: str) -> str:
 
 def _uncommitted_changes(ctx: Context, head: Optional[Dict[str, Any]]) -> GitMcdError:
     """购物车相对 HEAD 有没 commit 的改动。HEAD 还没 push：可以 amend 进这一单，或者 reset 放弃；
+    HEAD 是另一家店 / 另一种取餐方式的单（真实模式下 commit 之后 init 换店，HEAD 不动）时 commit --amend 会拒绝，
+    就不给 amend（detail.amend 为 null），只给 reset 放弃购物车、reset --soft HEAD~1 撤回 HEAD 两条路；
     没有 HEAD、或者 HEAD 已经下过单（比如刚 cherry-pick 回来）：只能先 commit 成新的一单。"""
     if head is None or head.get("pushed"):
         return GitMcdError("购物车还没 commit", fatal=True, hint="先 git mcd commit -m <说明>，再 git mcd push")
     short = R.short(head["id"])
+    gap = scope_gap(head.get("remote"), ctx.state.get("remote"))
+    if gap is None:
+        hint = ["想并进这一单：git mcd commit --amend", "不要这些改动：git mcd reset"]
+    else:
+        hint = [f"HEAD 是{gap}，购物车没法并进去", "放弃购物车：git mcd reset", "撤回 HEAD（餐品放回购物车）：git mcd reset --soft HEAD~1"]
     return GitMcdError(
         f"购物车里有还没 commit 的改动，这一单（{short}）不包含它们",
-        hint=["想并进这一单：git mcd commit --amend", "不要这些改动：git mcd reset"],
+        hint=hint,
         detail={
             "code": "uncommitted_changes",
             "commit": short,
             "uncommitted": [line_json(line) for line in ctx.state.get("index") or []],
-            "amend": _agent_command(ctx, "commit", "--amend"),
+            "amend": _agent_command(ctx, "commit", "--amend") if gap is None else None,
             "discard": _agent_command(ctx, "reset"),
+            "withdraw": _agent_command(ctx, "reset", "--soft", "HEAD~1"),
         },
     )
 

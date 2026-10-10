@@ -13,7 +13,7 @@ from ..context import Context, Result
 from ..errors import GitMcdError, McdError
 from ..money import fmt
 from ..state import fmt_time, head_commit, make_commit
-from .common import line_json, order_scope, same_scope
+from .common import line_json, order_scope, same_scope, scope_gap
 
 
 def register(sub: Any, common: Any) -> None:
@@ -50,8 +50,11 @@ def run(ctx: Context, args: Any) -> Result:
     else:
         if head and not head.get("pushed"):
             if lines:
-                # 购物车里有东西时直接 push 会报 uncommitted_changes，所以先给 amend / reset，不再让人先去 push
-                hint = ["git mcd commit --amend 把购物车并进这一单", "不要购物车里的：git mcd reset，再 git mcd push 下单", "git mcd reset --soft HEAD~1 撤回重来"]
+                # 购物车里有东西时直接 push 会报 uncommitted_changes，所以先给 amend / reset，不再让人先去 push；
+                # HEAD 是另一家店 / 另一种取餐方式的单时，上面 --amend 分支里同样的 same_scope 判断会拒绝，就不提 amend
+                gap = scope_gap(head["remote"], remote)
+                first = "git mcd commit --amend 把购物车并进这一单" if gap is None else f"HEAD 是{gap}，购物车没法并进去"
+                hint = [first, "不要购物车里的：git mcd reset，再 git mcd push 下单", "git mcd reset --soft HEAD~1 撤回重来"]
             else:
                 hint = ["先 git mcd push 下单", "或 git mcd commit --amend 把购物车并进去", "或 git mcd reset --soft HEAD~1 撤回重来"]
             raise GitMcdError(f"HEAD {R.short(head['id'])}（{head['message']}）还没 push", hint=hint)
