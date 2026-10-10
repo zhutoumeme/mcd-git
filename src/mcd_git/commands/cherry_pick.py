@@ -66,7 +66,7 @@ def run(ctx: Context, args: Any) -> Result:
         short = R.short(head["id"])
         raise GitMcdError(
             f"HEAD {short}（{head['message']}）还没 push，它本来就是这一单，不用 cherry-pick",
-            hint=["直接下单：git mcd push", "想多点一份：git mcd add <餐品> -n 2，再 git mcd commit --amend"],
+            hint=["直接下单：git mcd push", "想多点一份：git mcd add <餐品>，再 git mcd commit --amend"],
             detail={"code": "empty_cherry_pick", "commit": short},
         )
     if commit is not None and same_scope(commit.get("remote"), remote):

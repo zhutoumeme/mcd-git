@@ -211,7 +211,7 @@ def test_cherry_pick_unpushed_head_is_refused(runner: Runner) -> None:
     assert code == 1
     assert f"error: HEAD {short}（午饭）还没 push，它本来就是这一单，不用 cherry-pick" in out
     assert "hint: 直接下单：git mcd push" in out
-    assert "hint: 想多点一份：git mcd add <餐品> -n 2，再 git mcd commit --amend" in out
+    assert "hint: 想多点一份：git mcd add <餐品>，再 git mcd commit --amend" in out
     for target in ("HEAD", short):  # 写哈希也一样
         code, data = runner.json("--demo", "cherry-pick", target)
         assert code == 1 and data["ok"] is False and data["error"]["type"] == "error"
