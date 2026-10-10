@@ -51,7 +51,7 @@ FAVORITE_STORES: List[Dict[str, Any]] = [
 ]
 
 ADDRESSES: List[Dict[str, Any]] = [
-    {"addressId": "8000000000000000000000000001", "contactName": "张", "phone": "138****0000", "fullAddress": "示例市示例区码农路 1024 号 1 栋"},
+    {"addressId": "8000000000000000000000000001", "contactName": "示例", "phone": "138****0000", "fullAddress": "示例市示例区码农路 1024 号 1 栋"},
 ]
 
 DELIVERY_STORES: List[Dict[str, Any]] = [

@@ -343,7 +343,7 @@ class DemoClient:
                 "expectDeliveryTime": expect.strftime(TIME_FMT),
                 "deliveryAddress": "示例市示例区码农路 1024 号",
                 "addressDetail": "1 栋",
-                "customerNickname": "张",
+                "customerNickname": "示例",
                 "mobilePhone": "138****0000",
             }
         db["orders"].insert(0, order)

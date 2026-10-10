@@ -54,6 +54,10 @@ def run(ctx: Context, args: Any) -> Result:
         coupons = {"error": err.message, "code": err.code}
 
     pay = pending_payment(ctx)
+    if pay:
+        # HEAD 已经换成新的、还没 push 的 commit 时，git mcd show 看到的是快照，提示里要带上订单号
+        head_order = (head.get("pushed") or {}).get("orderId") if head else None
+        pay["show"] = "git mcd show" if head_order == pay["orderId"] else f"git mcd show {pay['orderId']}"
     data = {
         "branch": ctx.branch,
         "remote": remote_brief(remote),
@@ -82,7 +86,7 @@ def run(ctx: Context, args: Any) -> Result:
         if pay:
             deadline = (pay.get("expirePayTime") or "")[11:16]
             console.print(Text.assemble(("订单 " + R.mask_order_id(pay["orderId"]) + f" 待支付，请在 {deadline} 前付款", "bold yellow")))
-            console.print('  (付完运行 "git mcd show" 查看取餐码)', style=R.DIM)
+            console.print(f'  (付完运行 "{pay["show"]}" 查看取餐码)', style=R.DIM)
         console.print()
         if lines:
             console.print("Changes to be committed:")

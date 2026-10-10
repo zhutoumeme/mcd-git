@@ -86,6 +86,22 @@ def test_full_demo_flow(runner: Runner) -> None:
     assert code == 0 and "commit 时核价" in out and "git mcd show 1024" in out
 
 
+def test_pending_hint_points_at_the_pushed_order(runner: Runner) -> None:
+    runner.run("--demo", "add", "热拿铁")
+    runner.run("--demo", "commit", "-m", "下午茶")
+    code, data = runner.json("--demo", "push")
+    short = data["data"]["confirm"]
+    code, data = runner.json("--demo", "push", "--confirm", short)
+    order_id = data["data"]["orderId"]
+    code, data = runner.json("--demo", "status")
+    assert data["data"]["pendingPayment"]["show"] == "git mcd show"
+    # 没付款、也没 show，就又拣了一单并 commit：提示要带上订单号
+    runner.run("--demo", "cherry-pick", "HEAD")
+    runner.run("--demo", "commit", "-m", "再来一杯")
+    code, out = runner.run("--demo", "status")
+    assert f'付完运行 "git mcd show {order_id}" 查看取餐码' in out
+
+
 def test_push_to_closed_store_fails_like_git(runner: Runner) -> None:
     runner.run("--demo", "add", "巨无霸")
     runner.run("--demo", "commit", "-m", "夜里")
