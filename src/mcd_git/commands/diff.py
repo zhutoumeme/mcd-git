@@ -11,7 +11,7 @@ from rich.console import Console
 from rich.text import Text
 
 from .. import render as R
-from ..cart import Line, items_of, strip_coupon, summary
+from ..cart import Line, cart_fingerprint, items_of, strip_coupon, summary
 from ..context import Context, Result
 from ..money import fmt
 from ..state import head_commit
@@ -136,12 +136,20 @@ def run(ctx: Context, args: Any) -> Result:
             remote = head["remote"]
             note = f"（购物车是空的，显示 HEAD {R.short(head['id'])} {head['message']}）"
         else:
-            return Result({"empty": True, "rows": []}, None)
+
+            def draw_empty(console: Console) -> None:
+                # 和 git diff 一样空输出；只在终端里给一行淡色提示，管道和脚本拿到的仍是空
+                if console.is_terminal:
+                    console.print(Text("购物车是空的：git mcd add <餐品>", style=R.DIM))
+
+            return Result({"empty": True, "rows": []}, draw_empty)
     diff = build_diff(ctx.api(), remote, lines)
+    # rebase 之后购物车没再变（指纹一致）就不再提示 rebase
+    suggest_rebase = not diff["coupon"] and ctx.state.get("rebased") != cart_fingerprint(lines)
 
     def draw(console: Console) -> None:
         render_diff(console, remote, diff, note=note)
-        if not diff["coupon"]:
+        if suggest_rebase:
             R.hints(console, ["试试 git mcd rebase：自动凑套餐、挑最省的券"])
 
     return Result(dict(diff, labels=list(diff["labels"])), draw)

@@ -1,4 +1,6 @@
-"""0.2.1 购物车与菜单：条件优惠价不当单价（plan.md T17～T18）。
+"""0.2.1 购物车与菜单：条件优惠价不当单价、ls-remote 分组 / 列宽 / 分页、rebase 券说明、diff 提示（plan.md T17～T22）。
+
+T23（券名规范化）不需要：真实探测里 5 张券按 code 或规范化全名都能对上菜单，没有固定后缀差异，_same 没改。
 
 夹具在 demo 合成菜单上加一项「随单购麦金卡优惠」（current ¥37 / original ¥66，形态照 2026-10-11 真实探测），
 中可乐本来就是「促销优惠」（现价 ¥8 / 原价 ¥10）。名字和 code 都是编的或 demo 里的。
@@ -17,9 +19,13 @@ import pytest
 from rich.cells import cell_len
 from rich.console import Console
 
-from mcd_git.api import Menu
+from mcd_git.api import McdApi, Menu, normalize_store
+from mcd_git.cart import build_line
 from mcd_git.cli import main
-from mcd_git.demo import world
+from mcd_git.context import make_remote
+from mcd_git.demo import DemoClient, world
+from mcd_git.optimizer import plan
+from mcd_git.state import DEMO_NOW
 
 from .conftest import FIXED_NOW, Runner, mcp_result
 
@@ -165,10 +171,12 @@ def test_old_state_lines_without_offer_note_still_work(runner: Runner) -> None:
 # ---------------------------------------------------------------- T19 ls-remote 分组 / 列宽 / 分页
 
 
-def _tty_run(runner: Runner, *argv: str, height: int = 10, width: int = 120) -> Tuple[int, str]:
+def _tty_run(runner: Runner, *argv: str, height: int = 10, width: int = 120, mock: bool = True) -> Tuple[int, str]:
+    """像在真终端里跑（force_terminal）：Runner.run 的 Console 不是终端，测不到分页器和终端专属提示。"""
     buf = io.StringIO()
     console = Console(file=buf, force_terminal=True, height=height, width=width, highlight=False, markup=False, emoji=False)
-    code = main(list(argv), console=console, env=dict(os.environ), client_factory=runner.factory, input_fn=lambda p: "", interactive=False, now=FIXED_NOW)
+    factory = runner.factory if mock else None
+    code = main(list(argv), console=console, env=dict(os.environ), client_factory=factory, input_fn=lambda p: "", interactive=False, now=FIXED_NOW)
     return code, buf.getvalue()
 
 
@@ -236,3 +244,87 @@ def test_ls_remote_pages_only_on_tty_longer_than_screen(runner: Runner, pager_ca
     assert code == 0 and pager_calls == [True]
     code, _ = _tty_run(runner, "ls-remote", "--json", height=10)
     assert code == 0 and pager_calls == [True]
+
+
+# ---------------------------------------------------------------- T20 rebase 券
+
+
+REMOTE = make_remote(normalize_store(world.PICKUP_STORES[0]), "pickup")
+
+
+def test_coupon_matching_product_need_not_be_first(tmp_path: Any) -> None:
+    line, _ = build_line(line_id="line000", code="2001", menu_item=world.CATALOG["pickup"]["2001"], detail=world.detail_payload("pickup", "2001"))
+    coupon = {
+        "title": "示例·多商品券",
+        "couponId": "c0ffee00000000000000000000000002",  # demo 世界里中薯条券的 id / 码，算价才认
+        "couponCode": "DEMO0002",
+        "start": None,
+        "end": None,
+        "products": [{"code": "8888", "name": "购物车里没有的东西"}, {"code": "2001", "name": "中薯条"}],
+    }
+    api = McdApi(DemoClient(tmp_path, now=DEMO_NOW))
+    counter = iter(range(1000))
+    result = plan(None, api, REMOTE, [line], api.menu(REMOTE), [coupon], new_id=lambda code: f"new{next(counter):04d}")
+    assert result["changed"] and result["lines"][0]["coupon"]["title"] == "示例·多商品券"
+    assert result["after"] == 600 and result["calls"] == 2
+    assert result["coupons"] == {"available": 1, "matched": 1, "unmatched": []}
+
+
+def test_rebase_explains_when_no_coupon_fits(runner: Runner) -> None:
+    assert runner.run("--demo", "add", "菠萝派")[0] == 0
+    code, out = runner.run("--demo", "rebase")
+    assert code == 0 and "is up to date" in out
+    assert "本店 3 张券都对不上购物车里的餐品（券里是：巨无霸套餐、中薯条、热拿铁）" in out
+    code, data = runner.json("--demo", "rebase")
+    stat = data["data"]["coupons"]
+    assert stat["available"] == 3 and stat["matched"] == 0
+    assert [c["products"] for c in stat["unmatched"]] == [["巨无霸套餐"], ["中薯条"], ["热拿铁"]]
+
+
+def test_rebase_stays_quiet_when_a_coupon_fits(runner: Runner) -> None:
+    assert runner.run("--demo", "add", "巨无霸", "中薯条", "中可乐", "--no-pickle")[0] == 0
+    code, data = runner.json("--demo", "rebase")
+    assert code == 0 and data["data"]["coupons"]["matched"] >= 1
+    assert runner.run("--demo", "reset", "ORIG_HEAD")[0] == 0
+    code, out = runner.run("--demo", "rebase")
+    assert code == 0 and "都对不上" not in out
+
+
+# ---------------------------------------------------------------- T21 rebase 之后 diff 不再提示
+
+
+REBASE_HINT = "试试 git mcd rebase"
+
+
+def test_diff_stops_suggesting_rebase_after_up_to_date_rebase(runner: Runner) -> None:
+    assert runner.run("--demo", "add", "菠萝派")[0] == 0
+    assert REBASE_HINT in runner.run("--demo", "diff")[1]
+    assert "is up to date" in runner.run("--demo", "rebase")[1]
+    code, out = runner.run("--demo", "diff")
+    assert code == 0 and "菠萝派" in out and REBASE_HINT not in out
+    assert runner.run("--demo", "add", "菠萝派")[0] == 0  # 购物车变了，又该提示
+    assert REBASE_HINT in runner.run("--demo", "diff")[1]
+
+
+def test_diff_stops_suggesting_rebase_after_rewrite_without_coupon(runner: Runner) -> None:
+    assert runner.run("--demo", "add", "巨无霸", "中薯条", "中可乐")[0] == 0
+    code, out = runner.run("--demo", "rebase", "--no-coupon")
+    assert code == 0 and "Successfully rebased" in out
+    code, out = runner.run("--demo", "diff")
+    assert code == 0 and "巨无霸套餐" in out and "券：" not in out and REBASE_HINT not in out
+    assert runner.run("--demo", "restore", "巨无霸套餐")[0] == 0
+    assert runner.run("--demo", "add", "菠萝派")[0] == 0
+    assert REBASE_HINT in runner.run("--demo", "diff")[1]
+
+
+# ---------------------------------------------------------------- T22 空购物车 diff
+
+
+def test_empty_diff_is_silent_off_tty_and_hints_on_tty(runner: Runner) -> None:
+    code, out = runner.run("--demo", "diff")
+    assert code == 0 and out == ""
+    code, data = runner.json("--demo", "diff")
+    assert code == 0 and data["data"] == {"empty": True, "rows": []}
+    code, out = _tty_run(runner, "--demo", "diff", mock=False)
+    assert code == 0 and "购物车是空的：git mcd add <餐品>" in out
+    assert "hint:" not in out

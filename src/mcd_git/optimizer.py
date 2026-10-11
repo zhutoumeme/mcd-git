@@ -124,15 +124,23 @@ def _squash(
     return Candidate(rest + others + made, ops, label)
 
 
+def _coupon_targets(base: Candidate, coupon: Dict[str, Any]) -> List[Tuple[Dict[str, Any], int, Line]]:
+    """券的每个商品各自找购物车里第一行对得上的（券可能有多个 products，能用的不一定是第一个）。"""
+    targets = []
+    for product in coupon.get("products") or []:
+        if not product:
+            continue
+        for idx, line in enumerate(base.lines):
+            if not line.get("coupon") and _same(product, line):
+                targets.append((product, idx, line))
+                break
+    return targets
+
+
 def _with_coupon(
     api: McdApi, remote: Dict[str, Any], menu: Menu, base: Candidate, coupon: Dict[str, Any], new_id: Any, detail_budget: List[int]
 ) -> Optional[Candidate]:
-    product = (coupon.get("products") or [None])[0]
-    if not product:
-        return None
-    for idx, line in enumerate(base.lines):
-        if line.get("coupon") or not _same(product, line):
-            continue
+    for product, idx, line in _coupon_targets(base, coupon):
         single_unit = copy.deepcopy(line)
         single_unit["qty"] = 1
         if str(product["code"]) == str(line["code"]):
@@ -145,7 +153,7 @@ def _with_coupon(
             try:
                 detail = api.meal_detail(remote, product["code"])
             except McdError:
-                return None
+                continue  # 这个券商品查不到详情，试券的下一个商品
             custom = line.get("custom") or {}
             choose = [c["name"] for r in line.get("rounds") or [] for c in r["items"]]
             couponed, _ = build_line(
@@ -211,12 +219,20 @@ def plan(
 
     queue: List[Candidate] = list(squashes)
     detail_budget = [MAX_COUPON_DETAILS]
+    matched = set()
     for shape in squashes + [base]:
-        for coupon in coupons:
+        for n, coupon in enumerate(coupons):
             candidate = _with_coupon(api, remote, menu, shape, coupon, new_id, detail_budget)
+            if candidate:
+                matched.add(n)
             if candidate and candidate.key not in seen:
                 seen.add(candidate.key)
                 queue.append(candidate)
+    unmatched = [
+        {"title": coupon.get("title") or "", "products": [str(p.get("name") or "") for p in coupon.get("products") or [] if p and p.get("name")]}
+        for n, coupon in enumerate(coupons)
+        if n not in matched
+    ]
 
     tried = [base]
     capped = False
@@ -265,4 +281,6 @@ def plan(
         "capped": capped,
         "rejected": [{"label": c.label, "error": c.error} for c in tried if c.error],
         "overBudget": budget is not None and (best.price or 0) > budget,
+        # 券用不上的原因：available 张券里只有 matched 张对得上购物车里的餐品
+        "coupons": {"available": len(coupons), "matched": len(matched), "unmatched": unmatched},
     }

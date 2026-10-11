@@ -8,6 +8,8 @@
 from __future__ import annotations
 
 import copy
+import hashlib
+import json
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from .money import fmt, parse_diff_price
@@ -241,6 +243,12 @@ def line_item(line: Line) -> Dict[str, Any]:
 
 def items_of(lines: Sequence[Line]) -> List[Dict[str, Any]]:
     return [line_item(line) for line in lines]
+
+
+def cart_fingerprint(lines: Sequence[Line]) -> str:
+    """购物车指纹：算价 items + 每行用的券。rebase 结束时记下来，diff 据此判断要不要再提示 rebase。"""
+    payload = [items_of(lines), [(line.get("coupon") or {}).get("couponId") for line in lines]]
+    return hashlib.sha1(json.dumps(payload, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()
 
 
 def strip_coupon(line: Line) -> Line:
