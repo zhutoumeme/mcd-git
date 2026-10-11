@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import io
 import json
+import os
 import re
 import xml.etree.ElementTree as ET
 from datetime import date, timedelta
@@ -112,7 +113,7 @@ def test_skyline_stays_under_100kb_even_when_every_day_is_busy() -> None:
 
 
 def test_receipt_top5_order_truncation_and_ring() -> None:
-    long_name = "超级无敌豪华双层芝士安格斯厚牛堡大套餐配薯条"
+    long_name = "超级无敌豪华双层芝士安格斯厚牛堡大套餐配薯条和可乐再加一份麦乐鸡块和甜品派组合装"
     entries = (
         [_order("2026-09-01", "菠萝派", 3)]
         + [_order("2026-09-02", long_name, 5)]
@@ -125,7 +126,7 @@ def test_receipt_top5_order_truncation_and_ring() -> None:
     _assert_self_contained(svg)
     texts = _texts(svg)
     rows = [t for t in texts if re.match(r"^\s*\d+  ", t)]
-    clipped = card_receipt.item_rows(model)[0][1]
+    clipped = card_receipt.item_rows(model, card_receipt.SVG_NAME_CELLS)[0][1]
     assert clipped.endswith("…") and len(clipped) < len(long_name) and long_name not in "".join(texts)  # desc 里保留全名给读屏
     assert rows == [f"  5  {clipped}", "  4  巨无霸套餐", "  3  菠萝派", "  2  热拿铁", "  2  美式咖啡"]  # 次数多的在前，一样多按名字；第 6 个不上票
     assert "中薯条" not in svg
@@ -253,6 +254,48 @@ def test_receipt_terminal_narrow_window() -> None:
     assert any(line.strip() == "每个点是一天 · @ 是 10-24" for line in full)
 
 
+def test_receipt_long_names_clip_at_layout_limit() -> None:
+    assert (card_receipt.SVG_NAME_CELLS, card_receipt.TERM_NAME_CELLS) == (31, 36)
+    forty = "麦" * 20 + "当劳双层吉士汉堡大套餐配中薯条和可乐加冰"  # 40 个汉字
+    mixed = "McCafé 麦咖啡 Oat Milk Latte 冰燕麦奶铁 Large 大杯"
+    exact_svg = "冰燕麦奶铁大杯双份浓缩少冰少糖x"  # 15 个汉字 + 1 个 ASCII = 31 格
+    exact_term = "冰燕麦奶铁大杯双份浓缩少冰少糖去奶盖"  # 18 个汉字 = 36 格
+    assert len(forty) == 40 and cell_len(exact_svg) == 31 and cell_len(exact_term) == 36
+    entries = (
+        [_order("2026-09-01", forty, 5), _order("2026-09-02", mixed, 4)]
+        + [_order("2026-09-03", exact_svg, 3), _order("2026-09-04", exact_term, 2)]
+        + [_order("2026-09-07", "麦辣鸡腿堡", 1)]
+    )
+    model = card.build(entries, today=TODAY, with_savings=False, demo=False, adaptive=True)
+    svg = card_receipt.render_svg(model)
+    _assert_self_contained(svg)
+    rows = [t for t in _texts(svg) if re.match(r"^\s*\d+  ", t)]
+    assert len(rows) == 5
+    names = [row[5:] for row in rows]
+    for row, name in zip(rows, names):
+        assert cell_len(name) <= card_receipt.SVG_NAME_CELLS
+        assert card_receipt.X0 + cell_len(row) * card_receipt.CHAR_W <= card_receipt.X1 - card_receipt.FREQ_BAR - 4  # 不压 FREQ 条
+    assert names[0].endswith("…") and names[1].endswith("…") and names[2] == exact_svg  # 恰好等于阈值不截断
+    assert names[3].endswith("…") and names[4] == "麦辣鸡腿堡"
+    assert forty in ET.fromstring(svg).find(SVG + "desc").text  # desc 保留全名给读屏
+
+    lines = _receipt_terminal(model)
+    items = [line for line in lines if re.match(r"^\s+\d+  \S", line) and "▮" in line]
+    assert len(items) == 5
+    for line in items:
+        assert cell_len(line) == card_receipt.WIDTH and re.search(r"\S {2,}▮", line)  # 名字和条之间至少两个空格
+    assert "…" in items[0] and "…" in items[1] and exact_svg in items[2] and exact_term in items[3]  # 终端 36 格
+    assert card_receipt.barcode_bits(model) == card_receipt.barcode_bits(card.build(entries, today=TODAY, with_savings=False, demo=False, adaptive=True))
+
+
+def test_card_terminal_preview_shows_long_top_item() -> None:
+    name = "麦咖啡冰燕麦奶铁大杯双份浓缩少冰配原味板烧鸡腿麦满分"  # 120 列下 tiles 一行放得下
+    model = card.build([_order("2026-10-12", name)], today=TODAY, with_savings=False, demo=False, adaptive=True)
+    console = Console(file=io.StringIO(), width=120, color_system=None, force_terminal=False)
+    card.render_terminal(console, model)
+    assert f"最常点 {name}" in console.file.getvalue()
+
+
 @pytest.mark.parametrize("style", STYLES)
 def test_money_only_with_savings(style: str) -> None:
     entries = [_order("2026-10-12", discount=500), _order("2026-10-13"), _order("2026-10-14", discount=None)]
@@ -305,9 +348,9 @@ def test_terminal_previews(runner: Runner, tmp_path: Path) -> None:
 def test_style_defaults_and_bad_style(runner: Runner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
     code, data = runner.json("--demo", "card")
-    assert code == 0 and data["data"]["style"] == "skyline" and data["data"]["path"] == "mcd-contributions.svg"
+    assert code == 0 and data["data"]["style"] == "skyline" and data["data"]["path"] == os.path.abspath(tmp_path / "mcd-contributions.svg")
     code, data = runner.json("--demo", "card", "--style", "receipt")
-    assert code == 0 and data["data"]["path"] == "mcd-receipt.svg" and (tmp_path / "mcd-receipt.svg").exists()
+    assert code == 0 and data["data"]["path"] == os.path.abspath(tmp_path / "mcd-receipt.svg") and (tmp_path / "mcd-receipt.svg").exists()
     code, _ = runner.run("--demo", "card", "--style", "3d")
     assert code == 129
 

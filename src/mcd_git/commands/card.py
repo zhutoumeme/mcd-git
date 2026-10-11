@@ -3,10 +3,12 @@
 三种样式（--style）：skyline 麦门天际线（默认，等距 3D 汉堡，贴 GitHub 主页）、receipt 年度吃麦小票（竖版，发朋友圈）、
 grid 平面格子（0.2.0 最早那版，行为不变）。
 窗口：skyline / receipt 从最早一单所在的周画到今天（最少 12 周、最多 53 周），grid 固定 53 周。
+写到哪里：终端显示完整路径（家目录换成 ~），--json 的 path 是绝对路径。
 只读：不改动账户。真实模式调一次 order-list（最近 10 单）刷新本机账本再出图，不轮询；格子来自本机账本，记得越久越全。
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any, Callable, Dict, Optional
 
@@ -99,8 +101,8 @@ def run(ctx: Context, args: Any) -> Result:
         return Result({"status": "empty", "style": style, "path": None, "bytes": 0, "stats": stats, "days": {}, "warning": warning}, draw_empty)
 
     raw = str(args.output or (RECEIPT_OUTPUT if style == "receipt" else DEFAULT_OUTPUT))
-    path = Path(raw).expanduser()
-    shown = display_path(path) if path.is_absolute() else raw
+    path = Path(os.path.abspath(Path(raw).expanduser()))  # 规范化成绝对路径（去掉 .. ），不解析符号链接
+    shown = display_path(path)  # 终端里家目录换成 ~；--json 给绝对路径
     if not path.parent.is_dir():
         raise GitMcdError(f"写不了 {shown}：目录不存在", fatal=True, hint="先建好目录，或者用 -o 换个地方")
     payload = RENDERERS[style](model).encode("utf-8")
@@ -135,4 +137,4 @@ def run(ctx: Context, args: Any) -> Result:
         lines.append("别放进 GitHub Actions 定时跑：Token 不能进 CI，MCP 规则也不允许自动化调用")
         R.hints(console, lines)
 
-    return Result({"status": "written", "style": style, "path": shown, "bytes": size, "stats": stats, "days": model["days"], "warning": warning}, draw)
+    return Result({"status": "written", "style": style, "path": str(path), "bytes": size, "stats": stats, "days": model["days"], "warning": warning}, draw)

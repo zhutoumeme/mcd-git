@@ -1,9 +1,9 @@
 """git mcd card --style receipt：年度吃麦小票。竖版，热敏纸底色、上下锯齿边、等宽字体，适合发朋友圈 / 小红书。
 
-- 商品行是最常点 TOP 5 和次数，右边画频次条，过长的餐品名用省略号截断；中间一块最多 53 × 7 的点阵热力图
+- 商品行是最常点 TOP 5 和次数，右边画频次条，餐品名放到版面上限（SVG_NAME_CELLS / TERM_NAME_CELLS）再长才用省略号截断；中间一块最多 53 × 7 的点阵热力图
   （窄窗口收窄居中），10-24 在窗口里才用红圈标出；
   时段分布只列有数据的时段；TOTAL 只有单数，加了 --with-savings 才在上面多一行「用券省下 ¥X」。
-- 条形码只是装饰：由统计数据的 sha1 确定性地生成，水平居中。
+- 条形码只是装饰：由统计数据（餐品用全名）的 sha1 确定性地生成，水平居中。
 - 小票是一个「物件」：浅色 / 深色主题下纸都是白的，只有外框背景跟着 prefers-color-scheme 变。
 - 终端里打印同样内容的等宽文字小票（render_terminal）。
 """
@@ -25,11 +25,13 @@ from .money import fmt
 PAPER = 440
 X0, X1 = 34, PAPER - 34
 MARGIN = 20
-NAME_CELLS = 22  # 商品名最多占 22 个等宽格（中文一个字两格），再长就截断加「…」
 FREQ_BAR = 80
 SLOT_BAR = 120
 FULL_WEEKS = 53  # 满窗口：点阵铺满整行，坐标和以前一样
 CELL_MAX = 12  # 窄窗口点阵每格最宽 12px，整体居中
+CHAR_W = 13 * 0.6  # 13px 等宽字体一个 ASCII 格约 7.8px；中文按两格估（实际约 13px，偏保守）
+# 商品名最多占几个等宽格（中文一个字两格），再长就截断加「…」：SVG 里名字从「  N  」后面起，停在最长 FREQ 条左边 6px 之前
+SVG_NAME_CELLS = int((X1 - FREQ_BAR - 6 - X0 - 5 * CHAR_W) // CHAR_W)  # = 31
 
 _MONO = 'ui-monospace,"SF Mono",Menlo,Consolas,"PingFang SC","Microsoft YaHei","Noto Sans Mono CJK SC",monospace'
 _CSS = (
@@ -57,9 +59,10 @@ def branch_label(model: Dict[str, Any]) -> str:
     return model["topSlot"]["slot"] if model["topSlot"] else "—"
 
 
-def item_rows(model: Dict[str, Any]) -> List[Tuple[int, str]]:
-    """TOP 5：（次数，截断后的名字），顺序同 stats.top_items（次数多的在前，一样多按名字排）。"""
-    return [(row["count"], R.clip(row["name"], NAME_CELLS)) for row in model["topItems"][:5]]
+def item_rows(model: Dict[str, Any], width: int) -> List[Tuple[int, str]]:
+    """TOP 5：（次数，截断到 width 格的名字），顺序同 stats.top_items（次数多的在前，一样多按名字排）。
+    SVG 用 SVG_NAME_CELLS，终端用 TERM_NAME_CELLS。"""
+    return [(row["count"], R.clip(row["name"], width)) for row in model["topItems"][:5]]
 
 
 def slot_rows(model: Dict[str, Any]) -> List[Tuple[str, int]]:
@@ -93,7 +96,7 @@ def barcode_bits(model: Dict[str, Any]) -> str:
     """装饰条形码的位串：统计摘要的 sha1，同样的数据永远是同一根码。"""
     seed = "|".join(
         [model["window"]["start"], model["window"]["end"], str(model["total"])]
-        + [f"{n}:{name}" for n, name in item_rows(model)]
+        + [f"{row['count']}:{row['name']}" for row in model["topItems"][:5]]  # 用全名：终端和 SVG 截断长度不同，码要一样
         + [f"{k}:{v}" for k, v in sorted(model["slots"].items())]
     )
     digest = hashlib.sha1(seed.encode("utf-8")).hexdigest()
@@ -129,7 +132,7 @@ def render_svg(model: Dict[str, Any]) -> str:
     text("QTY  ITEM", cls="i b")
     text("FREQ", X1, anchor="end", cls="i b")
     y += 22
-    rows = item_rows(model)
+    rows = item_rows(model, SVG_NAME_CELLS)
     peak = max([n for n, _ in rows] or [1])
     for n, name in rows:
         text(f"{n:>3}  {name}")
@@ -224,6 +227,7 @@ def render_svg(model: Dict[str, Any]) -> str:
 # ---------------------------------------------------------------- 终端
 
 WIDTH = 57  # 53 个点 + 两边各留两格
+TERM_NAME_CELLS = WIDTH - 4 - 5 - 2 - 10  # 两边留白、「  N  」、至少两个空格、FREQ 条最长 10 格：= 36
 
 
 def _line(left: str, right: str = "") -> str:
@@ -256,7 +260,7 @@ def render_terminal(console: Console, model: Dict[str, Any]) -> None:
     show(_line(f"DATE    {model['today']}", f"HEAD    {head_label(model)}"))
     show(dashed)
     show(_line("QTY  ITEM", "FREQ"), ("bold " + ink).strip())
-    rows = item_rows(model)
+    rows = item_rows(model, TERM_NAME_CELLS)
     peak = max([n for n, _ in rows] or [1])
     for n, name in rows:
         show(_line(f"{n:>3}  {name}", "▮" * max(1, round(n * 10 / peak))))

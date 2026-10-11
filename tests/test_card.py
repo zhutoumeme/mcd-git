@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 import re
 import xml.etree.ElementTree as ET
 from collections import Counter
@@ -303,13 +304,39 @@ def test_demo_card_terminal_preview(runner: Runner, tmp_path: Path) -> None:
 def test_card_default_output_and_help(runner: Runner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture) -> None:
     monkeypatch.chdir(tmp_path)  # 默认写到当前目录：换到临时目录里试，绝不往仓库里写
     code, data = runner.json("--demo", "card")
-    assert code == 0 and data["data"]["path"] == "mcd-contributions.svg"
+    assert code == 0 and data["data"]["path"] == os.path.abspath(tmp_path / "mcd-contributions.svg")
     assert (tmp_path / "mcd-contributions.svg").stat().st_size == data["data"]["bytes"]
     code, data = runner.json("--demo", "card", "-o", str(tmp_path / "nope" / "c.svg"))
     assert code == 128 and "目录不存在" in data["error"]["message"]
     code, _ = runner.run("card", "-h")
     help_text = capsys.readouterr().out
     assert code == 0 and "--with-savings" in help_text and "-o" in help_text and "只读" in help_text
+
+
+def test_card_shows_full_output_path(runner: Runner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    home = tmp_path / "home"  # conftest 把 HOME 指到这里
+    home.mkdir()
+    (home / "sub").mkdir()
+    monkeypatch.chdir(home)
+    code, out = runner.run("--demo", "card")
+    assert code == 0 and "已写入 ~/mcd-contributions.svg（" in out
+    code, data = runner.json("--demo", "card")
+    path = data["data"]["path"]
+    assert code == 0 and os.path.isabs(path) and path == os.path.abspath(home / "mcd-contributions.svg") and Path(path).is_file()
+    code, out = runner.run("--demo", "card", "--style", "receipt", "-o", "sub/../x.svg")  # 规范化掉 ..
+    assert code == 0 and "已写入 ~/x.svg（" in out and (home / "x.svg").is_file()
+    code, data = runner.json("--demo", "card", "-o", "sub/../x.svg")
+    assert code == 0 and data["data"]["path"] == os.path.abspath(home / "x.svg")
+    code, out = runner.run("--demo", "card", "-o", "~/sub/y.svg")
+    assert code == 0 and "已写入 ~/sub/y.svg（" in out and (home / "sub" / "y.svg").is_file()
+    code, data = runner.json("--demo", "card", "-o", "nope/c.svg")
+    assert code == 128 and data["error"]["message"] == "写不了 ~/nope/c.svg：目录不存在"
+    outside = tmp_path / "elsewhere"
+    outside.mkdir()
+    monkeypatch.chdir(outside)  # 家目录外：照实显示绝对路径
+    code, out = runner.run("--demo", "card")
+    flat = out.replace("\n", "")  # 临时目录路径比 120 列长，rich 会折行
+    assert code == 0 and re.search("已写入 ?" + re.escape(os.path.abspath(outside / "mcd-contributions.svg")), flat)
 
 
 def test_card_with_no_records(runner: Runner, tmp_path: Path) -> None:
