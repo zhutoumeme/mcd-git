@@ -71,7 +71,10 @@ def _emit_json(console: Console, payload: Dict[str, Any]) -> None:
 
 def _mcd_hints(err: McdError) -> List[str]:
     if err.http_status == 401:
-        return ["检查 MCD_MCP_TOKEN 或 ~/.config/mcd-mcp/token（Token 在 open.mcd.cn 控制台申请）"]
+        from .mcp_client import token_file
+        from .state import display_path
+
+        return ["检查 MCD_MCP_TOKEN 或 Token 文件 %s（Token 在 open.mcd.cn 控制台申请）" % display_path(token_file())]
     if err.http_status == 429:
         return ["稍等一会儿再试；mcd-git 不做批量和轮询"]
     if err.transport:

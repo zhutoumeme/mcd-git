@@ -15,7 +15,7 @@ from typing import Any, Dict, Iterator, List
 import pytest
 
 from mcd_git.errors import GitMcdError, McdError
-from mcd_git.mcp_client import DEFAULT_URL, McdMcpClient, _default_opener, load_token
+from mcd_git.mcp_client import DEFAULT_URL, McdMcpClient, _default_opener, load_token, token_file
 
 from .conftest import allow_loopback
 
@@ -67,19 +67,96 @@ def _http_error(code: int, body: bytes = b"") -> urllib.error.HTTPError:
 RESULT = {"content": [{"type": "text", "text": "ok"}], "isError": False, "structuredContent": {"success": True, "code": 200, "data": {"ok": 1}}}
 
 
-def test_token_env_first_then_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    path = tmp_path / "mcd-mcp" / "token"
-    # 直接把 Token 文件指到临时目录：不靠 HOME 隔离，哪个系统上都碰不到开发者真实的 Token
-    monkeypatch.setattr("mcd_git.mcp_client.token_file", lambda: path)
+def _write(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("file-token\n", encoding="utf-8")
-    assert load_token({"MCD_MCP_TOKEN": " env-token "}) == "env-token"
+    path.write_text(text, encoding="utf-8")
+
+
+def test_token_env_first_then_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    # conftest 的 offline fixture 已把 HOME/USERPROFILE 指到 tmp，所以 ~/.config 落在临时目录，
+    # 哪个系统上都碰不到开发者真实的 Token。
+    path = Path.home() / ".config" / "mcd-mcp" / "token"
+    _write(path, "file-token\n")
+    assert load_token({"MCD_MCP_TOKEN": " env-token "}) == "env-token"  # env 永远最高优先级
     assert load_token({}) == "file-token"
     os.unlink(path)
     with pytest.raises(GitMcdError) as err:
         load_token({})
     assert err.value.fatal
     assert "file-token" not in err.value.message
+
+
+def test_token_file_linux_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    _fake_posix(monkeypatch)
+    expected = Path.home() / ".config" / "mcd-mcp" / "token"
+    assert token_file({}) == expected
+    _write(expected, "linux-token\n")
+    assert load_token({}) == "linux-token"
+
+
+def test_token_xdg_config_home_wins_over_legacy(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    _fake_posix(monkeypatch)
+    xdg = tmp_path / "xdg"
+    _write(xdg / "mcd-mcp" / "token", "xdg-token\n")
+    _write(Path.home() / ".config" / "mcd-mcp" / "token", "legacy-token\n")
+    assert load_token({"XDG_CONFIG_HOME": str(xdg)}) == "xdg-token"
+
+
+def _fake_windows(monkeypatch: pytest.MonkeyPatch) -> None:
+    # 模拟 Windows：patch 平台判断函数 _is_windows，而不是改全局 os.name
+    # （改 os.name 会连累 pathlib 在非 Windows 机器上无法实例化 WindowsPath）。
+    monkeypatch.setattr("mcd_git.state._is_windows", lambda: True)
+
+
+def _fake_posix(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("mcd_git.state._is_windows", lambda: False)
+
+
+def test_token_file_windows_appdata(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    _fake_windows(monkeypatch)
+    appdata = tmp_path / "AppData"
+    env = {"APPDATA": str(appdata)}
+    assert token_file(env) == appdata / "mcd-mcp" / "token"
+    _write(appdata / "mcd-mcp" / "token", "win-token\n")
+    assert load_token(env) == "win-token"
+    # 没有 APPDATA 时 token_file() 退回 ~/.config/mcd-mcp/token
+    assert token_file({}) == Path.home() / ".config" / "mcd-mcp" / "token"
+
+
+def test_token_env_wins_even_with_files(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    _fake_windows(monkeypatch)
+    appdata = tmp_path / "AppData"
+    xdg = tmp_path / "xdg"
+    _write(appdata / "mcd-mcp" / "token", "win-token\n")
+    _write(xdg / "mcd-mcp" / "token", "xdg-token\n")
+    _write(Path.home() / ".config" / "mcd-mcp" / "token", "legacy-token\n")
+    assert load_token({"MCD_MCP_TOKEN": "env-token", "APPDATA": str(appdata), "XDG_CONFIG_HOME": str(xdg)}) == "env-token"
+
+
+def test_token_missing_hint_windows(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    _fake_windows(monkeypatch)
+    appdata = tmp_path / "AppData"
+    env = {"APPDATA": str(appdata)}
+    with pytest.raises(GitMcdError) as err:
+        load_token(env)
+    hint = "\n".join(err.value.hints)
+    assert "setx" in hint and "$env:" in hint
+    assert "export" not in hint and "chmod" not in hint
+    assert "MCD_MCP_TOKEN" in hint and "open.mcd.cn" in hint
+    assert "--demo" in hint
+    assert str(appdata / "mcd-mcp" / "token") in hint  # 路径用 token_file() 实际解析出的 Windows 路径
+
+
+def test_token_missing_hint_posix(monkeypatch: pytest.MonkeyPatch) -> None:
+    _fake_posix(monkeypatch)
+    with pytest.raises(GitMcdError) as err:
+        load_token({})
+    hint = "\n".join(err.value.hints)
+    assert "export" in hint and "chmod" in hint
+    assert "setx" not in hint and "$env:" not in hint
+    assert "MCD_MCP_TOKEN" in hint and "open.mcd.cn" in hint
+    assert "--demo" in hint
+    assert "~/.config/mcd-mcp/token" in hint  # display_path 把 home 前缀收成 ~
 
 
 def test_json_call_and_headers() -> None:

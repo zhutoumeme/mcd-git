@@ -10,6 +10,7 @@ import copy
 import hashlib
 import json
 import os
+import sys
 import tempfile
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -23,9 +24,39 @@ STATE_VERSION = 1
 HASHED_FIELDS = ("parent", "branch", "message", "time", "remote", "lines", "price")
 
 
+def _is_windows() -> bool:
+    """是否 Windows 平台。单独一个函数：测试里 monkeypatch 它来模拟 Windows，
+    不去改全局 os.name（改了会连累 pathlib 在非 Windows 机器上无法实例化 WindowsPath）。"""
+    return os.name == "nt" or sys.platform == "win32"
+
+
+def _platform_config_base(env: Mapping[str, str]) -> Path:
+    """平台推荐的配置根目录：XDG_CONFIG_HOME（若设）> Windows 的 %APPDATA%（若设）> ~/.config。
+
+    Token 目录（mcd-mcp）和状态目录（mcd-git）的平台规则完全一致，只是叶子目录名不同，
+    所以集中在这一个 helper 里，mcp_client.token_file()/load_token() 和 config_home() 共用，
+    避免两处各写一套跨平台判断逻辑漂移。
+    """
+    xdg = (env.get("XDG_CONFIG_HOME") or "").strip()
+    if xdg:
+        return Path(xdg).expanduser()
+    if _is_windows():
+        appdata = (env.get("APPDATA") or "").strip()
+        if appdata:
+            return Path(appdata)
+    return Path.home() / ".config"
+
+
 def config_home(env: Mapping[str, str]) -> Path:
     override = env.get("MCD_GIT_HOME")
-    return Path(override).expanduser() if override else Path.home() / ".config" / "mcd-git"
+    if override:
+        return Path(override).expanduser()
+    # 向后兼容：老用户的账本/状态已经在 ~/.config/mcd-git，优先沿用已存在的这个目录，
+    # 不因为换了平台推荐目录（Windows 的 %APPDATA% / XDG_CONFIG_HOME）而静默迁移、丢掉历史。
+    legacy = Path.home() / ".config" / "mcd-git"
+    if legacy.is_dir():
+        return legacy
+    return _platform_config_base(env) / "mcd-git"
 
 
 def state_root(demo: bool, env: Mapping[str, str]) -> Path:

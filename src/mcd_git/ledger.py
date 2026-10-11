@@ -1,7 +1,8 @@
 """本机订单账本：card（吃麦贡献图）和吃麦统计的数据来源。
 
 order-list 只给最近 10 单，所以每次 log / show / cherry-pick / card 顺手把看到的订单合并进来，push 成功时也记一笔，
-时间长了格子才会越来越全。文件在 ~/.config/mcd-git/ledger.json（demo 用 ~/.config/mcd-git/demo/ledger.json），
+时间长了格子才会越来越全。文件在本地状态目录下的 ledger.json（见 state.config_home：默认 ~/.config/mcd-git，
+Windows 用 %APPDATA%\\mcd-git，也支持 XDG_CONFIG_HOME；demo 在其 demo/ 子目录），
 目录 700、文件 600，写入用临时文件 + rename。删掉这个文件就清空了，不影响购物车和订单。
 
 按订单号的哈希合并（和 git mcd log 给 App 订单显示的哈希一样）：同一单再看到时新状态覆盖旧状态，

@@ -1,6 +1,8 @@
 """麦当劳 MCP Server 客户端：Streamable HTTP + JSON-RPC，只用标准库。
 
-- Token 读取顺序：环境变量 MCD_MCP_TOKEN → ~/.config/mcd-mcp/token。Token 只放进请求头，
+- Token 读取顺序：环境变量 MCD_MCP_TOKEN（所有平台最高优先级）→ 配置文件（择一存在且非空）：
+  $XDG_CONFIG_HOME/mcd-mcp/token（若设）→ Windows 的 %APPDATA%/mcd-mcp/token（若设）→
+  ~/.config/mcd-mcp/token（所有平台保留，向后兼容）。Token 只放进请求头，
   不打印、不写日志、不出现在异常信息和 repr 里。
 - 地址写死为 https://mcp.mcd.cn，不读任何环境变量；别的协议或主机在发请求前就拒绝，也不跟随重定向，Token 不会被带去别处。
 - 写操作 tool（下单、取消、领券……）默认拒绝；只有 push / revert / pull 的确认闸会带 allow_write=True，
@@ -19,7 +21,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, Iterator, Optional
+from typing import Any, Callable, Dict, Iterable, Iterator, List, Optional
 
 from . import __version__
 from .errors import GitMcdError, McdError
@@ -55,33 +57,83 @@ _ENVELOPE_RE = re.compile(r'\{\s*"success"\s*:')
 _MARKER = "## Original Response"
 
 
-def token_file() -> Path:
+def token_file(env: Optional[Dict[str, str]] = None) -> Path:
+    """提示里给用户「该把 Token 写到哪」的单一推荐路径（跨平台）。
+
+    Windows 且设了 %APPDATA% → %APPDATA%/mcd-mcp/token；没有 APPDATA 退回 ~/.config/mcd-mcp/token。
+    其它平台 → ~/.config/mcd-mcp/token。
+    """
+    from .state import _is_windows
+
+    env = os.environ if env is None else env
+    if _is_windows():
+        appdata = (env.get("APPDATA") or "").strip()
+        if appdata:
+            return Path(appdata) / "mcd-mcp" / "token"
     return Path.home() / ".config" / "mcd-mcp" / "token"
 
 
+def _token_candidates(env: Dict[str, str]) -> List[Path]:
+    """按优先级给出要尝试的 Token 文件：$XDG_CONFIG_HOME → (Windows)%APPDATA% → ~/.config，去重保序。"""
+    from .state import _is_windows
+
+    candidates: List[Path] = []
+    xdg = (env.get("XDG_CONFIG_HOME") or "").strip()
+    if xdg:
+        candidates.append(Path(xdg).expanduser() / "mcd-mcp" / "token")
+    if _is_windows():
+        appdata = (env.get("APPDATA") or "").strip()
+        if appdata:
+            candidates.append(Path(appdata) / "mcd-mcp" / "token")
+    candidates.append(Path.home() / ".config" / "mcd-mcp" / "token")
+    seen = set()
+    unique: List[Path] = []
+    for path in candidates:
+        key = str(path)
+        if key not in seen:
+            seen.add(key)
+            unique.append(path)
+    return unique
+
+
+def _token_hint(env: Dict[str, str]) -> List[str]:
+    """Token 缺失时的报错 hint，按平台给命令；写文件路径用 token_file() 实际解析出的路径。"""
+    from .state import _is_windows
+
+    path = token_file(env)
+    hint = ["在 open.mcd.cn 控制台申请 Token，然后二选一："]
+    if _is_windows():
+        hint.append('  setx MCD_MCP_TOKEN "你的Token"      （新开终端生效）')
+        hint.append('  当前终端：$env:MCD_MCP_TOKEN="你的Token"')
+        hint.append("  或把 Token 写进 %s" % path)
+    else:
+        hint.append("  export MCD_MCP_TOKEN=...            （只在当前终端有效）")
+        from .state import display_path
+
+        hint.append("  写进 %s 并 chmod 600" % display_path(path))
+    hint.append("只是想试试？加 --demo，用合成数据，不需要 Token")
+    return hint
+
+
 def load_token(env: Optional[Dict[str, str]] = None) -> str:
-    """按 MCD_MCP_TOKEN → ~/.config/mcd-mcp/token 的顺序读取，找不到就报 fatal（不回显任何内容）。"""
+    """按 MCD_MCP_TOKEN → 配置文件（$XDG_CONFIG_HOME → (Windows)%APPDATA% → ~/.config）的顺序读取，
+    「存在且非空即用」命中第一个；找不到就报 fatal（不回显任何内容）。"""
     env = os.environ if env is None else env
     token = (env.get("MCD_MCP_TOKEN") or "").strip()
     if token:
         return token
-    path = token_file()
-    try:
-        if path.is_file():
-            token = path.read_text(encoding="utf-8").strip()
-    except OSError:
-        token = ""
-    if token:
-        return token
+    for path in _token_candidates(env):
+        try:
+            if path.is_file():
+                content = path.read_text(encoding="utf-8").strip()
+                if content:
+                    return content
+        except OSError:
+            continue
     raise GitMcdError(
         "没有找到麦当劳 MCP Token",
         fatal=True,
-        hint=[
-            "在 open.mcd.cn 控制台申请 Token，然后二选一：",
-            "  export MCD_MCP_TOKEN=...            （只在当前终端有效）",
-            "  写进 ~/.config/mcd-mcp/token 并 chmod 600",
-            "只是想试试？加 --demo，用合成数据，不需要 Token",
-        ],
+        hint=_token_hint(env),
     )
 
 
