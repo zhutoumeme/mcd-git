@@ -2,6 +2,7 @@
 
 三种样式（--style）：skyline 麦门天际线（默认，等距 3D 汉堡，贴 GitHub 主页）、receipt 年度吃麦小票（竖版，发朋友圈）、
 grid 平面格子（0.2.0 最早那版，行为不变）。
+窗口：skyline / receipt 从最早一单所在的周画到今天（最少 12 周、最多 53 周），grid 固定 53 周。
 只读：不改动账户。真实模式调一次 order-list（最近 10 单）刷新本机账本再出图，不轮询；格子来自本机账本，记得越久越全。
 """
 from __future__ import annotations
@@ -36,7 +37,7 @@ def register(sub: Any, common: Any) -> None:
         parents=[common],
         help="1024 吃麦贡献图：终端预览 + 本机 SVG",
         description=(
-            "把最近 53 周的吃麦记录画成一张卡片：终端里预览，同时在本机写一个 SVG。"
+            "把吃麦记录画成一张卡片，从你最早一单画起（最少 12 周、最多 53 周；grid 固定 53 周）：终端里预览，同时在本机写一个 SVG。"
             "三种样式：skyline 麦门天际线（默认，每天吃几次就叠几层汉堡，适合贴 GitHub 主页）、"
             "receipt 年度吃麦小票（竖版，适合发朋友圈 / 小红书）、grid 平面格子（GitHub 风格）。"
             "只读，不改动账户；会在本机写一个 SVG 文件；真实模式调一次 order-list 刷新本机账本。"
@@ -78,7 +79,9 @@ def run(ctx: Context, args: Any) -> Result:
     except McdError as err:
         failure, warning = err, f"order-list 查询失败，只用本机记录：{err.message}"
     head = ctx.state.get("head") if style == "receipt" else None
-    model = build(ctx.ledger.entries(), today=ctx.now.date(), with_savings=args.with_savings, demo=ctx.demo, head=head)
+    model = build(
+        ctx.ledger.entries(), today=ctx.now.date(), with_savings=args.with_savings, demo=ctx.demo, head=head, adaptive=(style != "grid")
+    )
     stats = _stats(model, args.with_savings)
 
     if model["total"] == 0:

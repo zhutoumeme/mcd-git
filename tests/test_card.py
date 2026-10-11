@@ -97,7 +97,8 @@ def test_grid_has_53_aligned_weeks() -> None:
     weeks = model["weeks"]
     assert len(weeks) == 53 and all(len(column) == 7 for column in weeks)
     start = date(2025, 10, 20)
-    assert model["window"] == {"start": "2025-10-20", "end": "2026-10-24"}
+    assert model["window"] == {"start": "2025-10-20", "end": "2026-10-24", "weeks": 53}
+    assert model["span"] == {"weeks": 53, "label": "过去一年"}
     for col, column in enumerate(weeks):
         for row, cell in enumerate(column):
             day = start + timedelta(days=col * 7 + row)
@@ -138,6 +139,87 @@ def test_levels_and_month_labels() -> None:
     for col, label in months:
         monday = date(2025, 10, 20) + timedelta(weeks=col)
         assert label == f"{monday.month}月" and (monday - timedelta(weeks=1)).month != monday.month
+
+
+# ---------------------------------------------------------------- 自适应窗口（skyline / receipt）
+
+SPARSE_DAYS = ("2026-08-27", "2026-09-03", "2026-09-10", "2026-09-17", "2026-09-24", "2026-09-30", "2026-10-02", "2026-10-08", "2026-10-09")
+
+
+def _eat(day: str, state: str = "completed") -> Dict[str, Any]:
+    return {"time": f"{day} 12:10:00", "state": state, "items": [{"name": "冰燕麦奶铁大杯", "qty": 1}], "paid": 2000}
+
+
+def _sparse() -> List[Dict[str, Any]]:
+    """9 单、最早 2026-08-27：真实用户只有最近 10 单 + 本机记录时的样子。"""
+    return [_eat(day) for day in SPARSE_DAYS]
+
+
+def _window(entries: List[Dict[str, Any]], today: date) -> Dict[str, Any]:
+    return card.build(entries, today=today, with_savings=False, demo=False, adaptive=True)
+
+
+def test_window_weeks_clamps_between_12_and_53() -> None:
+    today = date(2026, 10, 24)  # 周六，本周周一 10-19
+    assert card.window_weeks(None, today) == card.MIN_WEEKS == 12
+    assert card.window_weeks(date(2026, 10, 19), today) == 12  # 本周
+    assert card.window_weeks(date(2026, 8, 3), today) == 12  # 恰好 11 周前的周一：含两头 12 周
+    assert card.window_weeks(date(2026, 8, 2), today) == 13  # 再早一天（周日）就进了前一周
+    assert card.window_weeks(date(2026, 7, 27), today) == 13
+    assert card.window_weeks(date(2025, 10, 20), today) == 53
+    assert card.window_weeks(date(2024, 1, 1), today) == 53  # 再早也只画 53 周
+    assert card.window_start(today, 12) == date(2026, 8, 3) and card.window_start(today) == date(2025, 10, 20)
+
+
+def test_adaptive_window_cases() -> None:
+    # a：10-11（周日）、9 单最早 08-27 → 7 周夹到 12 周；2025-10-24 不在窗口里，不标
+    a = _window(_sparse(), date(2026, 10, 11))
+    assert len(a["weeks"]) == 12 and a["window"] == {"start": "2026-07-20", "end": "2026-10-11", "weeks": 12}
+    assert a["span"] == {"weeks": 12, "label": "最近 12 周"} and a["mark_date"] is None
+    assert not any(c and c["mark"] for column in a["weeks"] for c in column)
+    assert a["total"] == 9 and a["earliest"] == "2026-08-27"
+    assert a["title"] == "最近 12 周吃麦 9 次" and a["subtitle"] == "最近 12 周 · git mcd card"
+    assert a["footer"] == "数据：麦当劳最近 10 单 + 本机记录，最早到 2026-08-27 · git mcd card 生成"  # 底部数据说明不变
+    assert all(c is not None for c in a["weeks"][-1])
+    assert all(0 <= col < 12 for col, _ in a["months"]) and [label for _, label in a["months"]] == ["8月", "9月", "10月"]
+    # b：今天就是 10-24，在最后一列周六插旗（0 单也插）
+    b = _window(_sparse(), date(2026, 10, 24))
+    assert len(b["weeks"]) == 12 and b["window"]["start"] == "2026-08-03" and b["mark_date"] == "2026-10-24"
+    assert b["weeks"][11][5]["mark"] is True and b["weeks"][11][5]["count"] == 0 and b["subtitle"].startswith("Happy 0x400 Day")
+    # c：10-24 在窗口里但不是今天
+    c = _window([_eat("2026-09-01")], date(2026, 11, 5))
+    assert len(c["weeks"]) == 12 and c["window"]["start"] == "2026-08-17" and c["mark_date"] == "2026-10-24"
+    assert c["weeks"][9][5] == {"date": "2026-10-24", "count": 0, "level": 0, "mark": True}
+    # d：数据跨一年 → 满 53 周，和 grid 的窗口一样
+    d = _window([_eat("2025-09-01"), _eat("2026-10-01")], date(2026, 10, 24))
+    assert len(d["weeks"]) == 53 and d["window"]["start"] == "2025-10-20" and d["mark_date"] == "2026-10-24"
+    assert d["span"]["label"] == "过去一年" and d["title"] == "过去一年吃麦 1 次"
+    # e：空数据 → 12 周
+    e = _window([], date(2026, 10, 24))
+    assert len(e["weeks"]) == 12 and e["window"]["start"] == "2026-08-03" and e["mark_date"] == "2026-10-24"
+    # f：最早一单恰在 11 / 12 周前的周一
+    assert len(_window([_eat("2026-08-03")], date(2026, 10, 24))["weeks"]) == 12
+    assert len(_window([_eat("2026-07-27")], date(2026, 10, 24))["weeks"]) == 13
+    assert _window([_eat("2026-07-27")], date(2026, 10, 24))["span"]["label"] == "最近 13 周"
+    # g：只有取消 / 没付款的单，按空算
+    g = _window([_eat("2026-01-05", "cancelled"), _eat("2026-02-02", "pending")], date(2026, 10, 24))
+    assert len(g["weeks"]) == 12 and g["total"] == 0
+    # h：demo 一年数据 → 53 周，和不自适应的模型一模一样
+    h = card.build(_demo_entries(), today=TODAY, with_savings=False, demo=True, adaptive=True)
+    assert h == card.build(_demo_entries(), today=TODAY, with_savings=False, demo=True)
+    assert len(h["weeks"]) == 53 and h["window"]["start"] == "2025-10-20"
+
+
+def test_grid_window_stays_53_weeks(runner: Runner, tmp_path: Path) -> None:
+    sparse = card.build(_sparse(), today=date(2026, 10, 11), with_savings=False, demo=False)  # 默认 adaptive=False
+    assert len(sparse["weeks"]) == 53 and sparse["window"]["start"] == "2025-10-06" and sparse["mark_date"] == "2025-10-24"
+    assert sparse["title"] == "过去一年吃麦 9 次" and sparse["subtitle"] == "最近 53 周 · git mcd card"
+    weeks = {}
+    for style in ("skyline", "receipt", "grid"):
+        code, data = runner.json("card", "--style", style, "-o", str(tmp_path / f"{style}.svg"), mock=True)
+        assert code == 0
+        weeks[style] = data["data"]["stats"]["window"]["weeks"]
+    assert weeks == {"skyline": 12, "receipt": 12, "grid": 53}  # mock 世界最早一单 10-21
 
 
 # ---------------------------------------------------------------- SVG

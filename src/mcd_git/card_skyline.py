@@ -1,4 +1,4 @@
-"""git mcd card --style skyline（默认）：麦门天际线。等距 3D 的 53 周 × 7 天，每天吃了几次就叠几层汉堡。
+"""git mcd card --style skyline（默认）：麦门天际线。等距 3D 的最多 53 周 × 7 天，每天吃了几次就叠几层汉堡。
 
 - 每一天是一块地砖；一层汉堡从下到上是底面包、肉饼、芝士、生菜、顶面包，最上面一层的顶面画芝麻。
   超过 4 层只画 4 层，顶上加一个小「+」；没有订单的日子只有一块暗色地砖。10-24 那格插一面「0x400」小旗。
@@ -7,10 +7,13 @@
 - 动画是纯 CSS：图片加载时按周从左到右依次落下，只播一次，总时长不超过 3 秒，
   animation-fill-mode: both 停在完整状态；prefers-reduced-motion: reduce 时直接显示完成状态。
 - 默认深色夜景，prefers-color-scheme: light 换浅色奶油底（汉堡颜色不变）。
+- 不满 53 周的窄窗口：地砖、汉堡、小旗外面包一层 <g transform="translate(…) scale(…)">（layout），
+  整体放大居中到图区；满 53 周不加这层，输出和以前逐字节相同。
 """
 from __future__ import annotations
 
 import html
+import math
 from typing import Any, Dict, List, Optional, Tuple
 
 from . import render as R
@@ -26,6 +29,10 @@ STEP_DELAY = 0.04  # 每往右一周晚 0.04 秒落下：52 周 × 0.04 + 0.6 = 
 DURATION = 0.6
 FLAG_DELAY = 0.2  # 小旗在那一周落下之后再出现，最晚 2.88 秒
 LEFT = 60
+FULL_WEEKS = 53  # 满窗口：不缩放
+AREA_TOP, AREA_BOTTOM = 108, 500  # 窄窗口缩放后图形落在副标题之下、分隔线之上
+MAX_SCALE = 2.0
+FLAG_HEIGHT = 42  # 小旗旗杆高度（见 _defs 的 #fl）
 
 # 一层汉堡从下到上：（高度占比，正面色，侧面色）
 SLICES = (
@@ -101,6 +108,29 @@ def _top_center(col: int, row: int, layers: int) -> Tuple[int, int]:
     return int(round(x + cx)), int(round(y + cy)) - layers * LAYER
 
 
+def bounds(n: int) -> Tuple[float, float, float, float]:
+    """n 周未缩放时图形的包围盒 (x0, y0, x1, y1)：x 取所有地砖四角；y 顶部按第 0 周叠满 4 层 + 「+」+ 小旗，
+    底部取最后一列周日地砖的下沿。"""
+    a, b = GAP, GAP + SIDE
+    corners = [_p(a, a), _p(b, a), _p(b, b), _p(a, b)]
+    xs = [_origin(col, row)[0] + cx for col in range(n) for row in range(7) for cx, _ in corners]
+    top = OY - MAX_LAYERS * LAYER - 16 - FLAG_HEIGHT - 10  # 4 层汉堡、让开「+」的 16、旗杆、旗面上沿余量
+    bottom = _origin(n - 1, 6)[1] + max(cy for _, cy in corners)
+    return min(xs), top, max(xs), bottom
+
+
+def layout(n: int) -> Tuple[float, float, float]:
+    """窄窗口的 (s, tx, ty)：把 bounds(n) 等比放大（最多 MAX_SCALE 倍）并居中到 x ∈ [LEFT, WIDTH-LEFT]、
+    y ∈ [AREA_TOP, AREA_BOTTOM]。屏幕坐标 = (tx + s·x, ty + s·y)。"""
+    x0, y0, x1, y1 = bounds(n)
+    area_w, area_h = WIDTH - 2 * LEFT, AREA_BOTTOM - AREA_TOP
+    raw = min(MAX_SCALE, area_w / (x1 - x0), area_h / (y1 - y0))
+    s = round((math.floor(raw * 1000) - 1) / 1000, 3)  # 向下取到 3 位再让 0.001：平移舍入到 1 位小数也不会出界
+    tx = round(LEFT + area_w / 2 - s * (x0 + x1) / 2, 1)
+    ty = round(AREA_TOP + area_h / 2 - s * (y0 + y1) / 2, 1)
+    return s, tx, ty
+
+
 def _esc(text: str) -> str:
     return html.escape(str(text), quote=False)
 
@@ -119,7 +149,7 @@ def tiles(model: Dict[str, Any]) -> List[Tuple[str, str, Optional[str]]]:
     top_item = model["topItem"]
     top_slot = model["topSlot"]
     out: List[Tuple[str, str, Optional[str]]] = [
-        ("过去一年", f"{model['total']} 次", None),
+        (model["span"]["label"], f"{model['total']} 次", None),
         ("最常点", top_item["name"] if top_item else "—", None),
         ("最常时段", f"{top_slot['slot']} · {top_slot['label']}" if top_slot else "—", None),
     ]
@@ -140,11 +170,12 @@ def savings_note(model: Dict[str, Any]) -> Optional[str]:
 
 
 def render_svg(model: Dict[str, Any]) -> str:
-    title = f"麦门天际线：过去一年吃麦 {model['total']} 次"
+    title = f"麦门天际线：{model['span']['label']}吃麦 {model['total']} 次"
+    desc = model["desc"] + "每天吃了几次就叠几层汉堡" + ("，10-24 插了一面 0x400 小旗。" if model["mark_date"] else "。")
     out = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{WIDTH}" height="{HEIGHT}" viewBox="0 0 {WIDTH} {HEIGHT}" role="img" aria-labelledby="t d">',
         f'<title id="t">{_esc(title)}</title>',
-        f'<desc id="d">{_esc(model["desc"] + "每天吃了几次就叠几层汉堡，10-24 插了一面 0x400 小旗。")}</desc>',
+        f'<desc id="d">{_esc(desc)}</desc>',
         "<!-- 0x400 = 1024 -->",
         f"<style>{_CSS}</style>",
         _defs(),
@@ -153,6 +184,10 @@ def render_svg(model: Dict[str, Any]) -> str:
         _text(LEFT, 94, "t2 s mo", "$ git mcd card  # 每天吃几次，就叠几层汉堡"),
     ]
     weeks = model["weeks"]
+    narrow = len(weeks) < FULL_WEEKS
+    if narrow:
+        s, tx, ty = layout(len(weeks))
+        out.append(f'<g transform="translate({tx:.1f},{ty:.1f}) scale({s:.3f})">')
     # 地砖先全部画完（都在地面上，压不住任何汉堡），再按周从左到右、每周从周一到周日画汉堡：等距投影下这就是画家算法的顺序
     floor = ['<g class="tl">']
     mark: Optional[Tuple[int, int, int]] = None
@@ -186,6 +221,8 @@ def render_svg(model: Dict[str, Any]) -> str:
         if layers and weeks[col][row]["count"] > MAX_LAYERS:
             fy -= 16  # 让开「+」
         out.append(f'<g class="f flag" style="animation-delay:{_delay(col, FLAG_DELAY)}"><use href="#fl" x="{fx}" y="{fy}"/></g>')
+    if narrow:
+        out.append("</g>")
 
     out.append(f'<line class="bd" x1="{LEFT}" y1="510" x2="{WIDTH - LEFT}" y2="510"/>')
     items = tiles(model)

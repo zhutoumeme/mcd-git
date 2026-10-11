@@ -1,6 +1,7 @@
 """git mcd card --style receipt：年度吃麦小票。竖版，热敏纸底色、上下锯齿边、等宽字体，适合发朋友圈 / 小红书。
 
-- 商品行是最常点 TOP 5 和次数，右边画频次条，过长的餐品名用省略号截断；中间一块 53 × 7 的点阵热力图，红圈标出 10-24；
+- 商品行是最常点 TOP 5 和次数，右边画频次条，过长的餐品名用省略号截断；中间一块最多 53 × 7 的点阵热力图
+  （窄窗口收窄居中），10-24 在窗口里才用红圈标出；
   时段分布只列有数据的时段；TOTAL 只有单数，加了 --with-savings 才在上面多一行「用券省下 ¥X」。
 - 条形码只是装饰：由统计数据的 sha1 确定性地生成，水平居中。
 - 小票是一个「物件」：浅色 / 深色主题下纸都是白的，只有外框背景跟着 prefers-color-scheme 变。
@@ -27,6 +28,8 @@ MARGIN = 20
 NAME_CELLS = 22  # 商品名最多占 22 个等宽格（中文一个字两格），再长就截断加「…」
 FREQ_BAR = 80
 SLOT_BAR = 120
+FULL_WEEKS = 53  # 满窗口：点阵铺满整行，坐标和以前一样
+CELL_MAX = 12  # 窄窗口点阵每格最宽 12px，整体居中
 
 _MONO = 'ui-monospace,"SF Mono",Menlo,Consolas,"PingFang SC","Microsoft YaHei","Noto Sans Mono CJK SC",monospace'
 _CSS = (
@@ -66,6 +69,24 @@ def slot_rows(model: Dict[str, Any]) -> List[Tuple[str, int]]:
 def footer_lines(model: Dict[str, Any]) -> List[str]:
     """「数据：…，最早到 …」一行，「git mcd card 生成」那半句小票上不重复（最后一行已经写了本机生成）。"""
     return [model["footer"].split(" · ")[0]]
+
+
+def dot_grid(n: int) -> Tuple[float, float]:
+    """点阵的（左起 x，格宽）：满 53 周铺满 [X0, X1]；窄窗口每格最多 CELL_MAX，整体水平居中。"""
+    if n >= FULL_WEEKS:
+        return float(X0), (X1 - X0) / n
+    cell = min(CELL_MAX, (X1 - X0) / n)
+    return X0 + ((X1 - X0) - n * cell) / 2, cell
+
+
+def dots_caption(model: Dict[str, Any], marker: str) -> str:
+    """点阵下面的说明：窄窗口先说覆盖范围；10-24 在窗口里才说怎么标的（SVG 是「红圈」，终端是「@」）。"""
+    out = "每个点是一天"
+    if model["mark_date"]:
+        out += f" · {marker}是 10-24"
+    if len(model["weeks"]) < FULL_WEEKS:
+        out = f"{model['span']['label']} · " + out
+    return out
 
 
 def barcode_bits(model: Dict[str, Any]) -> str:
@@ -121,13 +142,13 @@ def render_svg(model: Dict[str, Any]) -> str:
     y += 2
     rule()
 
-    # 点阵热力图：53 周 × 7 天，一个点一天；10-24 套一个红圈
-    cell = (X1 - X0) / len(model["weeks"])
+    # 点阵热力图：最多 53 周 × 7 天，一个点一天；10-24 在窗口里才套一个红圈
+    left, cell = dot_grid(len(model["weeks"]))
     for col, column in enumerate(model["weeks"]):
         for row, day in enumerate(column):
             if day is None:
                 continue
-            cx, cy = X0 + col * cell + cell / 2, y + row * cell + cell / 2
+            cx, cy = left + col * cell + cell / 2, y + row * cell + cell / 2
             if day["mark"]:
                 out.append(f'<circle class="ring" cx="{_f(cx)}" cy="{_f(cy)}" r="3.6"/>')
             if day["count"] == 0:
@@ -135,7 +156,7 @@ def render_svg(model: Dict[str, Any]) -> str:
             else:
                 out.append(f'<circle class="i" cx="{_f(cx)}" cy="{_f(cy)}" r="{"2.2" if day["count"] == 1 else "3"}"/>')
     y += int(7 * cell) + 22
-    text("每个点是一天 · 红圈是 10-24", mid, 10.5, "middle", "u")
+    text(dots_caption(model, "红圈"), mid, 10.5, "middle", "u")
     y += 22
     rule()
 
@@ -186,7 +207,7 @@ def render_svg(model: Dict[str, Any]) -> str:
     bottom = "".join(f"L{PAPER - i * 10 - 5},{height - (6 if i % 2 == 0 else 0)} " for i in range(teeth)) + f"L0,{height}"
     paper = f"M0,0 {top} L{PAPER},{height} {bottom} Z"
     w, h = PAPER + 2 * MARGIN, height + 2 * MARGIN
-    title = f"年度吃麦小票：过去一年 {model['total']} 单"
+    title = f"年度吃麦小票：{model['span']['label']} {model['total']} 单"
     head = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{w}" height="{h}" viewBox="-{MARGIN} -{MARGIN} {w} {h}" role="img" aria-labelledby="t d">',
         f'<title id="t">{_esc(title)}</title>',
@@ -242,8 +263,10 @@ def render_terminal(console: Console, model: Dict[str, Any]) -> None:
     if not rows:
         show(_line("  —  （没有餐品明细）"), muted)
     show(dashed)
+    n = len(model["weeks"])
+    pad_left = (WIDTH - n) // 2  # 53 周时正好两边各两格；窄窗口居中
     for row in range(7):
-        line = Text("  ", style=ink)
+        line = Text(" " * pad_left, style=ink)
         for column in model["weeks"]:
             day = column[row]
             if day is None:
@@ -253,9 +276,9 @@ def render_terminal(console: Console, model: Dict[str, Any]) -> None:
             else:
                 # 点阵只用 ASCII：·•●◉ 是东亚歧义宽度字符，在把歧义宽度当双宽的终端里会错位
                 line.append(".oO"[min(day["count"], 2)], style=(muted if day["count"] == 0 else ink))
-        line.append(" " * (WIDTH - 2 - len(model["weeks"])), style=ink)
+        line.append(" " * (WIDTH - pad_left - n), style=ink)
         console.print(line, no_wrap=True)
-    show(_center("每个点是一天 · @ 是 10-24"), muted)
+    show(_center(dots_caption(model, "@ ")), muted)
     show(dashed)
     slots = slot_rows(model)
     most = max([n for _, n in slots] or [1])

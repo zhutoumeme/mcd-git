@@ -1,6 +1,8 @@
-"""git mcd card 的模型和渲染：GitHub 风格的吃麦贡献图（7 行 × 最近 53 周），全部纯函数，不碰 IO。
+"""git mcd card 的模型和渲染：GitHub 风格的吃麦贡献图（7 行 × 最多 53 周），全部纯函数，不碰 IO。
 
 - 周一在第一行；最后一列是今天所在的周，今天之后的格子不画；颜色深浅按当天吃了几单（取消的、没付款的不算）。
+- 窗口：grid 固定最近 53 周；skyline / receipt 用 build(adaptive=True)，从最早一单所在的周画到今天所在的周，
+  最少 12 周、最多 53 周（麦当劳接口只给最近 10 单，新用户的卡片不会大半是空格子）。10-24 只在窗口里才标出来。
 - SVG 自包含：不引用外部字体、图片、脚本，字体用系统字体栈，浅色 / 深色跟随 prefers-color-scheme；
   同样的数据输出逐字节相同（不含生成时间、路径、版本号）。
 - 卡片上只有日期级的格子、总单数、最常点、最常时段；没有门店、地址、订单号、手机号、具体时刻和总消费，
@@ -23,6 +25,7 @@ from .money import fmt
 from .state import parse_time
 
 WEEKS = 53
+MIN_WEEKS = 12  # 自适应窗口最少 12 周：数据再少也是一张像样的卡片
 MIN_LABEL_GAP = 3  # 月份标签至少隔 3 列，不会叠在一起
 WEEKDAY_LABELS = {0: "一", 2: "三", 4: "五"}  # 同 GitHub 只标 Mon / Wed / Fri
 
@@ -32,8 +35,18 @@ def level(count: int) -> int:
     return min(max(int(count), 0), 4)
 
 
-def window_start(today: date) -> date:
-    return today - timedelta(days=today.weekday()) - timedelta(weeks=WEEKS - 1)
+def window_start(today: date, weeks: int = WEEKS) -> date:
+    return today - timedelta(days=today.weekday()) - timedelta(weeks=weeks - 1)
+
+
+def window_weeks(earliest: Optional[date], today: date) -> int:
+    """自适应窗口的周数：最早一单所在的周到今天所在的周（含两头），夹到 [MIN_WEEKS, WEEKS]；没有数据就是 MIN_WEEKS。"""
+    if earliest is None:
+        return MIN_WEEKS
+    this_monday = today - timedelta(days=today.weekday())
+    earliest_monday = earliest - timedelta(days=earliest.weekday())
+    n = (this_monday - earliest_monday).days // 7 + 1
+    return min(max(n, MIN_WEEKS), WEEKS)
 
 
 def mark_date(today: date, start: date) -> Optional[date]:
@@ -44,11 +57,11 @@ def mark_date(today: date, start: date) -> Optional[date]:
     return candidate if candidate >= start else None
 
 
-def month_labels(start: date) -> List[Tuple[int, str]]:
+def month_labels(start: date, weeks: int = WEEKS) -> List[Tuple[int, str]]:
     """某列的周一和前一列的周一不在同一个月，就在这一列标月份；离上一个标签不足 MIN_LABEL_GAP 列就跳过。
     第一列那个月只露出一两周时，标签让给下一个月（GitHub 也是这样）。SVG 和终端用同一份。"""
     marks = [(0, start.month)]
-    for col in range(1, WEEKS):
+    for col in range(1, weeks):
         monday = start + timedelta(weeks=col)
         if monday.month != (monday - timedelta(weeks=1)).month:
             marks.append((col, monday.month))
@@ -62,19 +75,33 @@ def month_labels(start: date) -> List[Tuple[int, str]]:
     return [(col, f"{month}月") for col, month in kept]
 
 
-def build(entries: List[Dict[str, Any]], *, today: date, with_savings: bool, demo: bool, head: Optional[str] = None) -> Dict[str, Any]:
-    """head：当前 HEAD 的短哈希（小票上印「HEAD」用），没有就是 None。"""
-    start = window_start(today)
-    counted: List[Tuple[date, Dict[str, Any]]] = []
+def build(
+    entries: List[Dict[str, Any]],
+    *,
+    today: date,
+    with_savings: bool,
+    demo: bool,
+    head: Optional[str] = None,
+    adaptive: bool = False,
+) -> Dict[str, Any]:
+    """head：当前 HEAD 的短哈希（小票上印「HEAD」用），没有就是 None。
+    adaptive：True 时从最早一单所在的周画起（window_weeks，最少 12 周、最多 53 周）；False 时固定 53 周（grid）。"""
+    eaten: List[Tuple[date, Dict[str, Any]]] = []
     for entry in entries:
         when = parse_time(entry.get("time"))
-        if when is not None and stats.eaten(entry) and start <= when.date() <= today:
-            counted.append((when.date(), entry))
+        if when is not None and stats.eaten(entry):
+            eaten.append((when.date(), entry))
+    # 最早一单不限在 53 周里：一年多以前就吃过的人直接是满 53 周（window_weeks 会夹到 53）
+    first = min((day for day, _ in eaten if day <= today), default=None)
+    n_weeks = window_weeks(first, today) if adaptive else WEEKS
+    start = window_start(today, n_weeks)
+    counted = [(day, entry) for day, entry in eaten if start <= day <= today]
+    span = {"weeks": n_weeks, "label": "过去一年" if n_weeks == WEEKS else f"最近 {n_weeks} 周"}
     per_day = Counter(day.isoformat() for day, _ in counted)
     rows = [entry for _, entry in counted]
     mark = mark_date(today, start)
     weeks: List[List[Optional[Dict[str, Any]]]] = []
-    for col in range(WEEKS):
+    for col in range(n_weeks):
         column: List[Optional[Dict[str, Any]]] = []
         for row in range(7):
             day = start + timedelta(days=col * 7 + row)
@@ -106,7 +133,7 @@ def build(entries: List[Dict[str, Any]], *, today: date, with_savings: bool, dem
         desc += f"；用券省下 {fmt(money['saved'])}"
     return {
         "weeks": weeks,
-        "months": month_labels(start),
+        "months": month_labels(start, n_weeks),
         "mark_date": mark.isoformat() if mark else None,
         "total": total,
         "activeDays": len(per_day),
@@ -120,11 +147,12 @@ def build(entries: List[Dict[str, Any]], *, today: date, with_savings: bool, dem
         "savingsKnownOrders": money["savedKnown"] if with_savings else None,
         "earliest": earliest.isoformat() if earliest else None,
         "is1024": is1024,
-        "window": {"start": start.isoformat(), "end": today.isoformat()},
+        "window": {"start": start.isoformat(), "end": today.isoformat(), "weeks": n_weeks},
+        "span": span,
         "days": {day: per_day[day] for day in sorted(per_day)},
         "demo": demo,
-        "title": f"过去一年吃麦 {total} 次",
-        "subtitle": "Happy 0x400 Day · 1024 程序员节快乐" if is1024 else "最近 53 周 · git mcd card",
+        "title": f"{span['label']}吃麦 {total} 次",
+        "subtitle": "Happy 0x400 Day · 1024 程序员节快乐" if is1024 else f"最近 {n_weeks} 周 · git mcd card",
         "desc": desc + "。",
         "tiles": tiles,
         "footer": f"数据：{source}，最早到 {earliest.isoformat() if earliest else '—'} · git mcd card 生成",

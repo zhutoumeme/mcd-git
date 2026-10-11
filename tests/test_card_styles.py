@@ -1,6 +1,7 @@
 """card --style：麦门天际线（默认）、年度吃麦小票、平面格子。SVG 自包含、确定、不带个人信息，10-24 有小旗 / 红圈（全部离线）。"""
 from __future__ import annotations
 
+import io
 import json
 import re
 import xml.etree.ElementTree as ET
@@ -9,6 +10,8 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 import pytest
+from rich.cells import cell_len
+from rich.console import Console
 
 from mcd_git import card, card_receipt, card_skyline
 from mcd_git.demo import world
@@ -138,6 +141,116 @@ def test_receipt_top5_order_truncation_and_ring() -> None:
     assert abs((left - 0) - (card_receipt.PAPER - right)) < 3
     assert card_receipt.barcode_bits(model) == card_receipt.barcode_bits(card.build(entries, today=TODAY, with_savings=False, demo=False))
     assert "HEAD    —" in card_receipt.render_svg(card.build(entries, today=TODAY, with_savings=False, demo=False))
+
+
+# ---------------------------------------------------------------- 自适应窗口（窄窗口）
+
+SPARSE_DAYS = ("2026-08-27", "2026-09-03", "2026-09-10", "2026-09-17", "2026-09-24", "2026-09-30", "2026-10-02", "2026-10-08", "2026-10-09")
+
+
+def _narrow(today: date, entries: Any = None, **kw: Any) -> Dict[str, Any]:
+    rows = [_order(day, "冰燕麦奶铁大杯") for day in SPARSE_DAYS] if entries is None else entries
+    return card.build(rows, today=today, with_savings=kw.pop("with_savings", False), demo=False, adaptive=True, **kw)
+
+
+def _scaled_group(svg: str) -> Any:
+    groups = [g for g in ET.fromstring(svg).iter(SVG + "g") if g.get("transform")]
+    assert len(groups) == 1
+    m = re.fullmatch(r"translate\((-?[0-9.]+),(-?[0-9.]+)\) scale\(([0-9.]+)\)", groups[0].get("transform"))
+    assert m, groups[0].get("transform")
+    return groups[0], float(m.group(1)), float(m.group(2)), float(m.group(3))
+
+
+def test_skyline_flag_only_inside_window() -> None:
+    # a：10-24 不在 12 周窗口里：不插旗、地砖不标红、desc 不提小旗
+    a = card_skyline.render_svg(_narrow(date(2026, 10, 11)))
+    _assert_self_contained(a)
+    assert 'href="#fl"' not in a and 'class="tm"' not in a and "小旗" not in ET.fromstring(a).find(SVG + "desc").text
+    assert ET.fromstring(a).find(SVG + "title").text == "麦门天际线：最近 12 周吃麦 9 次"
+    texts = _texts(a)
+    assert "最近 12 周" in texts and "9 次" in texts and "过去一年" not in texts
+    assert "数据：麦当劳最近 10 单 + 本机记录，最早到 2026-08-27 · git mcd card 生成" in texts
+    assert a.count('href="#tile"') == 12 * 7
+    # b：今天 10-24，最后一列周六插旗
+    b = card_skyline.render_svg(_narrow(date(2026, 10, 24)))
+    x, y = card_skyline._top_center(11, 5, 0)
+    assert b.count('href="#fl"') == 1 and f'<use href="#fl" x="{x}" y="{y}"/>' in b and b.count('class="tm"') == 1
+    assert "10-24 插了一面 0x400 小旗。" in ET.fromstring(b).find(SVG + "desc").text
+    # c：10-24 在窗口里但不在最后一列
+    c = card_skyline.render_svg(_narrow(date(2026, 11, 5), [_order("2026-09-01")]))
+    x, y = card_skyline._top_center(9, 5, 0)
+    assert c.count('href="#fl"') == 1 and f'<use href="#fl" x="{x}" y="{y}"/>' in c
+    # d / h：满 53 周不加缩放那一层
+    d = card_skyline.render_svg(_narrow(TODAY, [_order("2025-09-01"), _order("2026-10-01")]))
+    assert "<g transform=" not in d and 'transform="translate(' not in d
+    assert "<g transform=" not in card_skyline.render_svg(_demo_model(adaptive=True))
+
+
+@pytest.mark.parametrize("n", [12, 20, 40, 52])
+def test_skyline_narrow_window_scales_into_the_card(n: int) -> None:
+    start = card.window_start(TODAY, n)
+    entries = [_order((start + timedelta(days=i)).isoformat(), hour=8 + k) for i in range((TODAY - start).days + 1) for k in range(5)]
+    model = card.build(entries, today=TODAY, with_savings=True, demo=False, adaptive=True)
+    assert len(model["weeks"]) == n
+    svg = card_skyline.render_svg(model)
+    _assert_self_contained(svg)
+    assert len(svg.encode("utf-8")) <= 100 * 1024
+    group, tx, ty, s = _scaled_group(svg)
+    assert (s, tx, ty) == card_skyline.layout(n) and 1.0 <= s <= card_skyline.MAX_SCALE
+    uses = list(group.iter(SVG + "use"))
+    assert len(uses) > n * 7 and sum(1 for u in uses if u.get("href") == "#fl") == 1
+    for use in uses:
+        ux, uy = float(use.get("x")), float(use.get("y"))
+        points = [(ux, uy)] + ([(ux + 15, uy + 10)] if use.get("href") == "#tile" else [])  # 地砖右下角
+        for px, py in points:
+            assert 0 <= tx + s * px <= card_skyline.WIDTH and 0 <= ty + s * py <= 510
+    x0, y0, x1, y1 = card_skyline.bounds(n)
+    assert 60 <= tx + s * x0 and tx + s * x1 <= 1140 and 108 <= ty + s * y0 and ty + s * y1 <= 500
+    css = svg.split("<style>")[1].split("</style>")[0]
+    duration = float(re.search(r"animation:drop ([0-9.]+)s", css).group(1))
+    assert max(float(v) for v in re.findall(r"animation-delay:([0-9.]+)s", svg)) + duration <= 3.0
+    assert 'href="#p"' in svg  # 每天 5 单：顶上有「+」
+
+
+def test_receipt_narrow_window_dots_are_centered() -> None:
+    model = _narrow(date(2026, 10, 11))
+    svg = card_receipt.render_svg(model)
+    _assert_self_contained(svg)
+    assert ET.fromstring(svg).find(SVG + "title").text == "年度吃麦小票：最近 12 周 9 单"
+    dots = [c for c in ET.fromstring(svg).iter(SVG + "circle") if c.get("class") in ("z", "i")]
+    xs = sorted({float(c.get("cx")) for c in dots})
+    assert len(xs) == 12 and len(dots) == 12 * 7 and all(card_receipt.X0 <= x <= card_receipt.X1 for x in xs)
+    left, cell = card_receipt.dot_grid(12)
+    assert cell == card_receipt.CELL_MAX
+    assert abs((xs[0] - cell / 2 - card_receipt.X0) - (card_receipt.X1 - xs[-1] - cell / 2)) < 1
+    assert card_receipt.dot_grid(53) == (card_receipt.X0, (card_receipt.X1 - card_receipt.X0) / 53)  # 满窗口坐标同原公式
+    assert 'class="ring"' not in svg
+    texts = _texts(svg)
+    assert "最近 12 周 · 每个点是一天" in texts and not any("10-24" in t for t in texts if "每个点" in t)
+    assert "ANNUAL RECEIPT  2026-07-20 → 2026-10-11" in texts
+    assert "数据：麦当劳最近 10 单 + 本机记录，最早到 2026-08-27" in texts
+    b = card_receipt.render_svg(_narrow(date(2026, 10, 24)))
+    assert b.count('class="ring"') == 1 and "最近 12 周 · 每个点是一天 · 红圈是 10-24" in _texts(b)
+
+
+def _receipt_terminal(model: Dict[str, Any]) -> List[str]:
+    console = Console(file=io.StringIO(), width=120, color_system=None, force_terminal=False)
+    card_receipt.render_terminal(console, model)
+    return console.file.getvalue().splitlines()
+
+
+def test_receipt_terminal_narrow_window() -> None:
+    lines = _receipt_terminal(_narrow(date(2026, 10, 11)))
+    grid = [line for line in lines if re.fullmatch(r" *[.oO@][ .oO@]* *", line)]
+    assert len(grid) == 7
+    for line in grid:
+        assert cell_len(line) == card_receipt.WIDTH and len(line.replace(" ", "")) == 12 and "@" not in line
+        assert line.index(line.strip()[0]) == (card_receipt.WIDTH - 12) // 2  # 居中
+    assert any("最近 12 周 · 每个点是一天" in line for line in lines) and not any("@ 是 10-24" in line for line in lines)
+    full = _receipt_terminal(_demo_model())
+    grid = [line for line in full if re.fullmatch(r" *[.oO@][ .oO@]* *", line)]
+    assert len(grid) == 7 and all(cell_len(line) == card_receipt.WIDTH and line.startswith("  ") for line in grid)
+    assert any(line.strip() == "每个点是一天 · @ 是 10-24" for line in full)
 
 
 @pytest.mark.parametrize("style", STYLES)
