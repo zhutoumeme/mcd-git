@@ -163,15 +163,18 @@ def _scaled_group(svg: str) -> Any:
 
 
 def test_skyline_flag_only_inside_window() -> None:
-    # a：10-24 不在 12 周窗口里：不插旗、地砖不标红、desc 不提小旗
+    # a：节前（10-11）窗口右边界延伸到 10-24 那一周，提前插旗（即将到来的程序员节）；10-24 在最后一列周六
     a = card_skyline.render_svg(_narrow(date(2026, 10, 11)))
     _assert_self_contained(a)
-    assert 'href="#fl"' not in a and 'class="tm"' not in a and "小旗" not in ET.fromstring(a).find(SVG + "desc").text
+    x, y = card_skyline._top_center(11, 5, 0)
+    assert a.count('href="#fl"') == 1 and f'<use href="#fl" x="{x}" y="{y}"/>' in a and a.count('class="tm"') == 1
+    assert "10-24 插了一面 0x400 小旗。" in ET.fromstring(a).find(SVG + "desc").text
     assert ET.fromstring(a).find(SVG + "title").text == "麦门天际线：最近 12 周吃麦 9 次"
     texts = _texts(a)
     assert "最近 12 周" in texts and "9 次" in texts and "过去一年" not in texts
     assert "数据：麦当劳最近 10 单 + 本机记录，最早到 2026-08-27 · git mcd card 生成" in texts
-    assert a.count('href="#tile"') == 12 * 7
+    # 10-24（周六）占位，10-25（周日）还没到：最后一列只画到周六，共 12*7-1 块地砖
+    assert a.count('href="#tile"') == 12 * 7 - 1
     # b：今天 10-24，最后一列周六插旗
     b = card_skyline.render_svg(_narrow(date(2026, 10, 24)))
     x, y = card_skyline._top_center(11, 5, 0)
@@ -267,15 +270,16 @@ def test_receipt_narrow_window_dots_are_centered() -> None:
     assert ET.fromstring(svg).find(SVG + "title").text == "年度吃麦小票：最近 12 周 9 单"
     dots = [c for c in ET.fromstring(svg).iter(SVG + "circle") if c.get("class") in ("z", "i")]
     xs = sorted({float(c.get("cx")) for c in dots})
-    assert len(xs) == 12 and len(dots) == 12 * 7 and all(card_receipt.X0 <= x <= card_receipt.X1 for x in xs)
+    # 节前窗口延伸到 10-24 那一周，10-25（周日）还没到：最后一列只有 6 个点，共 12*7-1 个
+    assert len(xs) == 12 and len(dots) == 12 * 7 - 1 and all(card_receipt.X0 <= x <= card_receipt.X1 for x in xs)
     left, cell = card_receipt.dot_grid(12)
     assert cell == card_receipt.CELL_MAX
     assert abs((xs[0] - cell / 2 - card_receipt.X0) - (card_receipt.X1 - xs[-1] - cell / 2)) < 1
     assert card_receipt.dot_grid(53) == (card_receipt.X0, (card_receipt.X1 - card_receipt.X0) / 53)  # 满窗口坐标同原公式
-    assert 'class="ring"' not in svg
+    assert svg.count('class="ring"') == 1  # 节前 10-24 提前用红圈标出来
     texts = _texts(svg)
-    assert "最近 12 周 · 每个点是一天" in texts and not any("10-24" in t for t in texts if "每个点" in t)
-    assert "ANNUAL RECEIPT  2026-07-20 → 2026-10-11" in texts
+    assert "最近 12 周 · 每个点是一天 · 红圈是 10-24" in texts
+    assert "ANNUAL RECEIPT  2026-08-03 → 2026-10-11" in texts
     assert "数据：麦当劳最近 10 单 + 本机记录，最早到 2026-08-27" in texts
     b = card_receipt.render_svg(_narrow(date(2026, 10, 24)))
     assert b.count('class="ring"') == 1 and "最近 12 周 · 每个点是一天 · 红圈是 10-24" in _texts(b)
@@ -292,9 +296,12 @@ def test_receipt_terminal_narrow_window() -> None:
     grid = [line for line in lines if re.fullmatch(r" *[.oO@][ .oO@]* *", line)]
     assert len(grid) == 7
     for line in grid:
-        assert cell_len(line) == card_receipt.WIDTH and len(line.replace(" ", "")) == 12 and "@" not in line
+        # 节前窗口延伸到 10-24：周六那行到 10-24 共 12 格，周日（10-25）还没到只有 11 格，整体居中
+        nonspace = len(line.replace(" ", ""))
+        assert cell_len(line) == card_receipt.WIDTH and nonspace in (11, 12)
         assert line.index(line.strip()[0]) == (card_receipt.WIDTH - 12) // 2  # 居中
-    assert any("最近 12 周 · 每个点是一天" in line for line in lines) and not any("@ 是 10-24" in line for line in lines)
+    assert sum(line.count("@") for line in grid) == 1  # 10-24 提前用 @ 标出来
+    assert any("最近 12 周 · 每个点是一天 · @ 是 10-24" in line for line in lines)
     full = _receipt_terminal(_demo_model())
     grid = [line for line in full if re.fullmatch(r" *[.oO@][ .oO@]* *", line)]
     assert len(grid) == 7 and all(cell_len(line) == card_receipt.WIDTH and line.startswith("  ") for line in grid)
@@ -394,10 +401,14 @@ def test_terminal_previews(runner: Runner, tmp_path: Path) -> None:
 
 def test_style_defaults_and_bad_style(runner: Runner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.chdir(tmp_path)
-    code, data = runner.json("--demo", "card")
-    assert code == 0 and data["data"]["style"] == "skyline" and data["data"]["path"] == os.path.abspath(tmp_path / "mcd-contributions.svg")
+    code, data = runner.json("--demo", "card")  # 默认 skyline
+    assert code == 0 and data["data"]["style"] == "skyline" and data["data"]["path"] == os.path.abspath(tmp_path / "mcd-contributions-skyline.svg")
     code, data = runner.json("--demo", "card", "--style", "receipt")
-    assert code == 0 and data["data"]["path"] == os.path.abspath(tmp_path / "mcd-receipt.svg") and (tmp_path / "mcd-receipt.svg").exists()
+    assert code == 0 and data["data"]["path"] == os.path.abspath(tmp_path / "mcd-contributions-receipt.svg") and (tmp_path / "mcd-contributions-receipt.svg").exists()
+    code, data = runner.json("--demo", "card", "--style", "grid")  # 三种默认名各不相同、互不覆盖
+    assert code == 0 and data["data"]["path"] == os.path.abspath(tmp_path / "mcd-contributions-grid.svg") and (tmp_path / "mcd-contributions-grid.svg").exists()
+    # 连跑三种样式后，三个默认文件都在、互不覆盖
+    assert {p.name for p in tmp_path.glob("mcd-contributions-*.svg")} == {"mcd-contributions-skyline.svg", "mcd-contributions-receipt.svg", "mcd-contributions-grid.svg"}
     code, _ = runner.run("--demo", "card", "--style", "3d")
     assert code == 129
 

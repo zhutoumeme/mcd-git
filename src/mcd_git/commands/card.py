@@ -22,9 +22,15 @@ from ..context import Context, Result
 from ..errors import GitMcdError, McdError
 from ..state import display_path
 
-DEFAULT_OUTPUT = "mcd-contributions.svg"
-RECEIPT_OUTPUT = "mcd-receipt.svg"
 STYLES = ("skyline", "receipt", "grid")
+
+
+def default_output(style: str) -> str:
+    """没给 -o 时的默认文件名，按样式区分：mcd-contributions-<style>.svg。
+    三种样式各写各的，连跑两种不会互相覆盖（以前 skyline/grid 都写 mcd-contributions.svg、receipt 写 mcd-receipt.svg，
+    换样式会被覆盖，用户以为卡片丢了）。给了 -o 就完全听 -o。"""
+    return "mcd-contributions-%s.svg" % style
+
 STYLE_LABELS = {"skyline": "麦门天际线", "receipt": "吃麦小票", "grid": "平面格子"}
 RENDERERS: Dict[str, Callable[[Dict[str, Any]], str]] = {
     "skyline": card_skyline.render_svg,
@@ -51,7 +57,7 @@ def register(sub: Any, common: Any) -> None:
         "--output",
         default=None,
         metavar="<文件>",
-        help=f"SVG 写到哪里（默认当前目录的 {DEFAULT_OUTPUT}，receipt 是 {RECEIPT_OUTPUT}；同名直接覆盖）",
+        help="SVG 写到哪里（默认当前目录的 mcd-contributions-<样式>.svg，按样式区分互不覆盖；同名直接覆盖）",
     )
     p.add_argument("--with-savings", action="store_true", help="卡片上加一项「用券省下 ¥X」（默认不出现任何金额）")
     p.set_defaults(func=run)
@@ -100,7 +106,7 @@ def run(ctx: Context, args: Any) -> Result:
 
         return Result({"status": "empty", "style": style, "path": None, "bytes": 0, "stats": stats, "days": {}, "warning": warning}, draw_empty)
 
-    raw = str(args.output or (RECEIPT_OUTPUT if style == "receipt" else DEFAULT_OUTPUT))
+    raw = str(args.output or default_output(style))
     path = Path(os.path.abspath(Path(raw).expanduser()))  # 规范化成绝对路径（去掉 .. ），不解析符号链接
     shown = display_path(path)  # 终端里家目录换成 ~；--json 给绝对路径
     if not path.parent.is_dir():

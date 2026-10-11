@@ -117,9 +117,11 @@ def test_grid_has_53_aligned_weeks() -> None:
     assert model["topSlot"]["slot"] == "lunch" and model["topItem"]["name"] == "巨无霸套餐"
     assert model["savings"] is None and model["earliest"] == "2025-10-21"
 
+    # 节前（10-23）：窗口右边界延伸到 10-24 那一周，10-24（周六）这一格提前占位、画旗（即将到来的程序员节）
     friday = card.build([], today=date(2026, 10, 23), with_savings=False, demo=True)
-    assert friday["window"]["start"] == "2025-10-20" and friday["mark_date"] == "2025-10-24"
-    assert [c is not None for c in friday["weeks"][-1]] == [True] * 5 + [False] * 2
+    assert friday["window"]["start"] == "2025-10-20" and friday["mark_date"] == "2026-10-24"
+    assert [c is not None for c in friday["weeks"][-1]] == [True] * 6 + [False]  # 画到周六 10-24，周日 10-25 还没到
+    assert friday["weeks"][-1][5] == {"date": "2026-10-24", "count": 0, "level": 0, "mark": True}
     assert friday["is1024"] is False and "Happy" not in friday["subtitle"]
     sunday = card.build([], today=date(2026, 10, 25), with_savings=False, demo=True)  # 周日还在同一周（周一开头）
     assert sunday["window"]["start"] == "2025-10-20" and sunday["mark_date"] == "2026-10-24"
@@ -173,15 +175,15 @@ def test_window_weeks_clamps_between_12_and_53() -> None:
 
 
 def test_adaptive_window_cases() -> None:
-    # a：10-11（周日）、9 单最早 08-27 → 7 周夹到 12 周；2025-10-24 不在窗口里，不标
+    # a：10-11（节前）、9 单最早 08-27 → 窗口右边界延伸到 10-24 那一周，12 周；10-24 提前占位画旗
     a = _window(_sparse(), date(2026, 10, 11))
-    assert len(a["weeks"]) == 12 and a["window"] == {"start": "2026-07-20", "end": "2026-10-11", "weeks": 12}
-    assert a["span"] == {"weeks": 12, "label": "最近 12 周"} and a["mark_date"] is None
-    assert not any(c and c["mark"] for column in a["weeks"] for c in column)
+    assert len(a["weeks"]) == 12 and a["window"] == {"start": "2026-08-03", "end": "2026-10-11", "weeks": 12}
+    assert a["span"] == {"weeks": 12, "label": "最近 12 周"} and a["mark_date"] == "2026-10-24"
+    assert a["weeks"][11][5] == {"date": "2026-10-24", "count": 0, "level": 0, "mark": True}  # 最后一列周六，节前占位
     assert a["total"] == 9 and a["earliest"] == "2026-08-27"
     assert a["title"] == "最近 12 周吃麦 9 次" and a["subtitle"] == "最近 12 周 · git mcd card"
     assert a["footer"] == "数据：麦当劳最近 10 单 + 本机记录，最早到 2026-08-27 · git mcd card 生成"  # 底部数据说明不变
-    assert all(c is not None for c in a["weeks"][-1])
+    assert [c is not None for c in a["weeks"][-1]] == [True] * 6 + [False]  # 画到周六 10-24
     assert all(0 <= col < 12 for col, _ in a["months"]) and [label for _, label in a["months"]] == ["8月", "9月", "10月"]
     # b：今天就是 10-24，在最后一列周六插旗（0 单也插）
     b = _window(_sparse(), date(2026, 10, 24))
@@ -212,8 +214,9 @@ def test_adaptive_window_cases() -> None:
 
 
 def test_grid_window_stays_53_weeks(runner: Runner, tmp_path: Path) -> None:
+    # 节前（10-11）grid 固定 53 周，但右边界对齐到 10-24 那一周（而非本周），10-24 提前标出来
     sparse = card.build(_sparse(), today=date(2026, 10, 11), with_savings=False, demo=False)  # 默认 adaptive=False
-    assert len(sparse["weeks"]) == 53 and sparse["window"]["start"] == "2025-10-06" and sparse["mark_date"] == "2025-10-24"
+    assert len(sparse["weeks"]) == 53 and sparse["window"]["start"] == "2025-10-20" and sparse["mark_date"] == "2026-10-24"
     assert sparse["title"] == "过去一年吃麦 9 次" and sparse["subtitle"] == "最近 53 周 · git mcd card"
     weeks = {}
     for style in ("skyline", "receipt", "grid"):
@@ -221,6 +224,57 @@ def test_grid_window_stays_53_weeks(runner: Runner, tmp_path: Path) -> None:
         assert code == 0
         weeks[style] = data["data"]["stats"]["window"]["weeks"]
     assert weeks == {"skyline": 12, "receipt": 12, "grid": 53}  # mock 世界最早一单 10-21
+
+
+# ---------------------------------------------------------------- 节前 10-24 提前占位画旗（需求 B）
+
+
+def test_window_anchor_extends_to_1024_week_before_the_day() -> None:
+    # 节前（含当天）右边界对齐到 10-24 那一周；节后对齐到今天那一周
+    assert card.window_anchor(date(2026, 10, 11)) == date(2026, 10, 24)
+    assert card.window_anchor(date(2026, 10, 24)) == date(2026, 10, 24)
+    assert card.window_anchor(date(2026, 11, 1)) == date(2026, 11, 1)
+    assert card.window_anchor(date(2026, 1, 1)) == date(2026, 10, 24)
+
+
+def test_1024_shown_before_the_day_in_all_styles() -> None:
+    # 场景：今天 2026-10-11（节前）、最早一单 2026-08-27 —— 三种样式都要提前标出 10-24
+    early = date(2026, 8, 27)
+    today = date(2026, 10, 11)
+    entries = [_eat(early.isoformat()), _eat("2026-09-20")]
+    model = card.build(entries, today=today, with_savings=False, demo=False, adaptive=True)
+    grid_model = card.build(entries, today=today, with_savings=False, demo=False)  # grid 固定 53 周
+    assert model["mark_date"] == "2026-10-24" and grid_model["mark_date"] == "2026-10-24"
+    # 窗口右端到 10-24 所在周：最后一列画到周六 10-24（周日 10-25 还没到）
+    assert model["weeks"][-1][5] == {"date": "2026-10-24", "count": 0, "level": 0, "mark": True}
+    marked = [c["date"] for col in model["weeks"] for c in col if c and c["mark"]]
+    assert marked == ["2026-10-24"]
+    from mcd_git import card_receipt, card_skyline
+
+    sky = card_skyline.render_svg(model)
+    assert sky.count('href="#fl"') == 1 and ">0x400</text>" in sky  # skyline 小旗
+    rec = card_receipt.render_svg(model)
+    assert rec.count('class="ring"') == 1  # receipt 红圈
+    grid_svg = card.render_svg(grid_model)
+    assert ' x"' in grid_svg or "l0 x" in grid_svg  # grid 10-24 那格描边
+    import io as _io
+
+    from rich.console import Console as _Console
+
+    buf = _io.StringIO()
+    card.render_terminal(_Console(file=buf, width=120, color_system=None, force_terminal=False), grid_model)
+    assert "◆ 10-24 程序员节" in buf.getvalue()  # grid 终端预览里 ◆ 图例
+
+
+def test_after_1024_window_stays_at_today() -> None:
+    # 场景：今天 2026-11-01（节后）—— 维持现状，右边界到本周；10-24 已过、在窗口里仍按原规则标
+    entries = [_eat("2026-08-27"), _eat("2026-10-20")]
+    model = card.build(entries, today=date(2026, 11, 1), with_savings=False, demo=False, adaptive=True)
+    assert model["window"]["end"] == "2026-11-01" and model["mark_date"] == "2026-10-24"
+    # 窗口右边界是今天那一周（11-01 是周日，本周周一 10-26），不再往 10-24 之后延伸
+    assert model["weeks"][-1][6]["date"] == "2026-11-01"  # 最后一格就是今天
+    # 没有晚于今天的占位格
+    assert not any(c and c["date"] > "2026-11-01" for col in model["weeks"] for c in col)
 
 
 # ---------------------------------------------------------------- SVG
@@ -303,9 +357,9 @@ def test_demo_card_terminal_preview(runner: Runner, tmp_path: Path) -> None:
 
 def test_card_default_output_and_help(runner: Runner, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture) -> None:
     monkeypatch.chdir(tmp_path)  # 默认写到当前目录：换到临时目录里试，绝不往仓库里写
-    code, data = runner.json("--demo", "card")
-    assert code == 0 and data["data"]["path"] == os.path.abspath(tmp_path / "mcd-contributions.svg")
-    assert (tmp_path / "mcd-contributions.svg").stat().st_size == data["data"]["bytes"]
+    code, data = runner.json("--demo", "card")  # 默认 skyline → mcd-contributions-skyline.svg
+    assert code == 0 and data["data"]["path"] == os.path.abspath(tmp_path / "mcd-contributions-skyline.svg")
+    assert (tmp_path / "mcd-contributions-skyline.svg").stat().st_size == data["data"]["bytes"]
     code, data = runner.json("--demo", "card", "-o", str(tmp_path / "nope" / "c.svg"))
     assert code == 128 and "目录不存在" in data["error"]["message"]
     code, _ = runner.run("card", "-h")
@@ -319,10 +373,10 @@ def test_card_shows_full_output_path(runner: Runner, tmp_path: Path, monkeypatch
     (home / "sub").mkdir()
     monkeypatch.chdir(home)
     code, out = runner.run("--demo", "card")
-    assert code == 0 and "已写入 ~/mcd-contributions.svg（" in out
+    assert code == 0 and "已写入 ~/mcd-contributions-skyline.svg（" in out
     code, data = runner.json("--demo", "card")
     path = data["data"]["path"]
-    assert code == 0 and os.path.isabs(path) and path == os.path.abspath(home / "mcd-contributions.svg") and Path(path).is_file()
+    assert code == 0 and os.path.isabs(path) and path == os.path.abspath(home / "mcd-contributions-skyline.svg") and Path(path).is_file()
     code, out = runner.run("--demo", "card", "--style", "receipt", "-o", "sub/../x.svg")  # 规范化掉 ..
     assert code == 0 and "已写入 ~/x.svg（" in out and (home / "x.svg").is_file()
     code, data = runner.json("--demo", "card", "-o", "sub/../x.svg")
@@ -336,7 +390,7 @@ def test_card_shows_full_output_path(runner: Runner, tmp_path: Path, monkeypatch
     monkeypatch.chdir(outside)  # 家目录外：照实显示绝对路径
     code, out = runner.run("--demo", "card")
     flat = out.replace("\n", "")  # 临时目录路径比 120 列长，rich 会折行
-    assert code == 0 and re.search("已写入 ?" + re.escape(os.path.abspath(outside / "mcd-contributions.svg")), flat)
+    assert code == 0 and re.search("已写入 ?" + re.escape(os.path.abspath(outside / "mcd-contributions-skyline.svg")), flat)
 
 
 def test_card_with_no_records(runner: Runner, tmp_path: Path) -> None:

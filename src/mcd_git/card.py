@@ -35,24 +35,34 @@ def level(count: int) -> int:
     return min(max(int(count), 0), 4)
 
 
+def window_anchor(today: date) -> date:
+    """窗口右边界对齐到哪一天：节前（今天 ≤ 当年 10-24）对齐到 10-24 那一周，让程序员节的小旗 / 红圈
+    提前就能看到「即将到来的 1024」；节后（今天 > 当年 10-24）维持现状，右边界就是今天所在的周。"""
+    nationalday = date(today.year, 10, 24)
+    return nationalday if today <= nationalday else today
+
+
 def window_start(today: date, weeks: int = WEEKS) -> date:
-    return today - timedelta(days=today.weekday()) - timedelta(weeks=weeks - 1)
+    anchor = window_anchor(today)
+    return anchor - timedelta(days=anchor.weekday()) - timedelta(weeks=weeks - 1)
 
 
 def window_weeks(earliest: Optional[date], today: date) -> int:
-    """自适应窗口的周数：最早一单所在的周到今天所在的周（含两头），夹到 [MIN_WEEKS, WEEKS]；没有数据就是 MIN_WEEKS。"""
+    """自适应窗口的周数：最早一单所在的周到窗口右边界所在的周（含两头），夹到 [MIN_WEEKS, WEEKS]；
+    没有数据就是 MIN_WEEKS。右边界见 window_anchor：节前到 10-24 那一周，节后到今天那一周。"""
     if earliest is None:
         return MIN_WEEKS
-    this_monday = today - timedelta(days=today.weekday())
+    anchor = window_anchor(today)
+    anchor_monday = anchor - timedelta(days=anchor.weekday())
     earliest_monday = earliest - timedelta(days=earliest.weekday())
-    n = (this_monday - earliest_monday).days // 7 + 1
+    n = (anchor_monday - earliest_monday).days // 7 + 1
     return min(max(n, MIN_WEEKS), WEEKS)
 
 
 def mark_date(today: date, start: date) -> Optional[date]:
-    """窗口里最近的那个 10-24（程序员节）。"""
+    """窗口里最近的那个 10-24（程序员节）：节前取当年即将到来的 10-24，节后取最近一个已过的 10-24。"""
     candidate = date(today.year, 10, 24)
-    if candidate > today:
+    if candidate > window_anchor(today):
         candidate = date(today.year - 1, 10, 24)
     return candidate if candidate >= start else None
 
@@ -100,15 +110,18 @@ def build(
     per_day = Counter(day.isoformat() for day, _ in counted)
     rows = [entry for _, entry in counted]
     mark = mark_date(today, start)
+    # 节前（今天 ≤ 当年 10-24）窗口右边界延伸到 10-24 那一周：今天之后、但不晚于 10-24 的格子照常占位画出来
+    # （count 为 0），好让 10-24 那一格即使还没到、还没吃也能先插上程序员节的旗 / 红圈。节后右边界就是今天。
+    anchor = window_anchor(today)
     weeks: List[List[Optional[Dict[str, Any]]]] = []
     for col in range(n_weeks):
         column: List[Optional[Dict[str, Any]]] = []
         for row in range(7):
             day = start + timedelta(days=col * 7 + row)
-            if day > today:
+            if day > anchor:
                 column.append(None)
                 continue
-            n = per_day.get(day.isoformat(), 0)
+            n = per_day.get(day.isoformat(), 0) if day <= today else 0  # 未来的占位格恒为 0 单
             column.append({"date": day.isoformat(), "count": n, "level": level(n), "mark": day == mark})
         weeks.append(column)
 
