@@ -31,7 +31,7 @@ FLAG_DELAY = 0.2  # 小旗在那一周落下之后再出现，最晚 2.88 秒
 LEFT = 60
 FULL_WEEKS = 53  # 满窗口：不缩放
 AREA_TOP, AREA_BOTTOM = 108, 500  # 窄窗口缩放后图形落在副标题之下、分隔线之上
-MAX_SCALE = 2.0
+MAX_SCALE = 3.0  # 只影响不满 53 周的窄窗口
 FLAG_HEIGHT = 42  # 小旗旗杆高度（见 _defs 的 #fl）
 
 # 一层汉堡从下到上：（高度占比，正面色，侧面色）
@@ -108,21 +108,39 @@ def _top_center(col: int, row: int, layers: int) -> Tuple[int, int]:
     return int(round(x + cx)), int(round(y + cy)) - layers * LAYER
 
 
-def bounds(n: int) -> Tuple[float, float, float, float]:
-    """n 周未缩放时图形的包围盒 (x0, y0, x1, y1)：x 取所有地砖四角；y 顶部按第 0 周叠满 4 层 + 「+」+ 小旗，
-    底部取最后一列周日地砖的下沿。"""
+def bounds(weeks: List[List[Optional[Dict[str, Any]]]]) -> Tuple[float, float, float, float]:
+    """未缩放时图形实际占的包围盒 (x0, y0, x1, y1)，按数据算：x 取画出来的地砖四角（有小旗时加上旗面右沿）；
+    y 顶部取每格最高处（地砖上沿、汉堡顶面、「+」、小旗旗杆顶），底部取地砖下沿。
+    只按实际叠了几层、有没有「+」和小旗留高度，稀疏数据才能放大铺开，不会上方空一大片。"""
     a, b = GAP, GAP + SIDE
     corners = [_p(a, a), _p(b, a), _p(b, b), _p(a, b)]
-    xs = [_origin(col, row)[0] + cx for col in range(n) for row in range(7) for cx, _ in corners]
-    top = OY - MAX_LAYERS * LAYER - 16 - FLAG_HEIGHT - 10  # 4 层汉堡、让开「+」的 16、旗杆、旗面上沿余量
-    bottom = _origin(n - 1, 6)[1] + max(cy for _, cy in corners)
-    return min(xs), top, max(xs), bottom
+    tile_top = min(cy for _, cy in corners)
+    xs: List[float] = []
+    ys: List[float] = []
+    for col, column in enumerate(weeks):
+        for row, cell in enumerate(column):
+            if cell is None:
+                continue
+            x, y = _origin(col, row)
+            xs += [x + cx for cx, _ in corners]
+            ys += [y + cy for _, cy in corners]
+            layers = min(cell["count"], MAX_LAYERS)
+            top = y + tile_top - layers * LAYER
+            fx, fy = _top_center(col, row, layers)
+            if cell["count"] > MAX_LAYERS:
+                fy -= 16  # 「+」画在顶面中心上方 10、半径 6；小旗也让开它
+                top = min(top, fy - 1)
+            if cell["mark"]:
+                top = min(top, fy - FLAG_HEIGHT - 2)  # 旗杆顶，留 2 像素给线宽
+                xs.append(fx + 44)  # 旗面向右伸 44（见 _defs 的 #fl）
+            ys.append(top)
+    return min(xs), min(ys), max(xs), max(ys)
 
 
-def layout(n: int) -> Tuple[float, float, float]:
-    """窄窗口的 (s, tx, ty)：把 bounds(n) 等比放大（最多 MAX_SCALE 倍）并居中到 x ∈ [LEFT, WIDTH-LEFT]、
+def layout(weeks: List[List[Optional[Dict[str, Any]]]]) -> Tuple[float, float, float]:
+    """窄窗口的 (s, tx, ty)：把 bounds(weeks) 等比放大（最多 MAX_SCALE 倍）并居中到 x ∈ [LEFT, WIDTH-LEFT]、
     y ∈ [AREA_TOP, AREA_BOTTOM]。屏幕坐标 = (tx + s·x, ty + s·y)。"""
-    x0, y0, x1, y1 = bounds(n)
+    x0, y0, x1, y1 = bounds(weeks)
     area_w, area_h = WIDTH - 2 * LEFT, AREA_BOTTOM - AREA_TOP
     raw = min(MAX_SCALE, area_w / (x1 - x0), area_h / (y1 - y0))
     s = round((math.floor(raw * 1000) - 1) / 1000, 3)  # 向下取到 3 位再让 0.001：平移舍入到 1 位小数也不会出界
@@ -186,7 +204,7 @@ def render_svg(model: Dict[str, Any]) -> str:
     weeks = model["weeks"]
     narrow = len(weeks) < FULL_WEEKS
     if narrow:
-        s, tx, ty = layout(len(weeks))
+        s, tx, ty = layout(weeks)
         out.append(f'<g transform="translate({tx:.1f},{ty:.1f}) scale({s:.3f})">')
     # 地砖先全部画完（都在地面上，压不住任何汉堡），再按周从左到右、每周从周一到周日画汉堡：等距投影下这就是画家算法的顺序
     floor = ['<g class="tl">']

@@ -197,7 +197,7 @@ def test_skyline_narrow_window_scales_into_the_card(n: int) -> None:
     _assert_self_contained(svg)
     assert len(svg.encode("utf-8")) <= 100 * 1024
     group, tx, ty, s = _scaled_group(svg)
-    assert (s, tx, ty) == card_skyline.layout(n) and 1.0 <= s <= card_skyline.MAX_SCALE
+    assert (s, tx, ty) == card_skyline.layout(model["weeks"]) and 1.0 <= s <= card_skyline.MAX_SCALE
     uses = list(group.iter(SVG + "use"))
     assert len(uses) > n * 7 and sum(1 for u in uses if u.get("href") == "#fl") == 1
     for use in uses:
@@ -205,12 +205,59 @@ def test_skyline_narrow_window_scales_into_the_card(n: int) -> None:
         points = [(ux, uy)] + ([(ux + 15, uy + 10)] if use.get("href") == "#tile" else [])  # 地砖右下角
         for px, py in points:
             assert 0 <= tx + s * px <= card_skyline.WIDTH and 0 <= ty + s * py <= 510
-    x0, y0, x1, y1 = card_skyline.bounds(n)
+    x0, y0, x1, y1 = card_skyline.bounds(model["weeks"])
     assert 60 <= tx + s * x0 and tx + s * x1 <= 1140 and 108 <= ty + s * y0 and ty + s * y1 <= 500
     css = svg.split("<style>")[1].split("</style>")[0]
     duration = float(re.search(r"animation:drop ([0-9.]+)s", css).group(1))
     assert max(float(v) for v in re.findall(r"animation-delay:([0-9.]+)s", svg)) + duration <= 3.0
     assert 'href="#p"' in svg  # 每天 5 单：顶上有「+」
+
+
+def _content_box(svg: str) -> Any:
+    """缩放后图形在卡片上的实际范围：地砖四角、汉堡顶面、「+」、小旗旗杆顶和旗面右沿。"""
+    group, tx, ty, s = _scaled_group(svg)
+    a, b = card_skyline.GAP, card_skyline.GAP + card_skyline.SIDE
+    corners = [card_skyline._p(a, a), card_skyline._p(b, a), card_skyline._p(b, b), card_skyline._p(a, b)]
+    xs: List[float] = []
+    ys: List[float] = []
+    for use in group.iter(SVG + "use"):
+        ux, uy, href = float(use.get("x")), float(use.get("y")), use.get("href")
+        if href in ("#tile", "#c", "#b"):
+            pts = [(ux + cx, uy + cy) for cx, cy in corners]
+        elif href == "#p":
+            pts = [(ux - 7, uy - 7), (ux + 7, uy + 7)]
+        else:  # #fl：旗杆底在 (x, y)，杆高 42，旗面向右 44
+            pts = [(ux, uy), (ux + 44, uy - card_skyline.FLAG_HEIGHT)]
+        xs += [tx + s * px for px, _ in pts]
+        ys += [ty + s * py for _, py in pts]
+    return min(xs), min(ys), max(xs), max(ys)
+
+
+@pytest.mark.parametrize(
+    "today, entries",
+    [
+        (date(2026, 10, 11), None),  # 用例 a：12 周、每天 1 层、无小旗（用户真实数据的形态）
+        (date(2026, 10, 24), None),  # 用例 b：小旗插在最后一列周六
+        (date(2033, 10, 24), [_order("2033-08-15"), _order("2033-10-24")]),  # 10-24 是周一：小旗在最后一列最右边那块地砖上
+        (date(2026, 10, 24), [_order("2026-08-03", hour=8 + k) for k in range(6)] + [_order("2026-10-24")]),  # 第 0 周周一叠满 4 层加「+」
+    ],
+)
+def test_skyline_narrow_window_fills_the_area(today: date, entries: Any) -> None:
+    model = _narrow(today, entries)
+    assert len(model["weeks"]) < card_skyline.FULL_WEEKS
+    svg = card_skyline.render_svg(model)
+    x0, y0, x1, y1 = _content_box(svg)
+    left, right, top, bottom = card_skyline.LEFT, card_skyline.WIDTH - card_skyline.LEFT, card_skyline.AREA_TOP, card_skyline.AREA_BOTTOM
+    assert left <= x0 and x1 <= right and top <= y0 and y1 <= bottom  # 不出界（含小旗旗面）
+    assert (x1 - x0) >= 0.7 * (right - left) or (y1 - y0) >= 0.8 * (bottom - top)  # 不大片留白
+    assert abs((x0 - left) - (right - x1)) < 2  # 水平居中
+
+
+def test_skyline_sparse_week_window_is_not_reserved_for_flag_and_plus() -> None:
+    # 用例 a：只有 1 层、没有小旗时，顶部不再按 4 层 + 「+」+ 小旗预留，放大倍数到上限
+    model = _narrow(date(2026, 10, 11))
+    s, _, _ = card_skyline.layout(model["weeks"])
+    assert s >= card_skyline.MAX_SCALE - 0.01
 
 
 def test_receipt_narrow_window_dots_are_centered() -> None:
