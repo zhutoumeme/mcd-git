@@ -35,10 +35,10 @@ mcd-git 把麦当劳中国 MCP Server 包装成 git 风格的命令：`add` 放�
 
 | 步骤 | 命令 | 看 JSON 的哪里 |
 |---|---|---|
-| 选门店 | `git mcd init --json` | `data.status == "choose"` 时把 `data.candidates` 给用户选，再 `git mcd init --pick <序号> --json` |
-| 按地标找店 | `git mcd init --city 上海 --keyword 人民广场 --json` | 同上；得来速加 `--mode drive`；麦乐送 `--mode delivery`（再用 `--address <序号>` 选地址） |
+| 选门店 | `git mcd init [--limit N] --json` | `data.status == "choose"` 时把 `data.candidates` 给用户选，再 `git mcd init --pick <序号> --json`；`--limit N` 只在本地截取前 N 家（接口一次大约只给 5 家，不会多调） |
+| 按地标找店 | `git mcd init --city 上海 --keyword 人民广场 [--limit N] --json` | 同上；`--city` 和 `--keyword` 必须一起给（只给其中一个会报错，接口不认）；得来速加 `--mode drive`；麦乐送 `--mode delivery`（再用 `--address <序号>` 选地址） |
 | 现状 | `git mcd status --json` | `data.remote`、`data.index`（购物车）、`data.coupons`、`data.pendingPayment` |
-| 看菜单 | `git mcd ls-remote <关键词> --json` | `data.meals[]`：`code`、`name`、`type`、`price` |
+| 看菜单 | `git mcd ls-remote <关键词> --json` | `data.meals[]`：`code`、`name`、`type`、`price`（真实可得价）；有 `offerNote` 的是条件优惠（如「¥37.00 需随单购麦金卡」，`offerPrice` 是条件价），要同时买会员卡才成立，不要当成用户能拿到的价格 |
 | 加购 | `git mcd add 巨无霸 中薯条 --no-pickle --json` | 名字有歧义时 `ok == false`，候选在 `error.detail.candidates`，问用户要哪个，或直接用 code |
 | 特制 / 换搭 | `--no <配料>`、`--with 少冰`、`--with 加一份浓缩`、`--choose 大薯条`、`-n 2` | `data.warnings` 里是没生效的定制 |
 | 移出 / 清空 | `git mcd restore --staged <餐品> --json`、`git mcd reset --json` | `data.index` |
