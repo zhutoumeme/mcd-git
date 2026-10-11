@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -13,7 +14,7 @@ from mcd_git.cli import _mcd_code_in, _store_closed_hints
 from mcd_git.commands.init import _store_columns
 from mcd_git.errors import GitMcdError, McdError
 
-from .conftest import Runner, mcp_result
+from .conftest import FIXED_NOW, Runner, mcp_result
 
 # 合成的长名门店（字段同 demo/world._store），名字、地址都是编的
 LONG_STORES: List[Dict[str, Any]] = [
@@ -292,6 +293,34 @@ def test_mcd_code_in_and_hint_helpers() -> None:
     assert _store_closed_hints(remote)[-1] == "或者预约：git mcd push --at HH:MM（这家店可约：宵夜 00:00至04:45）"
     remote["reservation"][1]["today"] = False
     assert _store_closed_hints(remote)[-1] == "或者预约：git mcd push --at HH:MM（这家店可约：早餐 06:44至10:15）"
+
+
+def test_store_closed_reservation_snapshot_drops_past_days() -> None:
+    # 快照是 init 那天存的：today 标记已经不准，按 date 和今天比
+    remote = {
+        "mode": "pickup",
+        "reservation": [
+            {"date": "2026-10-24", "today": True, "slots": [{"name": "午餐", "ranges": [["10:44", "14:15"]]}]},
+            {"date": "2026-10-25", "today": False, "slots": [{"name": "早餐", "ranges": [["06:44", "10:15"]]}]},
+        ],
+    }
+    assert _store_closed_hints(remote, "2026-10-24")[-1] == "或者预约：git mcd push --at HH:MM（这家店可约：午餐 10:44至14:15）"
+    assert _store_closed_hints(remote, "2026-10-25")[-1] == "或者预约：git mcd push --at HH:MM（这家店可约：早餐 06:44至10:15）"  # 快照里 today 还标在 10-24
+    remote["reservation"][1]["today"] = True  # 快照里标错了也按日期挑今天
+    assert _store_closed_hints(remote, "2026-10-24")[-1].startswith("或者预约：git mcd push --at HH:MM（这家店可约：午餐")
+    assert _store_closed_hints(remote, "2026-10-27") == [CLOSED_HINT, SWITCH_HINT]  # 全过期了就不提预约
+    future = {"mode": "drive", "reservation": remote["reservation"][1:]}  # 今天没有时段、明天有：写明日期
+    assert _store_closed_hints(future, "2026-10-24")[-1] == "或者预约：git mcd push --at '2026-10-25 HH:MM'（这家店 2026-10-25 可约：早餐 06:44至10:15）"
+
+
+def test_store_closed_days_after_init_has_no_stale_push_at(runner: Runner) -> None:
+    _pick_store(runner)  # 选店那天是 2026-10-24（FIXED_NOW），快照里只有 10-24、10-25 两天
+    runner.hooks["query-meals"] = _closed
+    later = FIXED_NOW + timedelta(days=3)
+    code, out = runner.run("ls-remote", mock=True, now=later)
+    assert code != 0
+    _assert_closed(out, reserve=False)
+    assert "push --at" not in out
 
 
 # ---------------------------------------------------------------- T16 子命令打错

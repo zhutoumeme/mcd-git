@@ -94,17 +94,28 @@ def _mcd_code_in(err: Exception) -> Optional[str]:
     return None
 
 
-def _store_closed_hints(remote: Optional[Dict[str, Any]]) -> List[str]:
-    """600057 时的提示：可能没营业 → 换一家；门店有预约时段（到店 / 得来速）再提示 push --at。"""
+def _store_closed_hints(remote: Optional[Dict[str, Any]], today: Optional[str] = None) -> List[str]:
+    """600057 时的提示：可能没营业 → 换一家；门店有预约时段（到店 / 得来速）再提示 push --at。
+
+    预约时段是 init 选店时存下的快照：给了 today（YYYY-MM-DD）就丢掉早于今天的日子，全过期了就不提示预约；
+    快照里的 today 标记是选店那天的，不再看它。"""
     hints = ["这家店现在可能没营业（写字楼店、快捷小站周末常不开）", "换一家：git mcd init --city <城市> --keyword <地标>"]
     if not isinstance(remote, dict) or remote.get("mode") not in ("pickup", "drive"):
         return hints
     days = [d for d in remote.get("reservation") or [] if isinstance(d, dict) and any(s.get("ranges") for s in d.get("slots") or [])]
+    if today is not None:
+        days = [d for d in days if isinstance(d.get("date"), str) and d["date"] >= today]
     if not days:
         return hints
-    day = next((d for d in days if d.get("today")), days[0])
+    if today is None:
+        day = next((d for d in days if d.get("today")), days[0])
+    else:
+        day = next((d for d in days if d["date"] == today), days[0])
     slots = [f"{s.get('name') or ''} {start}至{end}" for s in day.get("slots") or [] for start, end in (s.get("ranges") or [])[:1]]
-    hints.append(f"或者预约：git mcd push --at HH:MM（这家店可约：{'，'.join(slots[:3])}）")
+    if today is None or day["date"] == today:
+        hints.append(f"或者预约：git mcd push --at HH:MM（这家店可约：{'，'.join(slots[:3])}）")
+    else:
+        hints.append(f"或者预约：git mcd push --at '{day['date']} HH:MM'（这家店 {day['date']} 可约：{'，'.join(slots[:3])}）")
     return hints
 
 
@@ -216,12 +227,12 @@ def main(
         result = args.func(ctx, args)
     except GitMcdError as err:
         if _mcd_code_in(err) == STORE_CLOSED_CODE:
-            _add_hints(err, _store_closed_hints(_remote_of(ctx)))
+            _add_hints(err, _store_closed_hints(_remote_of(ctx), ctx.now.strftime("%Y-%m-%d")))
         return _fail(err, json_mode=json_mode, command=args.command, demo=demo, out=out, err_out=err_out)
     except McdError as err:
         wrapped = GitMcdError(err.message, remote=[f"code {err.code}" + (f" · trace {err.trace_id}" if err.trace_id else "")] if err.code is not None else [], hint=_mcd_hints(err))
         if _mcd_code_in(err) == STORE_CLOSED_CODE:
-            _add_hints(wrapped, _store_closed_hints(_remote_of(ctx)))
+            _add_hints(wrapped, _store_closed_hints(_remote_of(ctx), ctx.now.strftime("%Y-%m-%d")))
         return _fail(wrapped, json_mode=json_mode, command=args.command, demo=demo, out=out, err_out=err_out)
     except KeyboardInterrupt:
         err_out.print("\n已中断，什么都没改。")
