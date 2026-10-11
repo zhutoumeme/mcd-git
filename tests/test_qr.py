@@ -242,10 +242,10 @@ def _bg_colors(text: Text) -> set:
 
 
 def _decode_fancy_non_logo(text: Text) -> List[List[bool]]:
-    """fancy 整格：按背景色解码（金=深、白=浅），正中 9x9 Logo 区按坐标置 None 跳过比对。"""
+    """fancy 整格：按背景色解码（金=深、白=浅），正中 11x11 Logo 区按坐标置 None 跳过比对。"""
     lines = text.split("\n")
     n = len(lines)
-    size = len(R._BURGER) + 2  # 9
+    size = len(next(iter(R._FANCY_PATTERNS.values()))) + 2  # 9 + 外圈红边 = 11
     lo = (n - size) // 2
     rows: List[List[bool]] = []
     for y, line in enumerate(lines):
@@ -263,26 +263,97 @@ def _decode_fancy_non_logo(text: Text) -> List[List[bool]]:
     return rows
 
 
+def _logo_region(text: Text) -> List[List[object]]:
+    """fancy 整格里正中 11x11 Logo 区的背景色（小写十六进制），非 Logo 区置 None。"""
+    lines = text.split("\n")
+    n = len(lines)
+    size = len(next(iter(R._FANCY_PATTERNS.values()))) + 2  # 11
+    lo = (n - size) // 2
+    out: List[List[object]] = []
+    for y, line in enumerate(lines):
+        row: List[object] = []
+        for i, col in enumerate(range(0, len(line.plain), 2)):
+            if lo <= y < lo + size and lo <= i < lo + size:
+                style = line.get_style_at_offset(_CONSOLE, col)
+                row.append(_hex(style.bgcolor))
+            else:
+                row.append(None)
+        out.append(row)
+    return out
+
+
 def test_qr_matrix_high_error_correction() -> None:
     assert len(R.qr_matrix(APP_URL, 2, high=True)) == 45  # 纠错 H + 静区 2 → n=45
     assert len(R.qr_matrix(APP_URL, 2)) == 37  # 默认仍 M → n=37，high 开关不影响现有调用
 
 
-def test_fancy_mode_draws_full_cells_with_burger_logo() -> None:
-    text = R.qr_text(APP_URL, color=True, width=120, fancy=True)
-    lines = text.split("\n")
+def test_six_templates_are_nine_by_nine() -> None:
+    # 6 个模板都在，且都是 9x9（照抄 templates-6-prototype.py）
+    assert set(R.FANCY_TEMPLATES) == set(R._FANCY_PATTERNS) == {"burger", "fries", "nuggets", "cone", "pie", "arch"}
+    assert set(R.FANCY_LABELS) == set(R.FANCY_TEMPLATES)
+    for name, pat in R._FANCY_PATTERNS.items():
+        assert len(pat) == 9 and all(len(row) == 9 for row in pat), name
+
+
+def test_every_template_draws_full_cells_and_matches_high_matrix_outside_logo() -> None:
     expected = R.qr_matrix(APP_URL, 2, high=True)
     n = len(expected)
-    assert len(lines) == n and all(cell_len(line.plain) == n * 2 for line in lines)  # 整格、无「▀」
-    assert all(set(line.plain) == {" "} for line in lines)
-    # 非 Logo 区解码应等于纠错 H 矩阵
-    decoded = _decode_fancy_non_logo(text)
-    for y in range(n):
-        for x in range(n):
-            if decoded[y][x] is not None:
-                assert decoded[y][x] == expected[y][x]
-    # 三色都落上了：金、白、红
-    assert {"ffbc0d", "ffffff", "da291c"} <= _bg_colors(text)
+    size = len(next(iter(R._FANCY_PATTERNS.values()))) + 2  # 11
+    lo = (n - size) // 2
+    for name, pat in R._FANCY_PATTERNS.items():
+        text = R.qr_text(APP_URL, color=True, width=120, fancy=True, template=name)
+        lines = text.split("\n")
+        assert len(lines) == n and all(cell_len(line.plain) == n * 2 for line in lines), name  # 整格
+        assert all(set(line.plain) == {" "} for line in lines), name  # 无「▀」
+        # 非 Logo 区逐格等于纠错 H 矩阵
+        decoded = _decode_fancy_non_logo(text)
+        for y in range(n):
+            for x in range(n):
+                if decoded[y][x] is not None:
+                    assert decoded[y][x] == expected[y][x], (name, y, x)
+        # 三色都落上了：金、白、红
+        assert {"ffbc0d", "ffffff", "da291c"} <= _bg_colors(text), name
+        # Logo 区：外圈 11x11 全红，内 9x9 按各自图案（1=金、0=红）
+        logo = _logo_region(text)
+        for r in range(size):
+            for c in range(size):
+                cell = logo[lo + r][lo + c]
+                inner = 1 <= r <= 9 and 1 <= c <= 9
+                want = "ffbc0d" if (inner and pat[r - 1][c - 1]) else "da291c"
+                assert cell == want, (name, r, c)
+
+
+def test_resolve_fancy_template_specific_random_and_invalid() -> None:
+    # 指定生效
+    assert R.resolve_fancy_template("fries") == "fries"
+    # 非法名字报错并列出可选
+    import pytest
+
+    with pytest.raises(R.FancyTemplateError) as e1:
+        R.resolve_fancy_template("bigmac")
+    assert all(t in str(e1.value) for t in R.FANCY_TEMPLATES)
+    # parse_qr_style 也要在解析期就挡住非法名字
+    with pytest.raises(R.FancyTemplateError):
+        R.parse_qr_style("fancy=bigmac")
+    assert R.parse_qr_style("fancy=cone") == ("fancy", "cone")
+    assert R.parse_qr_style("fancy:pie") == ("fancy", "pie")
+    assert R.parse_qr_style("fancy") == ("fancy", None)
+    assert R.parse_qr_style("full") == ("full", None)
+    # env 固定（截图 / 复现用）
+    assert R.resolve_fancy_template(None, env={R._FANCY_ENV: "nuggets"}) == "nuggets"
+
+
+def test_random_is_seed_reproducible_and_covers_all_templates() -> None:
+    import random as _random
+
+    # 同一 seed 复现同一结果
+    a = R.resolve_fancy_template(None, rng=_random.Random(7))
+    b = R.resolve_fancy_template(None, rng=_random.Random(7))
+    assert a == b and a in R.FANCY_TEMPLATES
+    # 足够多步数能覆盖到全部 6 个模板
+    rng = _random.Random(0)
+    seen = {R.resolve_fancy_template(None, rng=rng) for _ in range(400)}
+    assert seen == set(R.FANCY_TEMPLATES)
 
 
 def test_fancy_falls_back_to_half_when_terminal_too_narrow() -> None:
@@ -296,16 +367,25 @@ def test_fancy_without_color_is_plain() -> None:
     assert not text.spans
 
 
-def test_pay_block_fancy_wide_terminal_shows_theme_hint() -> None:
+def test_pay_block_fancy_wide_terminal_shows_theme_hint_with_template_name() -> None:
     pay = "https://m.mcd.cn/mcp/scanToPay?orderId=" + "1030" * 7
     buf = io.StringIO()
     console = Console(file=buf, force_terminal=True, color_system="truecolor", width=120, highlight=False)
-    R.pay_block(console, pay, style="fancy")
+    R.pay_block(console, pay, style="fancy=cone")  # 指定甜筒，复现稳定
     text = Text.from_ansi(buf.getvalue())
-    assert "麦当劳主题码，和普通码一样扫" in text.plain
+    assert "麦当劳主题码·甜筒，和普通码一样扫" in text.plain
     qr_lines = [line for line in text.split("\n") if line.plain and set(line.plain) == {" "}]
     assert _decode_fancy_non_logo(Text("\n").join(qr_lines))  # 画成了整格 fancy
     assert "支付链接：" + pay in text.plain  # 文字链接仍是原支付链接
+
+
+def test_pay_block_fancy_env_pins_template() -> None:
+    pay = "https://m.mcd.cn/mcp/scanToPay?orderId=" + "1030" * 7
+    buf = io.StringIO()
+    console = Console(file=buf, force_terminal=True, color_system="truecolor", width=120, highlight=False)
+    R.pay_block(console, pay, style="fancy", env={R._FANCY_ENV: "fries"})  # 随机但 env 固定
+    text = Text.from_ansi(buf.getvalue())
+    assert "麦当劳主题码·薯条，和普通码一样扫" in text.plain
 
 
 def test_pay_block_fancy_narrow_falls_back_with_notice() -> None:
@@ -319,7 +399,16 @@ def test_pay_block_fancy_narrow_falls_back_with_notice() -> None:
 
 
 def test_push_qr_fancy(runner: Runner) -> None:
-    argv = _confirmed_push(runner) + ["--qr", "fancy"]
+    argv = _confirmed_push(runner) + ["--qr", "fancy=burger"]
     code, text = _color_run(runner, argv, 120)
     assert code == 0
-    assert "麦当劳主题码，和普通码一样扫" in text.plain
+    assert "麦当劳主题码·汉堡，和普通码一样扫" in text.plain
+
+
+def test_push_qr_fancy_invalid_template_errors(runner: Runner) -> None:
+    argv = _confirmed_push(runner) + ["--qr", "fancy=bigmac"]
+    code, text = _color_run(runner, argv, 120)
+    assert code != 0
+    assert "bigmac" in text.plain
+    for name in R.FANCY_TEMPLATES:
+        assert name in text.plain

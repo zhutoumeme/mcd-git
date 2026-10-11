@@ -15,7 +15,7 @@ from ..errors import GitMcdError, McdError
 from ..money import fmt
 from ..state import head_commit, last_order, order_record
 from . import log_stat
-from .common import scope_gap
+from .common import scope_gap, validate_qr
 
 _LANE_STYLES = ["", "red", "green", "yellow", "blue", "magenta"]
 _STATE_STYLES = {"pending": "bold yellow", "preparing": "cyan", "delivering": "cyan", "completed": "green", "cancelled": "red", "local": "yellow"}
@@ -38,7 +38,7 @@ def register(sub: Any, common: Any) -> None:
 
     p = sub.add_parser("show", parents=[common], help="订单详情、取餐码（默认 HEAD）", description="看一单的详情：订单状态、取餐码、取餐柜、外送进度。只在你运行时查一次，不轮询。")
     p.add_argument("target", nargs="?", default="HEAD", metavar="<commit|订单号>", help="默认 HEAD（最近一单）")
-    p.add_argument("--qr", choices=("half", "full", "fancy"), default="half", help="待支付订单二维码画法：half 紧凑(默认)/full 更大更清楚/fancy 麦当劳主题(金色+汉堡)")
+    p.add_argument("--qr", metavar="{half,full,fancy[=名字]}", default="half", help="待支付订单二维码画法：half 紧凑(默认)/full 更大更清楚/fancy 麦当劳主题码(随机汉堡/薯条/麦乐鸡/甜筒/派/金拱门，可用 fancy=名字 指定)")
     p.set_defaults(func=run_show)
 
 
@@ -221,6 +221,7 @@ def _resolve(ctx: Context, target: str) -> Dict[str, Any]:
 
 
 def run_show(ctx: Context, args: Any) -> Result:
+    validate_qr(getattr(args, "qr", "half"))
     found = _resolve(ctx, args.target)
     commit = found.get("commit")
     order_id = found.get("orderId")
@@ -270,7 +271,7 @@ def run_show(ctx: Context, args: Any) -> Result:
             deadline = str(order.get("expirePayTime") or "")[11:16]
             console.print(Text(f"待支付：请在 {deadline} 前付款", style="bold yellow"))
             if record and record.get("payH5Url"):
-                R.pay_block(console, record["payH5Url"], demo=ctx.demo, big_qr=(getattr(args, "qr", "half") == "full"), style=getattr(args, "qr", "half"))
+                R.pay_block(console, record["payH5Url"], demo=ctx.demo, big_qr=(getattr(args, "qr", "half") == "full"), style=getattr(args, "qr", "half"), env=ctx.env)
             R.hints(console, ["付完再运行一次 git mcd show 看取餐码（mcd-git 不会后台轮询）"])
         if order.get("pickupCode"):
             console.print(Panel(Text(order["pickupCode"], style="bold", justify="center"), title=Text("取餐码"), expand=False, border_style="green", padding=(0, 3)))

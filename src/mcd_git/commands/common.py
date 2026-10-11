@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+from .. import render as R
 from ..api import Menu, McdApi
 from ..cart import Line, build_line, summary
 from ..errors import GitMcdError
@@ -121,3 +122,15 @@ def make_line(
 
 def index_total_hint(lines: Sequence[Line]) -> int:
     return sum(int(line.get("unit") or 0) * int(line.get("qty") or 1) for line in lines)
+
+
+def validate_qr(raw: Optional[str]) -> str:
+    """校验 `--qr` 取值（half/full/fancy/fancy=名字）；非法画法或非法模板名报 git 风格错误并列出可选。"""
+    text = (raw or "half").strip()
+    try:
+        mode, _ = R.parse_qr_style(text)
+    except R.FancyTemplateError as err:
+        raise GitMcdError(str(err), hint="可选模板：" + "、".join(R.FANCY_TEMPLATES)) from None
+    if mode not in ("half", "full", "fancy"):
+        raise GitMcdError(f"--qr 不认识 '{text}'", hint="可选：half / full / fancy / fancy=名字（名字：" + "、".join(R.FANCY_TEMPLATES) + "）")
+    return text
