@@ -38,6 +38,7 @@ def register(sub: Any, common: Any) -> None:
 
     p = sub.add_parser("show", parents=[common], help="订单详情、取餐码（默认 HEAD）", description="看一单的详情：订单状态、取餐码、取餐柜、外送进度。只在你运行时查一次，不轮询。")
     p.add_argument("target", nargs="?", default="HEAD", metavar="<commit|订单号>", help="默认 HEAD（最近一单）")
+    p.add_argument("--qr", choices=("half", "full"), default="half", help="待支付订单二维码画法：half 紧凑（默认），full 更大更清楚")
     p.set_defaults(func=run_show)
 
 
@@ -269,7 +270,7 @@ def run_show(ctx: Context, args: Any) -> Result:
             deadline = str(order.get("expirePayTime") or "")[11:16]
             console.print(Text(f"待支付：请在 {deadline} 前付款", style="bold yellow"))
             if record and record.get("payH5Url"):
-                console.print(Text.assemble("支付链接：", (record["payH5Url"], R.link(record["payH5Url"]))))
+                R.pay_block(console, record["payH5Url"], demo=ctx.demo, big_qr=getattr(args, "qr", "half") == "full")
             R.hints(console, ["付完再运行一次 git mcd show 看取餐码（mcd-git 不会后台轮询）"])
         if order.get("pickupCode"):
             console.print(Panel(Text(order["pickupCode"], style="bold", justify="center"), title=Text("取餐码"), expand=False, border_style="green", padding=(0, 3)))

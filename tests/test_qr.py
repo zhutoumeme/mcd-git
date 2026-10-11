@@ -89,36 +89,23 @@ def test_qr_matrix_has_quiet_zone_of_four() -> None:
     assert len(URL.encode()) == 67
     matrix = R.qr_matrix(URL)
     assert R.QR_QUIET == 4
-    assert len(matrix) == 41 and all(len(row) == 41 for row in matrix)  # version 4（33）+ 2 × 4
+    assert len(matrix) == 41 and all(len(row) == 41 for row in matrix)  # 纠错 M：version 4（33）+ 2 × 4
     assert _quiet(matrix, 4)
     assert _strip(matrix, 4) == _bare_matrix(URL)
 
 
-# ---------------------------------------------------------------- T25 整格画法
+# ---------------------------------------------------------------- T26 默认半块（0.2.3：默认画法，最紧凑）
 
 
-def test_full_mode_draws_each_module_as_two_background_cells() -> None:
-    assert R.qr_mode(41, 82, True) == "full"
-    text = R.qr_text(URL, color=True, width=82)
+def test_half_is_the_default_and_most_compact() -> None:
+    assert R.qr_mode(37, 200, True, False) == "half"  # 默认 big=False 永远 half
+    assert R.qr_mode(37, 200, True) == "half"
+    text = R.qr_text(URL, color=True, width=200)  # 不传 big
     lines = text.split("\n")
-    assert len(lines) == 41
-    assert all(cell_len(line.plain) == 82 for line in lines)
-    assert _decode_full(text) == R.qr_matrix(URL)
-
-
-# ---------------------------------------------------------------- T26 半块 / 无颜色
-
-
-def test_half_mode_when_terminal_is_narrower_than_full() -> None:
-    assert R.qr_mode(41, 81, True) == "half"
-    assert R.qr_mode(41, None, True) == "half"
-    for width in (81, None):
-        text = R.qr_text(URL, color=True, width=width)
-        lines = text.split("\n")
-        assert len(lines) == 21 and all(cell_len(line.plain) == 41 for line in lines)
-        decoded = _decode_half(text)
-        assert decoded[-1] == [False] * 41  # 最后一行的下半格补浅色
-        assert decoded[:41] == R.qr_matrix(URL)
+    assert len(lines) == 21 and all(cell_len(line.plain) == 41 for line in lines)  # 比整格 41×82 小得多
+    decoded = _decode_half(text)
+    assert decoded[-1] == [False] * 41  # 最后一行的下半格补浅色
+    assert decoded[:41] == R.qr_matrix(URL)
 
 
 def test_half_mode_falls_back_to_quiet_two_when_even_half_does_not_fit() -> None:
@@ -128,6 +115,23 @@ def test_half_mode_falls_back_to_quiet_two_when_even_half_does_not_fit() -> None
     assert _decode_half(text)[:37] == R.qr_matrix(URL, 2)
 
 
+# ---------------------------------------------------------------- T25 big=full 显式开大图（静区 2）
+
+
+def test_big_full_mode_opt_in_draws_each_module_as_two_background_cells() -> None:
+    assert R.QR_QUIET_FULL == 2
+    assert R.qr_mode(37, 74, True, True) == "full"
+    text = R.qr_text(URL, color=True, width=74, big=True)
+    lines = text.split("\n")
+    assert len(lines) == 37 and all(cell_len(line.plain) == 74 for line in lines)
+    assert _decode_full(text) == R.qr_matrix(URL, 2)
+    assert _quiet(_decode_full(text), 2)
+
+
+def test_big_full_falls_back_to_half_when_terminal_too_narrow() -> None:
+    assert R.qr_mode(37, 73, True, True) == "half"  # big 但放不下 → 退回 half
+
+
 def test_plain_mode_keeps_qrencode_style_with_quiet_four() -> None:
     assert R.qr_mode(41, 200, False) == "plain"
     text = R.qr_text(URL, color=False, width=200)
@@ -135,6 +139,45 @@ def test_plain_mode_keeps_qrencode_style_with_quiet_four() -> None:
     lines = text.plain.split("\n")
     assert len(lines) == 21 and all(len(line) == 41 for line in lines)
     assert _decode_plain(text)[:41] == R.qr_matrix(URL)
+
+
+# ---------------------------------------------------------------- 0.2.3：二维码和收银页一样，扫了拉起 App
+
+
+def test_app_pay_url_matches_the_cashier_page_rule() -> None:
+    oid = "1030" + "0" * 24
+    assert R.app_pay_url(f"https://m.mcd.cn/mcp/scanToPay?orderId={oid}") == f"https://m.mcd.cn/mcp/jumpToApp?orderId={oid}"
+    assert R.app_pay_url(f"https://m.mcd.cn/mcp/scanToPay/?orderId={oid}&orderCategory=ECS") == (
+        f"https://m.mcd.cn/mcp/jumpToApp?orderId={oid}&orderCategory=ECS")
+    # 认不出的一律 None，调用方退回原链接：demo、别的域名、http、别的路径、坏订单号
+    for bad in (None, "", "https://example.com/mcd-git-demo/pay?orderId=1", f"http://m.mcd.cn/mcp/scanToPay?orderId={oid}",
+                f"https://m.mcd.cn.evil.com/mcp/scanToPay?orderId={oid}", f"https://m.mcd.cn/mcp/other?orderId={oid}",
+                "https://m.mcd.cn/mcp/scanToPay?orderId=", "https://m.mcd.cn/mcp/scanToPay?orderId=a%26b%3D1"):
+        assert R.app_pay_url(bad) is None
+
+
+def test_pay_block_default_half_encodes_app_link_and_keeps_pay_link_text() -> None:
+    pay = "https://m.mcd.cn/mcp/scanToPay?orderId=" + "1030" * 7
+    buf = io.StringIO()
+    console = Console(file=buf, force_terminal=True, color_system="truecolor", width=120, highlight=False)
+    R.pay_block(console, pay)  # 默认 half
+    text = Text.from_ansi(buf.getvalue())
+    qr_lines = [line for line in text.split("\n") if "▀" in line.plain]
+    assert len(qr_lines) == 21  # 默认半块、静区 4：21 行，而不是整格的 41 行
+    assert _decode_half(Text("\n").join(qr_lines))[:41] == R.qr_matrix(R.app_pay_url(pay))  # 二维码是 App 链接
+    assert "支付链接：" + pay in text.plain  # 文字链接仍是原支付链接（浏览器打开）
+    assert "会直接打开麦当劳 App 付款" in text.plain
+
+
+def test_pay_block_big_qr_uses_full_mode() -> None:
+    pay = "https://m.mcd.cn/mcp/scanToPay?orderId=" + "1030" * 7
+    buf = io.StringIO()
+    console = Console(file=buf, force_terminal=True, color_system="truecolor", width=120, highlight=False)
+    R.pay_block(console, pay, big_qr=True)
+    text = Text.from_ansi(buf.getvalue())
+    qr_lines = [line for line in text.split("\n") if line.plain and set(line.plain) == {" "}]
+    assert len(qr_lines) == 37  # 整格画法、静区 2
+    assert _decode_full(Text("\n").join(qr_lines)) == R.qr_matrix(R.app_pay_url(pay), 2)
 
 
 # ---------------------------------------------------------------- T27 push
@@ -166,15 +209,17 @@ def test_push_without_color_uses_plain_qr_and_adds_fallback_hint(runner: Runner)
     assert hints[-1] == "hint: 付完运行 git mcd show 查看取餐码"
 
 
-def test_push_picks_full_on_wide_color_terminal_and_half_on_narrow(runner: Runner) -> None:
+def test_push_defaults_to_compact_half_qr(runner: Runner) -> None:
+    # 默认（不带 --qr）在宽终端也用半块：紧凑、不占满屏
     argv = _confirmed_push(runner)
+    code, text = _color_run(runner, argv, 120)
+    assert code == 0 and "▀" in text.plain
+    assert "扫不出来" in text.plain
+
+
+def test_push_qr_full_opts_into_big_code(runner: Runner) -> None:
+    argv = _confirmed_push(runner) + ["--qr", "full"]
     code, text = _color_run(runner, argv, 120)
     assert code == 0
     blank = [line for line in text.split("\n") if line.plain and set(line.plain) == {" "}]
-    assert len(blank) >= 21 + 8 and "▀" not in text.plain  # 整格画法：每个模块行一行，全是带背景色的空格
-    assert "扫不出来就直接打开上面的支付链接" in text.plain
-
-    runner.env_overrides["MCD_GIT_HOME"] = str(runner.tmp_path / "narrow")  # 另起一个 demo 状态再下一单
-    argv = _confirmed_push(runner)
-    code, text = _color_run(runner, argv, 60)
-    assert code == 0 and "▀" in text.plain
+    assert len(blank) >= 37 and "▀" not in text.plain  # 整格画法：每个模块行一行，全是带背景色的空格

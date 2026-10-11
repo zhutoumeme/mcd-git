@@ -1,7 +1,9 @@
 """终端渲染：git 风格的配色、对齐（中文占两格）、终端二维码。"""
 from __future__ import annotations
 
+import re
 from typing import Iterable, List, Optional, Sequence
+from urllib.parse import parse_qs, urlsplit
 
 import qrcode
 from rich.cells import cell_len
@@ -85,42 +87,96 @@ def decorations(items: Sequence[str]) -> Text:
 
 _HALF_BLOCKS = {(False, False): "█", (False, True): "▀", (True, False): "▄", (True, True): " "}
 
-QR_QUIET = 4  # 二维码规范要求的静区（模块数）；深色终端背景上静区太窄，手机常常认不出边界
+QR_QUIET = 4  # 半块 / 无颜色画法的静区（模块数）：这两种画法静区靠字形或终端背景，留宽一点手机才认得出边界
+QR_QUIET_FULL = 2  # 整格画法的静区：静区本身就是画出来的白色格子，2 个模块足够，二维码能小一圈
 _QR_QUIET_MIN = 2  # 终端窄到连半块画法都放不下时退回的静区（0.2.0 的老样子）
 _QR_DARK = "#000000"
 _QR_LIGHT = "#ffffff"
 
+_PAY_HOSTS = ("m.mcd.cn",)
+_ORDER_ID = re.compile(r"[0-9A-Za-z_-]{1,64}")
+
+
+def app_pay_url(pay_url: Optional[str]) -> Optional[str]:
+    """把 payH5Url（https://m.mcd.cn/mcp/scanToPay?orderId=…）换成麦当劳收银页里那个二维码的内容。
+
+    浏览器打开 scanToPay，页面里画的二维码编码的是同域的 /mcp/jumpToApp?orderId=…（ECS 订单再带
+    &orderCategory=ECS），手机扫了直接拉起麦当劳 App 付款；这里照着页面的规则拼出同一条链接，
+    终端里的二维码就和网页里的一样。认不出的链接（demo、以后接口改版）返回 None，调用方退回原链接。
+    """
+    if not pay_url:
+        return None
+    try:
+        parts = urlsplit(pay_url)
+    except ValueError:
+        return None
+    if parts.scheme != "https" or parts.hostname not in _PAY_HOSTS or parts.path.rstrip("/") != "/mcp/scanToPay":
+        return None
+    query = parse_qs(parts.query)
+    order_id = (query.get("orderId") or [""])[0]
+    if not _ORDER_ID.fullmatch(order_id):
+        return None
+    url = f"https://{parts.hostname}/mcp/jumpToApp?orderId={order_id}"
+    if (query.get("orderCategory") or [""])[0] == "ECS":
+        url += "&orderCategory=ECS"
+    return url
+
+
+def pay_block(console: Console, pay_url: str, *, demo: bool = False, big_qr: bool = False) -> None:
+    """push / show 共用：二维码 + 支付链接 + 怎么付的提示。
+
+    二维码优先画「扫了拉起麦当劳 App 付款」的那条链接（和收银页里的二维码一样）；认不出就退回支付链接本身。
+    默认半块、紧凑；big_qr（`--qr full`）时画更大的整格二维码，适合半块扫不出的终端。
+    """
+    app_url = app_pay_url(pay_url)
+    console.print(qr_text(app_url or pay_url, color=console.color_system is not None, width=console.width, big=big_qr), no_wrap=True, crop=False)
+    console.print(Text.assemble("支付链接：", (pay_url, link(pay_url))))
+    if demo:
+        console.print("（demo：演示链接，不会扣款）", style=DIM)
+    if app_url:
+        tips = ["用手机扫上面的二维码，会直接打开麦当劳 App 付款（mcd-git 不会替你付款）",
+                "扫不出来：在浏览器里打开支付链接，或到麦当劳 App 订单页付款"]
+    else:
+        tips = ["用手机扫码或打开麦当劳 App 完成支付（mcd-git 不会替你付款）",
+                "扫不出来就直接打开上面的支付链接，或到麦当劳 App 订单页付款"]
+    hints(console, tips)
+
 
 def qr_matrix(data: str, border: int = QR_QUIET) -> List[List[bool]]:
-    """二维码模块矩阵（含静区），True 是深色模块。"""
+    """二维码模块矩阵（含静区），True 是深色模块。纠错等级 M：终端半块字形有缝、复制时也容易被破坏，留点容错更稳。"""
     qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_M, box_size=1, border=border)
     qr.add_data(data)
     qr.make(fit=True)
     return qr.get_matrix()
 
 
-def qr_mode(modules: int, width: Optional[int], color: bool) -> str:
-    """选画法：'full' 每个模块两个空格 + 背景色（一行一个模块行，不依赖字形）；
-    'half' 上下半块「▀」+ 前景 / 背景色（一行两个模块行）；'plain' 没颜色时的 qrencode 风格。
-    modules 是含静区的边长。"""
+def qr_mode(modules: int, width: Optional[int], color: bool, big: bool = False) -> str:
+    """选画法：'half' 上下半块「▀」+ 前景 / 背景色（一行两个模块行，默认，最省地方）；
+    'full' 每个模块两个空格 + 背景色（一行一个模块行，不依赖字形，`--qr full` 时用，适合半块扫不出的终端）；
+    'plain' 没颜色时的 qrencode 风格。modules 是含静区的边长。
+    big 为真且终端够宽（width ≥ 边长 × 2）才用 full；否则一律 half（没颜色是 plain）。"""
     if not color:
         return "plain"
-    if width is not None and width >= modules * 2:
+    if big and width is not None and width >= modules * 2:
         return "full"
     return "half"
 
 
-def qr_text(data: str, *, color: bool = True, border: int = QR_QUIET, width: Optional[int] = None) -> Text:
+def qr_text(data: str, *, color: bool = True, border: int = QR_QUIET, width: Optional[int] = None, big: bool = False) -> Text:
     """画终端二维码。
 
-    终端够宽（width ≥ 边长 × 2）且有颜色时，每个模块画成两个带背景色的空格：模块铺满整个字符格，
-    不受字体半块字形高度、行距留缝的影响，手机最好扫；不够宽才退回上下半块「▀」画法
-    （连边长都放不下时静区退回 2）。显式指定黑白色，深浅主题和 SVG 导出都能扫。
+    默认半块「▀」画法：一个字符放上下两个模块，高度减半，是终端里最紧凑的画法（约 17 行高），手机能扫。
+    `big=True`（命令行 `--qr full`）且终端够宽时，每个模块画成两个带背景色的空格、不依赖字形，整码更大更清楚，
+    适合半块在某些终端扫不出的情况。显式指定黑白色，深浅主题和 SVG 导出都能扫。
     没颜色（管道、NO_COLOR）时按 qrencode -t UTF8 的习惯，用方块画浅色模块，适合深色背景终端。
     """
-    matrix = qr_matrix(data, border)
+    size_full = len(qr_matrix(data, QR_QUIET_FULL))
+    mode = qr_mode(size_full, width, color, big)
+    if mode == "full":
+        matrix = qr_matrix(data, QR_QUIET_FULL)  # 整格画法用窄静区：白色静区是画出来的，不用留 4
+    else:
+        matrix = qr_matrix(data, border)
     size = len(matrix[0]) if matrix else 0
-    mode = qr_mode(size, width, color)
     if mode == "half" and width is not None and width < size and border > _QR_QUIET_MIN:
         matrix = qr_matrix(data, _QR_QUIET_MIN)
         size = len(matrix[0]) if matrix else 0
