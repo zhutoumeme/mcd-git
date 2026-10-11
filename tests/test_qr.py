@@ -223,3 +223,103 @@ def test_push_qr_full_opts_into_big_code(runner: Runner) -> None:
     assert code == 0
     blank = [line for line in text.split("\n") if line.plain and set(line.plain) == {" "}]
     assert len(blank) >= 37 and "▀" not in text.plain  # 整格画法：每个模块行一行，全是带背景色的空格
+
+
+# ---------------------------------------------------------------- 0.2.3：--qr fancy 麦当劳主题码
+
+APP_URL = R.app_pay_url("https://m.mcd.cn/mcp/scanToPay?orderId=" + "1030" + "0" * 24)
+
+
+def _bg_colors(text: Text) -> set:
+    """收集二维码里所有出现过的背景色（小写十六进制，不带 #）。"""
+    colors = set()
+    for line in text.split("\n"):
+        for col in range(len(line.plain)):
+            style = line.get_style_at_offset(_CONSOLE, col)
+            if style.bgcolor is not None:
+                colors.add(_hex(style.bgcolor))
+    return colors
+
+
+def _decode_fancy_non_logo(text: Text) -> List[List[bool]]:
+    """fancy 整格：按背景色解码（金=深、白=浅），正中 9x9 Logo 区按坐标置 None 跳过比对。"""
+    lines = text.split("\n")
+    n = len(lines)
+    size = len(R._BURGER) + 2  # 9
+    lo = (n - size) // 2
+    rows: List[List[bool]] = []
+    for y, line in enumerate(lines):
+        assert set(line.plain) == {" "}  # 整格画法全是空格
+        row: List[bool] = []
+        for i, col in enumerate(range(0, len(line.plain), 2)):
+            style = line.get_style_at_offset(_CONSOLE, col)
+            assert line.get_style_at_offset(_CONSOLE, col + 1) == style  # 一个模块两格同色
+            if lo <= y < lo + size and lo <= i < lo + size:
+                row.append(None)  # type: ignore[arg-type]  # Logo 区按坐标跳过
+                continue
+            hexv = _hex(style.bgcolor)
+            row.append({"ffbc0d": True, LIGHT: False}[hexv])
+        rows.append(row)
+    return rows
+
+
+def test_qr_matrix_high_error_correction() -> None:
+    assert len(R.qr_matrix(APP_URL, 2, high=True)) == 45  # 纠错 H + 静区 2 → n=45
+    assert len(R.qr_matrix(APP_URL, 2)) == 37  # 默认仍 M → n=37，high 开关不影响现有调用
+
+
+def test_fancy_mode_draws_full_cells_with_burger_logo() -> None:
+    text = R.qr_text(APP_URL, color=True, width=120, fancy=True)
+    lines = text.split("\n")
+    expected = R.qr_matrix(APP_URL, 2, high=True)
+    n = len(expected)
+    assert len(lines) == n and all(cell_len(line.plain) == n * 2 for line in lines)  # 整格、无「▀」
+    assert all(set(line.plain) == {" "} for line in lines)
+    # 非 Logo 区解码应等于纠错 H 矩阵
+    decoded = _decode_fancy_non_logo(text)
+    for y in range(n):
+        for x in range(n):
+            if decoded[y][x] is not None:
+                assert decoded[y][x] == expected[y][x]
+    # 三色都落上了：金、白、红
+    assert {"ffbc0d", "ffffff", "da291c"} <= _bg_colors(text)
+
+
+def test_fancy_falls_back_to_half_when_terminal_too_narrow() -> None:
+    text = R.qr_text(APP_URL, color=True, width=80, fancy=True)  # width < 45*2=90 → 退回 half
+    assert "▀" in text.plain
+    assert "da291c" not in _bg_colors(text)  # 退回普通 half，没有麦当劳红
+
+
+def test_fancy_without_color_is_plain() -> None:
+    text = R.qr_text(APP_URL, color=False, width=120, fancy=True)  # 没颜色 fancy 不生效
+    assert not text.spans
+
+
+def test_pay_block_fancy_wide_terminal_shows_theme_hint() -> None:
+    pay = "https://m.mcd.cn/mcp/scanToPay?orderId=" + "1030" * 7
+    buf = io.StringIO()
+    console = Console(file=buf, force_terminal=True, color_system="truecolor", width=120, highlight=False)
+    R.pay_block(console, pay, style="fancy")
+    text = Text.from_ansi(buf.getvalue())
+    assert "麦当劳主题码，和普通码一样扫" in text.plain
+    qr_lines = [line for line in text.split("\n") if line.plain and set(line.plain) == {" "}]
+    assert _decode_fancy_non_logo(Text("\n").join(qr_lines))  # 画成了整格 fancy
+    assert "支付链接：" + pay in text.plain  # 文字链接仍是原支付链接
+
+
+def test_pay_block_fancy_narrow_falls_back_with_notice() -> None:
+    pay = "https://m.mcd.cn/mcp/scanToPay?orderId=" + "1030" * 7
+    buf = io.StringIO()
+    console = Console(file=buf, force_terminal=True, color_system="truecolor", width=80, highlight=False)
+    R.pay_block(console, pay, style="fancy")
+    text = Text.from_ansi(buf.getvalue())
+    assert "终端太窄，麦当劳主题码已退回普通二维码" in text.plain
+    assert "▀" in text.plain
+
+
+def test_push_qr_fancy(runner: Runner) -> None:
+    argv = _confirmed_push(runner) + ["--qr", "fancy"]
+    code, text = _color_run(runner, argv, 120)
+    assert code == 0
+    assert "麦当劳主题码，和普通码一样扫" in text.plain

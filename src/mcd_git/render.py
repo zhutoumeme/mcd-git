@@ -93,6 +93,22 @@ _QR_QUIET_MIN = 2  # 终端窄到连半块画法都放不下时退回的静区�
 _QR_DARK = "#000000"
 _QR_LIGHT = "#ffffff"
 
+# fancy（--qr fancy）麦当劳主题码：麦门金配色 + 正中像素汉堡 Logo，纠错 H 盖住 Logo 仍可识别。
+_QR_GOLD = "#FFBC0D"  # 麦门金：深色模块
+_QR_RED = "#DA291C"  # 麦当劳红：Logo 隔离边 / 底
+# fancy 正中 7x7 汉堡图案（四周再由代码补 1 圈红边 → 实际 9x9）；0=红底，1=金色笔画。
+# 三层：上包-肉-下包，与 fancy-prototype.py 的 BURGER、burger-approved.svg 一致。
+_BURGER = [
+    [0, 0, 0, 0, 0, 0, 0],
+    [0, 1, 1, 1, 1, 1, 0],
+    [1, 1, 1, 1, 1, 1, 1],
+    [0, 0, 0, 0, 0, 0, 0],
+    [1, 1, 1, 1, 1, 1, 1],
+    [0, 1, 1, 1, 1, 1, 0],
+    [0, 0, 0, 0, 0, 0, 0],
+]
+_FANCY_QUIET = 2  # fancy 静区（和整格一致）：白色静区是画出来的格子，2 个模块够
+
 _PAY_HOSTS = ("m.mcd.cn",)
 _ORDER_ID = re.compile(r"[0-9A-Za-z_-]{1,64}")
 
@@ -122,14 +138,17 @@ def app_pay_url(pay_url: Optional[str]) -> Optional[str]:
     return url
 
 
-def pay_block(console: Console, pay_url: str, *, demo: bool = False, big_qr: bool = False) -> None:
+def pay_block(console: Console, pay_url: str, *, demo: bool = False, big_qr: bool = False, style: str = "half") -> None:
     """push / show 共用：二维码 + 支付链接 + 怎么付的提示。
 
     二维码优先画「扫了拉起麦当劳 App 付款」的那条链接（和收银页里的二维码一样）；认不出就退回支付链接本身。
-    默认半块、紧凑；big_qr（`--qr full`）时画更大的整格二维码，适合半块扫不出的终端。
+    默认半块、紧凑；big_qr（`--qr full`）时画更大的整格二维码，适合半块扫不出的终端；
+    style="fancy"（`--qr fancy`）画麦当劳主题码，终端够宽成功时提示「和普通码一样扫」、太窄退回普通码并提示。
     """
     app_url = app_pay_url(pay_url)
-    console.print(qr_text(app_url or pay_url, color=console.color_system is not None, width=console.width, big=big_qr), no_wrap=True, crop=False)
+    data = app_url or pay_url
+    fancy = style == "fancy"
+    console.print(qr_text(data, color=console.color_system is not None, width=console.width, big=big_qr, fancy=fancy), no_wrap=True, crop=False)
     console.print(Text.assemble("支付链接：", (pay_url, link(pay_url))))
     if demo:
         console.print("（demo：演示链接，不会扣款）", style=DIM)
@@ -139,15 +158,48 @@ def pay_block(console: Console, pay_url: str, *, demo: bool = False, big_qr: boo
     else:
         tips = ["用手机扫码或打开麦当劳 App 完成支付（mcd-git 不会替你付款）",
                 "扫不出来就直接打开上面的支付链接，或到麦当劳 App 订单页付款"]
+    if fancy and console.color_system is not None:
+        # 阈值单一来源：和 qr_text 里一样用 _FANCY_QUIET + high=True 的边长判断是否真的画成了 fancy
+        n = len(qr_matrix(data, _FANCY_QUIET, high=True))
+        if console.width is None or console.width >= n * 2:
+            tips.insert(0, "麦当劳主题码，和普通码一样扫")
+        else:
+            tips.insert(0, "终端太窄，麦当劳主题码已退回普通二维码")
     hints(console, tips)
 
 
-def qr_matrix(data: str, border: int = QR_QUIET) -> List[List[bool]]:
-    """二维码模块矩阵（含静区），True 是深色模块。纠错等级 M：终端半块字形有缝、复制时也容易被破坏，留点容错更稳。"""
-    qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_M, box_size=1, border=border)
+def qr_matrix(data: str, border: int = QR_QUIET, *, high: bool = False) -> List[List[bool]]:
+    """二维码模块矩阵（含静区），True 是深色模块。
+
+    默认纠错等级 M：终端半块字形有缝、复制时也容易被破坏，留点容错更稳。
+    high=True 时用纠错 H（fancy 主题码用）：30% 冗余足以盖住正中 9×9 汉堡 Logo 区仍可识别。
+    """
+    ec = qrcode.constants.ERROR_CORRECT_H if high else qrcode.constants.ERROR_CORRECT_M
+    qr = qrcode.QRCode(error_correction=ec, box_size=1, border=border)
     qr.add_data(data)
     qr.make(fit=True)
     return qr.get_matrix()
+
+
+def _fancy_lines(matrix: List[List[bool]]) -> List[Text]:
+    """整格画法 + 正中 9x9 汉堡 Logo：深色模块金、浅色白；Logo 区外圈红、内 7x7 按 _BURGER。"""
+    n = len(matrix)
+    size = len(_BURGER) + 2  # 7 + 四周 1 圈红边 = 9
+    lo = (n - size) // 2
+    region = {}
+    for r in range(size):
+        for c in range(size):
+            inner = 1 <= r <= len(_BURGER) and 1 <= c <= len(_BURGER)
+            gold = inner and _BURGER[r - 1][c - 1]
+            region[(lo + r, lo + c)] = _QR_GOLD if gold else _QR_RED
+    rows: List[Text] = []
+    for y in range(n):
+        line = Text()
+        for x in range(n):
+            color = region.get((y, x)) or (_QR_GOLD if matrix[y][x] else _QR_LIGHT)
+            line.append("  ", style="on " + color)
+        rows.append(line)
+    return rows
 
 
 def qr_mode(modules: int, width: Optional[int], color: bool, big: bool = False) -> str:
@@ -162,14 +214,23 @@ def qr_mode(modules: int, width: Optional[int], color: bool, big: bool = False) 
     return "half"
 
 
-def qr_text(data: str, *, color: bool = True, border: int = QR_QUIET, width: Optional[int] = None, big: bool = False) -> Text:
+def qr_text(data: str, *, color: bool = True, border: int = QR_QUIET, width: Optional[int] = None, big: bool = False, fancy: bool = False) -> Text:
     """画终端二维码。
 
     默认半块「▀」画法：一个字符放上下两个模块，高度减半，是终端里最紧凑的画法（约 17 行高），手机能扫。
     `big=True`（命令行 `--qr full`）且终端够宽时，每个模块画成两个带背景色的空格、不依赖字形，整码更大更清楚，
     适合半块在某些终端扫不出的情况。显式指定黑白色，深浅主题和 SVG 导出都能扫。
+    `fancy=True`（命令行 `--qr fancy`）且有颜色时画麦当劳主题码：麦门金配色 + 正中像素汉堡 Logo、纠错 H，
+    固定整格（不受 big/width 放大影响）；终端太窄（width < 边长×2）时退回普通 half 画法（不画 Logo）。
     没颜色（管道、NO_COLOR）时按 qrencode -t UTF8 的习惯，用方块画浅色模块，适合深色背景终端。
     """
+    if fancy and color:
+        matrix = qr_matrix(data, _FANCY_QUIET, high=True)
+        n = len(matrix)
+        if width is None or width >= n * 2:
+            return Text("\n").join(_fancy_lines(matrix))
+        # 终端太窄：退回普通 half（不画 Logo），由调用方给退回提示
+        fancy = False
     size_full = len(qr_matrix(data, QR_QUIET_FULL))
     mode = qr_mode(size_full, width, color, big)
     if mode == "full":
