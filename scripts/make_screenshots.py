@@ -6,7 +6,7 @@
 每张截图都是 rich 的 Console(record=True) 导出的 SVG：在临时 HOME 里从头跑一遍 demo 流程，
 所以路径显示成 ~/.config/mcd-git/demo，不会出现本机用户名、真实门店、订单或 Token。
 吃麦贡献图 assets/card-demo.svg（天际线）、card-receipt-demo.svg（小票）、card-grid-demo.svg（平面格子）也由它生成：
-另开一个全新的 demo 世界，在临时 HOME 里用默认文件名跑 card（截图显示「已写入 ~/mcd-contributions.svg」，
+另开一个全新的 demo 世界，在临时 HOME 里用默认文件名跑 card（默认名按样式区分 mcd-contributions-<样式>.svg，
 不露本机路径），写完再拷进 assets/（和 tests/test_card.py、tests/test_card_styles.py 的快照条件一致）。
 """
 from __future__ import annotations
@@ -157,8 +157,8 @@ def run() -> None:
             shot(*step)
     # 贡献图在全新的 demo 世界里单独生成（当天没有 push 过）：天际线 → assets/card-demo.svg，
     # 小票 → assets/card-receipt-demo.svg，平面格子 → assets/card-grid-demo.svg（格子版只要卡片，不要终端截图）
-    # 在临时 HOME 里用默认文件名写，截图显示「已写入 ~/mcd-contributions.svg」，不露本机路径；写完再拷进 assets/。
-    # 天际线和格子默认都写 mcd-contributions.svg，所以格子要等天际线拷走之后再生成。
+    # 在临时 HOME 里用默认文件名写（按样式区分 mcd-contributions-<样式>.svg / 不再互相覆盖），截图显示完整路径，
+    # 不露本机路径；写完再拷进 assets/。
     cwd = os.getcwd()
     with tempfile.TemporaryDirectory() as tmp:
         home = os.path.realpath(tmp)  # macOS 的临时目录经 /private 符号链接，HOME 和 cwd 要同口径才显示成 ~
@@ -166,13 +166,13 @@ def run() -> None:
         os.chdir(home)
         try:
             shot("card", ["card"], None)
-            _copy_card(Path(home) / "mcd-contributions.svg", "card-demo.svg")
+            _copy_card(Path(home) / "mcd-contributions-skyline.svg", "card-demo.svg")
             shot("card-receipt", ["card --style receipt"], None)
-            _copy_card(Path(home) / "mcd-receipt.svg", "card-receipt-demo.svg")
+            _copy_card(Path(home) / "mcd-contributions-receipt.svg", "card-receipt-demo.svg")
             quiet = Console(file=io.StringIO(), width=WIDTH)
             if main(["--demo", "card", "--style", "grid"], console=quiet, interactive=False) != 0:
                 raise SystemExit("card --style grid 失败")
-            _copy_card(Path(home) / "mcd-contributions.svg", "card-grid-demo.svg")
+            _copy_card(Path(home) / "mcd-contributions-grid.svg", "card-grid-demo.svg")
         finally:
             os.chdir(cwd)
     badges()
