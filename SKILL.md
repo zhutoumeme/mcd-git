@@ -61,6 +61,7 @@ mcd-git 把麦当劳中国 MCP Server 包装成 git 风格的命令：`add` 放�
 - `--remark` 只用于麦乐送；`--locker` 要门店有取餐柜，没有会报错，把可选的取餐方式告诉用户。
 - `--at` 写 `HH:MM`（今天）或 `"YYYY-MM-DD HH:MM"`；预览和确认时要用完全相同的参数。
 - `push` 返回 `data.status == "up-to-date"` 说明 HEAD 早就下过单，这次**没有新下单**，不要告诉用户「已下单」。只有 `data.status == "pushed"` 才是新下了一单。
+- `--qr` 的 `full`（更大更清楚）和 `fancy`（麦当劳主题码：金色 + 正中像素汉堡）是给人看 / 扫的，默认 `half` 已经够用，Agent 走 `--json` 时不用特意加。
 - 每条命令的结果都在 `ok` 字段：`false` 时读 `error.message` 和 `error.hints` 转告用户，退出码非 0。
 
 ## 一个完整例子
