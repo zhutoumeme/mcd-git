@@ -63,13 +63,15 @@ Agent：（git mcd push --at 12:20 --locker --no-tableware --confirm bfc651c --j
 终端里先出预览（终端画不出 3D，天际线和格子都用格子预览；小票直接打印文字版），同时在本机写一个 SVG：自包含（不引用外部字体、图片和脚本，重复的图形用 `<defs>` + `<use>` 复用），跟着系统切换浅色 / 深色，二三十 KB。同样的数据每次生成的文件都一样。
 
 ```bash
-git mcd --demo card                    # 先用合成数据看看效果（上面这张就是），写到当前目录的 mcd-contributions.svg
+git mcd --demo card                    # 先用合成数据看看效果（上面这张就是），写到当前目录的 mcd-contributions-skyline.svg
 git mcd card                           # 用你自己的记录，默认麦门天际线，从你最早一单画起
-git mcd card --style receipt           # 年度吃麦小票，默认写到 mcd-receipt.svg
-git mcd card --style grid              # 平面格子
+git mcd card --style receipt           # 年度吃麦小票，默认写到 mcd-contributions-receipt.svg
+git mcd card --style grid              # 平面格子，默认写到 mcd-contributions-grid.svg
 git mcd card -o ~/Desktop/mcd.svg      # 换个地方写
 git mcd card --with-savings            # 卡片上多一项「用券省下 ¥X」（默认不出现任何金额）
 ```
+
+默认文件名按样式区分（`mcd-contributions-skyline.svg` / `-receipt.svg` / `-grid.svg`），三种样式各写各的、连跑两种不会互相覆盖；用 `-o` 指定路径时完全听你的。节前（今天还没到 10-24）卡片会把右边界提前延伸到 10-24 那一周，提前标出「即将到来的程序员节」（天际线插旗、小票红圈、格子描边），不用等到当天才看得到。
 
 `--with-savings` 的数是下限：`order-list` 不返回优惠明细，只有 push 过或 `show` 过的单才知道省了多少。天际线和小票上有单缺明细时会写「只算有优惠明细的 N 单，是下限」，终端里也会提示。
 
@@ -137,7 +139,7 @@ git mcd --demo log --stat                                # 吃麦统计：每单
 git mcd --demo show
 git mcd --demo cherry-pick HEAD
 git mcd --demo pull                                      # 领券，终端里会问 y/N
-git mcd --demo card                                      # 吃麦贡献图（麦门天际线），写到当前目录的 mcd-contributions.svg
+git mcd --demo card                                      # 吃麦贡献图（麦门天际线），写到当前目录的 mcd-contributions-skyline.svg
 git mcd --demo card --style receipt                      # 年度吃麦小票，终端里也会打印一张
 ```
 
@@ -222,13 +224,36 @@ git mcd --demo card --style receipt                      # 年度吃麦小票，
 ## 接入真实账户（3 步）
 
 1. **申请 Token**：在 [麦当劳 MCP 开放平台](https://open.mcd.cn/mcp) 登录控制台，激活并复制 MCP Token。
-2. **放在本机**：二选一，两个都有时环境变量 `MCD_MCP_TOKEN` 优先，其次读 `~/.config/mcd-mcp/token`。Token 不会被打印、写日志或写进仓库。
+2. **放在本机**：所有平台都首推环境变量 `MCD_MCP_TOKEN`；也可以写进配置文件。查找顺序是环境变量 `MCD_MCP_TOKEN` 优先，其次按平台找配置文件（`$XDG_CONFIG_HOME/mcd-mcp/token` → Windows 的 `%APPDATA%\mcd-mcp\token` → `~/.config/mcd-mcp/token`，取第一个存在且非空的）。Token 只放在本机、只进请求头，不会被打印、写日志或写进仓库，也不会上传到别处。
+
+   **macOS**
    ```bash
-   # 长期使用：从剪贴板写进文件（macOS 示例，Token 不会留在 shell 历史里）
+   # 长期使用：从剪贴板写进文件（Token 不会留在 shell 历史里）
    mkdir -p ~/.config/mcd-mcp && pbpaste > ~/.config/mcd-mcp/token && chmod 600 ~/.config/mcd-mcp/token
    # 临时使用：只在当前终端有效
    export MCD_MCP_TOKEN=你的Token
    ```
+
+   **Linux**
+   ```bash
+   # 长期使用：把 Token 写进文件（也可以从剪贴板，用 xclip -o 之类）
+   mkdir -p ~/.config/mcd-mcp && printf '%s' "你的Token" > ~/.config/mcd-mcp/token && chmod 600 ~/.config/mcd-mcp/token
+   # 临时使用：只在当前终端有效
+   export MCD_MCP_TOKEN=你的Token
+   ```
+
+   **Windows（PowerShell）**
+   ```powershell
+   # 长期使用：写进用户环境变量，新开的终端生效
+   setx MCD_MCP_TOKEN "你的Token"
+   # 临时使用：只在当前终端有效
+   $env:MCD_MCP_TOKEN = "你的Token"
+   # 或者存成配置文件
+   New-Item -ItemType Directory -Force "$env:APPDATA\mcd-mcp" | Out-Null
+   Set-Content -NoNewline "$env:APPDATA\mcd-mcp\token" "你的Token"
+   ```
+
+   也支持用 `XDG_CONFIG_HOME` 指定配置根目录（会在它下面找 `mcd-mcp/token`）。
 3. **选门店开点**：`git mcd init` 列收藏门店，或 `git mcd init --city 上海 --keyword 人民广场` 按地标搜；得来速加 `--mode drive`，麦乐送用 `--mode delivery`。之后的用法和 demo 一模一样。
 
 [mcp-config.example.json](mcp-config.example.json) 是比赛要求的脱敏配置示例，只有 `${MCD_MCP_TOKEN}` 占位符。mcd-git 自己不需要它，想让其他 MCP 客户端直连时可以照着配。
@@ -244,7 +269,7 @@ git mcd --demo card --style receipt                      # 年度吃麦小票，
 1. 运行 uv tool install git+https://github.com/zhutoumeme/mcd-git（没有 uv 就用 pip install "git+https://github.com/zhutoumeme/mcd-git"），然后运行 git mcd help 确认装好了；
 2. 把 https://github.com/zhutoumeme/mcd-git 仓库根目录的 SKILL.md 装进你的 Skill 目录（Claude Code 是 ~/.claude/skills/mcd-git/SKILL.md，Kiro 是 ~/.kiro/skills/mcd-git/SKILL.md，WorkBuddy 在「技能」里导入）；
 3. 以后我说要点麦当劳，就按 SKILL.md 用 git mcd --json 操作。下单、取消和领券前必须把确认摘要给我看，我明确同意后才能加 --confirm。
-Token 我会自己配置到 ~/.config/mcd-mcp/token，不用在对话里发给你。没有 Token 时先用 --demo 给我演示。
+Token 我会自己配置（环境变量 MCD_MCP_TOKEN，或配置文件；macOS/Linux 在 ~/.config/mcd-mcp/token，Windows 在 %APPDATA%\mcd-mcp\token），不用在对话里发给你。没有 Token 时先用 --demo 给我演示。
 ```
 
 ## 安全边界
@@ -267,7 +292,7 @@ Token 我会自己配置到 ~/.config/mcd-mcp/token，不用在对话里发给�
 
 **真的会下单吗？** 只有 `push` 并且你确认之后才会。生成的是待支付订单，付款要你自己在支付页或麦当劳 App 里完成。付款窗口是下单后 15 分钟（用真实账户实测过），不想要了就 `git mcd revert` 取消。
 
-**会读写我的代码仓库吗？** 不会。mcd-git 不碰任何 `.git` 目录，状态只放在 `~/.config/mcd-git/`。唯一会往别处写文件的是 `card`：只在你指定的位置写一个 SVG（默认当前目录的 `mcd-contributions.svg`，小票是 `mcd-receipt.svg`），写完会显示完整路径（比如 `已写入 ~/mcd-contributions.svg`），`--json` 的 `data.path` 是绝对路径。
+**会读写我的代码仓库吗？** 不会。mcd-git 不碰任何 `.git` 目录，状态只放在 `~/.config/mcd-git/`。唯一会往别处写文件的是 `card`：只在你指定的位置写一个 SVG（默认当前目录的 `mcd-contributions-<样式>.svg`，比如天际线是 `mcd-contributions-skyline.svg`、小票是 `mcd-contributions-receipt.svg`），写完会显示完整路径（比如 `已写入 ~/mcd-contributions-skyline.svg`），`--json` 的 `data.path` 是绝对路径。
 
 **rebase 会不会为了省钱让我多吃？** 不会。只有购物车里的东西正好凑满一个套餐时才换，不会额外加任何餐品。
 

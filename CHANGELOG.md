@@ -1,5 +1,17 @@
 # 更新日志
 
+## 0.2.2（2026-10-11）
+
+### 变化
+
+- Token 查找与本地状态目录跨平台解析。Token 读取顺序：环境变量 `MCD_MCP_TOKEN`（所有平台最高优先级）→ 配置文件择一存在且非空：`$XDG_CONFIG_HOME/mcd-mcp/token`（若设）→ Windows 的 `%APPDATA%\mcd-mcp\token`（若设）→ `~/.config/mcd-mcp/token`（所有平台保留，向后兼容）。本地状态目录（购物车、commit、账本 `ledger.json`）同样按平台解析：Windows 用 `%APPDATA%\mcd-git`，支持 `XDG_CONFIG_HOME`，默认仍是 `~/.config/mcd-git`；`MCD_GIT_HOME` 覆盖不变。**向后兼容：已经存在的 `~/.config/mcd-git` 会继续沿用，不会因为换了平台推荐目录而迁移、老用户账本不丢。**
+- Token 缺失报错按平台给命令：Windows 提示 `setx MCD_MCP_TOKEN "你的Token"`（新开终端生效）或当前终端 `$env:MCD_MCP_TOKEN="你的Token"`，以及把 Token 写进 `%APPDATA%\mcd-mcp\token`；其它平台保持 `export MCD_MCP_TOKEN=...` 和写进 `~/.config/mcd-mcp/token` 并 `chmod 600`。所有平台都先推荐环境变量。路径按实际解析结果显示，不再硬编码 `~/.config`。
+- README、SKILL.md 新增 macOS / Linux / Windows 三平台的 Token 申请与配置引导，并说明也支持 `XDG_CONFIG_HOME`；Token 只放本机、只进请求头、不上传的口径不变。
+- `card` 默认输出文件名按样式区分：`mcd-contributions-skyline.svg` / `mcd-contributions-receipt.svg` / `mcd-contributions-grid.svg`，三种样式各写各的、连跑两种不再互相覆盖（以前 skyline / grid 都写 `mcd-contributions.svg`、receipt 写 `mcd-receipt.svg`，换个样式会把上一张覆盖掉）；用 `-o` 显式指定路径时一切照旧。
+- `card` 节前就能看到 1024 程序员节标记：当今天还没到当年 10-24 时，卡片右边界延伸到包含 10-24 的那一周（仍受最少 12 周、最多 53 周限制），10-24 那一格即使还没到、还没吃也先占位，天际线插旗、小票画红圈、格子描边；今天过了 10-24 则维持原状（右边界到本周）。底部「10-24 / Happy 0x400 Day」固定标语不受影响。
+
+> Token 只放请求头、不打印、不写日志、读失败按未配置处理的行为没有变化；`--demo` 全流程仍然不需要 Token。满一年数据的卡片（含 demo）输出与 0.2.1 完全一致。
+
 ## 0.2.1（2026-10-11）
 
 ### 修复
