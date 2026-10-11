@@ -301,11 +301,15 @@ def _place(ctx: Context, head: Dict[str, Any], args_: Dict[str, Any], s: Dict[st
         else:
             console.print(Text.assemble("订单 ", (R.mask_order_id(order_id), R.HASH), " · ", (record["statusLabel"], "bold yellow"), f" · 请在 {deadline} 前付款"))
         if pay_url:
-            console.print(R.qr_text(pay_url, color=console.color_system is not None), no_wrap=True, crop=False)
+            console.print(R.qr_text(pay_url, color=console.color_system is not None, width=console.width), no_wrap=True, crop=False)
             console.print(Text.assemble("支付链接：", (pay_url, R.link(pay_url))))
             if ctx.demo:
                 console.print("（demo：演示链接，不会扣款）", style=R.DIM)
-            R.hints(console, ["用手机扫码或打开麦当劳 App 完成支付（mcd-git 不会替你付款）", "付完运行 git mcd show 查看取餐码"])
+            R.hints(console, [
+                "用手机扫码或打开麦当劳 App 完成支付（mcd-git 不会替你付款）",
+                "扫不出来就直接打开上面的支付链接，或到麦当劳 App 订单页付款",
+                "付完运行 git mcd show 查看取餐码",
+            ])
         elif not free:
             R.hints(console, ["没拿到支付链接：打开麦当劳 App 的订单页付款", "付完运行 git mcd show 查看取餐码"])
         else:

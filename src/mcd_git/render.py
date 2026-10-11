@@ -85,29 +85,63 @@ def decorations(items: Sequence[str]) -> Text:
 
 _HALF_BLOCKS = {(False, False): "█", (False, True): "▀", (True, False): "▄", (True, True): " "}
 
+QR_QUIET = 4  # 二维码规范要求的静区（模块数）；深色终端背景上静区太窄，手机常常认不出边界
+_QR_QUIET_MIN = 2  # 终端窄到连半块画法都放不下时退回的静区（0.2.0 的老样子）
+_QR_DARK = "#000000"
+_QR_LIGHT = "#ffffff"
 
-def qr_text(data: str, *, color: bool = True, border: int = 2) -> Text:
-    """用上下半块字符画二维码。
 
-    有颜色时显式指定黑白前景/背景色，深浅主题和 SVG 导出都能扫；
-    没颜色（管道、NO_COLOR）时按 qrencode -t UTF8 的习惯，用方块画浅色模块，适合深色背景终端。
-    """
+def qr_matrix(data: str, border: int = QR_QUIET) -> List[List[bool]]:
+    """二维码模块矩阵（含静区），True 是深色模块。"""
     qr = qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_M, box_size=1, border=border)
     qr.add_data(data)
     qr.make(fit=True)
-    matrix: List[List[bool]] = qr.get_matrix()
-    width = len(matrix[0]) if matrix else 0
-    text = Text()
-    for y in range(0, len(matrix), 2):
-        top = matrix[y]
-        bottom = matrix[y + 1] if y + 1 < len(matrix) else [False] * width
-        for t, b in zip(top, bottom):
-            if color:
-                fg = "#000000" if t else "#ffffff"
-                bg = "#000000" if b else "#ffffff"
-                text.append("▀", style=f"{fg} on {bg}")
-            else:
-                text.append(_HALF_BLOCKS[(t, b)])
-        text.append("\n")
-    text.rstrip()
-    return text
+    return qr.get_matrix()
+
+
+def qr_mode(modules: int, width: Optional[int], color: bool) -> str:
+    """选画法：'full' 每个模块两个空格 + 背景色（一行一个模块行，不依赖字形）；
+    'half' 上下半块「▀」+ 前景 / 背景色（一行两个模块行）；'plain' 没颜色时的 qrencode 风格。
+    modules 是含静区的边长。"""
+    if not color:
+        return "plain"
+    if width is not None and width >= modules * 2:
+        return "full"
+    return "half"
+
+
+def qr_text(data: str, *, color: bool = True, border: int = QR_QUIET, width: Optional[int] = None) -> Text:
+    """画终端二维码。
+
+    终端够宽（width ≥ 边长 × 2）且有颜色时，每个模块画成两个带背景色的空格：模块铺满整个字符格，
+    不受字体半块字形高度、行距留缝的影响，手机最好扫；不够宽才退回上下半块「▀」画法
+    （连边长都放不下时静区退回 2）。显式指定黑白色，深浅主题和 SVG 导出都能扫。
+    没颜色（管道、NO_COLOR）时按 qrencode -t UTF8 的习惯，用方块画浅色模块，适合深色背景终端。
+    """
+    matrix = qr_matrix(data, border)
+    size = len(matrix[0]) if matrix else 0
+    mode = qr_mode(size, width, color)
+    if mode == "half" and width is not None and width < size and border > _QR_QUIET_MIN:
+        matrix = qr_matrix(data, _QR_QUIET_MIN)
+        size = len(matrix[0]) if matrix else 0
+    rows: List[Text] = []
+    if mode == "full":
+        for row in matrix:
+            line = Text()
+            for dark in row:
+                line.append("  ", style=f"on {_QR_DARK if dark else _QR_LIGHT}")
+            rows.append(line)
+    else:
+        for y in range(0, len(matrix), 2):
+            top = matrix[y]
+            bottom = matrix[y + 1] if y + 1 < len(matrix) else [False] * size
+            line = Text()
+            for t, b in zip(top, bottom):
+                if mode == "half":
+                    fg = _QR_DARK if t else _QR_LIGHT
+                    bg = _QR_DARK if b else _QR_LIGHT
+                    line.append("▀", style=f"{fg} on {bg}")
+                else:
+                    line.append(_HALF_BLOCKS[(t, b)])
+            rows.append(line)
+    return Text("\n").join(rows)
