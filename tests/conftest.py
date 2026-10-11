@@ -102,11 +102,12 @@ class Runner:
         answers: Optional[List[str]] = None,
         env: Optional[Dict[str, str]] = None,
         now: Optional[datetime] = None,
+        width: int = 120,
     ) -> Tuple[int, str]:
         import os
 
         buf = io.StringIO()
-        console = Console(file=buf, width=120, highlight=False, markup=False, emoji=False, color_system=None)
+        console = Console(file=buf, width=width, highlight=False, markup=False, emoji=False, color_system=None)
         feed = list(answers or [])
         merged = dict(os.environ)
         merged.update(self.env_overrides)

@@ -1,17 +1,21 @@
 """git mcd init：选门店和取餐方式，相当于设置远端 origin。"""
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
+from rich.cells import cell_len
 from rich.console import Console
+from rich.table import Table
 from rich.text import Text
 
 from .. import render as R
 from ..api import MODES
 from ..context import Context, Result, make_remote, remote_brief
-from ..errors import GitMcdError
+from ..errors import GitMcdError, UsageError
 from ..state import display_path, empty_state
 from .common import remote_desc, remote_url, same_scope
+
+_MIN_COL = 10  # 店名、地址列最少留几格
 
 
 def register(sub: Any, common: Any) -> None:
@@ -25,6 +29,7 @@ def register(sub: Any, common: Any) -> None:
     p.add_argument("--city", help="城市，如 上海")
     p.add_argument("--keyword", help="地标或路名，如 人民广场")
     p.add_argument("--pick", help="选第几家（列表序号或 storeCode）")
+    p.add_argument("--limit", type=int, metavar="N", help="最多列几家（接口一次大约只给 5 家，只在本地截取）")
     p.add_argument("--address", help="麦乐送：选第几个收货地址（列表序号）")
     p.set_defaults(func=run)
 
@@ -62,21 +67,63 @@ def _pick(ctx: Context, rows: List[Dict[str, Any]], selector: Optional[str], *, 
     return None
 
 
-def _render_stores(stores: List[Dict[str, Any]], source: str) -> Any:
+def _store_dist(store: Dict[str, Any]) -> str:
+    return f"{store['distance']}m" if store.get("distance") else ""
+
+
+def _store_status(store: Dict[str, Any]) -> str:
+    status = "营业中" if store.get("open") is True else ("已打烊" if store.get("open") is False else "")
+    return f"{status} {store.get('hours') or ''}".strip()
+
+
+def _store_columns(stores: List[Dict[str, Any]], total_width: int) -> Tuple[int, int]:
+    """算店名列和地址列的宽度：(name_w, addr_w)。
+
+    序号 2 格、距离、营业三列按内容实测宽度；每列左边留 2 格（第一列的就是缩进）。
+    剩下的先保证店名全称，地址至少 10 格；放不下时店名再收缩，最少 10 格。
+    """
+    fixed = [2]
+    dist_w = max((cell_len(_store_dist(s)) for s in stores), default=0)
+    status_w = max((cell_len(_store_status(s)) for s in stores), default=0)
+    fixed += [w for w in (dist_w, status_w) if w]
+    columns = len(fixed) + 2
+    remaining = total_width - sum(fixed) - 2 * columns
+    name_full = max((cell_len(s.get("storeName") or "") for s in stores), default=0)
+    addr_full = max((cell_len(s.get("address") or "") for s in stores), default=0)
+    if name_full + addr_full <= remaining:
+        return name_full, addr_full
+    if remaining - name_full >= _MIN_COL:
+        return name_full, remaining - name_full
+    return max(_MIN_COL, remaining - _MIN_COL), _MIN_COL
+
+
+def _render_stores(stores: List[Dict[str, Any]], source: str, notes: Sequence[str] = ()) -> Any:
     def draw(console: Console) -> None:
         title = "收藏门店" if source == "favorites" else "附近门店（按距离）"
         console.print(f"找到 {len(stores)} 家{title}：")
+        name_w, addr_w = _store_columns(stores, console.width)
+        show_dist = any(_store_dist(s) for s in stores)
+        show_status = any(_store_status(s) for s in stores)
+        table = Table(box=None, show_header=False, show_edge=False, pad_edge=True, padding=(0, 0, 0, 2))
+        table.add_column(width=2, justify="right", no_wrap=True, overflow="ellipsis", style=R.HASH)
+        table.add_column(width=name_w, no_wrap=True, overflow="ellipsis")
+        table.add_column(width=addr_w, no_wrap=True, overflow="ellipsis", style=R.DIM)
+        if show_dist:
+            table.add_column(width=max(cell_len(_store_dist(s)) for s in stores), justify="right", no_wrap=True, overflow="ellipsis")
+        if show_status:
+            table.add_column(width=max(cell_len(_store_status(s)) for s in stores), no_wrap=True, overflow="ellipsis")
         for i, s in enumerate(stores, 1):
-            status = "营业中" if s.get("open") is True else ("已打烊" if s.get("open") is False else "")
-            hours = s.get("hours") or ""
-            dist = f"{s['distance']}m" if s.get("distance") else ""
-            line = Text("  ")
-            line.append(R.lpad(str(i), 2), style=R.HASH)
-            line.append("  " + R.pad(R.clip(s["storeName"], 22), 22))
-            line.append("  " + R.pad(R.clip(s.get("address") or "", 26), 26), style=R.DIM)
-            line.append("  " + R.lpad(dist, 6))
-            line.append(f"  {status} {hours}".rstrip(), style=R.ADD if s.get("open") else R.DIM)
-            console.print(line)
+            row: List[Any] = [str(i), s.get("storeName") or "", s.get("address") or ""]
+            if show_dist:
+                row.append(_store_dist(s))
+            if show_status:
+                row.append(Text(_store_status(s), style=R.ADD if s.get("open") else R.DIM))
+            table.add_row(*row)
+        console.print(table)
+        hints = list(notes)
+        if source == "favorites":
+            hints.append("收藏门店接口不返回营业时间；想看营业状态用 git mcd init --city <城市> --keyword <地标> 搜")
+        R.hints(console, hints)
 
     return draw
 
@@ -103,30 +150,44 @@ def _apply_remote(ctx: Context, remote: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def run(ctx: Context, args: Any) -> Result:
-    api = ctx.api()
+    limit = getattr(args, "limit", None)
+    if limit is not None and limit < 1:
+        raise UsageError("--limit 至少是 1")
     mode = args.mode
     if mode in ("pickup", "drive"):
+        # 先在本地挡掉接口一定会拒的组合，不白调一次 MCP（也不用先有 Token）
+        if args.city and not args.keyword:
+            # 实测只给 city 时接口返回 code 600058「城市名或者关键词不能为空」
+            raise GitMcdError("只给 --city 搜不了门店：还要一个地标或商圈关键词", hint=[f"git mcd init --city {args.city} --keyword 新街口"])
+        if args.keyword and not args.city:
+            # 实测只给 keyword 同样返回 600058（0.2.1 探测），所以 keyword-only 不放开
+            raise GitMcdError("按关键词搜门店要同时带 --city", hint="git mcd init --city 上海 --keyword 人民广场")
+    api = ctx.api()
+    if mode in ("pickup", "drive"):
         cached = ctx.state.get("candidates") or {}
+        notes: List[str] = []
         if args.pick and not (args.city or args.keyword) and cached.get("mode") == mode and cached.get("stores"):
             stores, source = cached["stores"], cached.get("source", "favorites")
         else:
-            if args.keyword and not args.city:
-                raise GitMcdError("按关键词搜门店要同时带 --city", hint="git mcd init --city 上海 --keyword 人民广场")
             stores = api.nearby_stores(MODES[mode]["beType"], city=args.city, keyword=args.keyword)
             source = "search" if (args.city or args.keyword) else "favorites"
+            if limit is not None:
+                if source == "search" and stores and len(stores) < limit:
+                    notes.append(f"麦当劳接口这次只返回了 {len(stores)} 家；想看别的店换个更具体的地标")
+                stores = stores[:limit]
         if not stores:
             raise GitMcdError(
                 "没有找到门店" if source == "search" else "这个账户还没有收藏门店",
                 hint="换个地标试试：git mcd init --city 上海 --keyword 人民广场" if source == "search" else "按地标搜：git mcd init --city 上海 --keyword 人民广场",
             )
-        chosen = _pick(ctx, stores, args.pick, key="storeCode", label="门店", render_list=_render_stores(stores, source))
+        chosen = _pick(ctx, stores, args.pick, key="storeCode", label="门店", render_list=_render_stores(stores, source, notes))
         if chosen is None:
             ctx.state["candidates"] = {"mode": mode, "source": source, "stores": stores}
             ctx.save()
             rows = [_store_row(i, s) for i, s in enumerate(stores, 1)]
 
             def draw(console: Console) -> None:
-                _render_stores(stores, source)(console)
+                _render_stores(stores, source, notes)(console)
                 R.hints(console, ["git mcd init --pick <序号> 选一家"])
 
             return Result({"status": "choose", "kind": "store", "candidates": rows, "next": "git mcd init --pick <序号>"}, draw)
