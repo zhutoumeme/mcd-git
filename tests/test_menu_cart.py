@@ -205,6 +205,10 @@ def test_ls_remote_groups_by_category_without_keyword(runner: Runner) -> None:
     offer_rows = [i for i, line in enumerate(lines) if OFFER_NAME in line]
     assert len(offer_rows) == 1  # 挂在两个分类里，只在第一个出现
     assert lines.index("## 人气热卖（2）") < offer_rows[0] < lines.index("## 超值套餐（4）")
+    # 分组时条件说明照样在（夹具里的超长名把名字列撑宽，120 列下这行会折行，见 FEAT-003 偏差 ①，所以放到 160 列看）
+    _, wide = runner.run("ls-remote", mock=True, width=160)
+    offer_line = next(line for line in wide.splitlines() if OFFER_NAME in line)
+    assert "## 人气热卖（2）" in wide and "¥66.00" in offer_line and OFFER_NOTE in offer_line
     assert lines.index("## 其他（1）") < next(i for i, line in enumerate(lines) if LONG_CODE in line)
     assert "hint: git mcd ls-remote <关键词> 搜索" in out
 
