@@ -111,6 +111,8 @@ def run(ctx: Context, args: Any) -> Result:
                 row.append(f"new meal:   {label}  x{line['qty']}  {R.lpad(amount, 8)}", style=R.ADD)
                 if line.get("coupon"):
                     row.append(f"  券：{line['coupon'].get('title')}", style=R.TAG)
+                if line.get("offerNote"):
+                    row.append(f"  （{line['offerNote']}）", style=R.DIM)
                 console.print(row)
             console.print()
         elif head is None or head.get("pushed"):

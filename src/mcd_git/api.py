@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from .errors import GitMcdError, McdError
 from .mcp_client import parse_envelope
-from .money import fen, yuan_to_fen
+from .money import fen, fmt, yuan_to_fen
 from .textnorm import normalize, rank_matches
 
 MODES: Dict[str, Dict[str, Any]] = {
@@ -122,8 +122,29 @@ def mask_address(raw: Dict[str, Any]) -> Dict[str, Any]:
     return {"addressId": address_id, "hint": f"{head}（地址尾号 {address_id[-4:]}）" if address_id else head}
 
 
+# 要同时买会员卡才成立的优惠：discountType 以这些前缀开头时，currentPrice 不当单价，单价按 originalPrice。
+# 依据（2026-10-11 真实只读探测，仙鹤门地铁站店到店自取）：只放「随单购麦金卡优惠」的芝士安格斯厚牛堡四件套
+# （currentPrice 37 / originalPrice 66）算价，calculate-price 返回 price = originalPrice = ¥66，currentPrice 不成立；
+# 「促销优惠」的麦咖啡™奶铁 subtotal 就是 currentPrice，直接生效。菜单里只见到这两种 discountType，
+# 没见到「麦金卡优惠」「早餐卡优惠」，所以这里只收「随单购」。
+CONDITIONAL_PREFIXES = ("随单购",)
+
+
+def _offer(discount_type: Any, current: Optional[int], original: Optional[int]) -> Optional[Dict[str, Any]]:
+    """条件优惠：返回 {price, type, note}（note 形如「¥37.00 需随单购麦金卡」）；不是条件优惠返回 None。"""
+    kind = str(discount_type or "")
+    if not kind.startswith(CONDITIONAL_PREFIXES) or current is None or original is None or current >= original:
+        return None
+    card = kind[: -len("优惠")] if kind.endswith("优惠") else kind
+    return {"price": current, "type": kind, "note": f"{fmt(current)} 需{card}"}
+
+
 class Menu:
-    """query-meals 的 data：meals 是 code → 详情的 map，categories 只有 code 和 tags。价格是「元」字符串。"""
+    """query-meals 的 data：meals 是 code → 详情的 map，categories 只有 code 和 tags。价格是「元」字符串。
+
+    每项的 price 是不附加条件就能拿到的单价：条件优惠（见 CONDITIONAL_PREFIXES）按原价，
+    条件价放在 offer 里只作说明；其他优惠（如「促销优惠」）直接用 currentPrice。
+    """
 
     def __init__(self, data: Dict[str, Any]) -> None:
         data = data or {}
@@ -131,26 +152,36 @@ class Menu:
         for code, meal in (data.get("meals") or {}).items():
             if not isinstance(meal, dict):
                 continue
+            current = yuan_to_fen(meal.get("currentPrice"))
+            original = yuan_to_fen(meal.get("originalPrice"))
+            offer = _offer(meal.get("discountType"), current, original)
             self.items[str(code)] = {
                 "code": str(code),
                 "name": str(meal.get("name") or "").replace("\n", ""),
-                "price": yuan_to_fen(meal.get("currentPrice")),
-                "original": yuan_to_fen(meal.get("originalPrice")),
+                "price": original if offer else current,
+                "original": original,
                 "discountType": meal.get("discountType"),
+                "offer": offer,
                 "tags": [],
                 "categories": [],
             }
+        # 分类顺序和每个分类里的 code（只留菜单里有的），给 ls-remote 分组用
+        self.categories: List[Tuple[str, List[str]]] = []
         for category in data.get("categories") or []:
             cname = str(category.get("name") or "").replace("\n", "")
+            codes: List[str] = []
             for ref in category.get("meals") or []:
                 item = self.items.get(str(ref.get("code")))
                 if not item:
                     continue
+                if item["code"] not in codes:
+                    codes.append(item["code"])
                 for tag in ref.get("tags") or []:
                     if tag not in item["tags"]:
                         item["tags"].append(tag)
                 if cname and cname not in item["categories"]:
                     item["categories"].append(cname)
+            self.categories.append((cname, codes))
         frequent = data.get("frequent")
         self.frequent = str(frequent.get("code")) if isinstance(frequent, dict) and frequent.get("code") else None
 

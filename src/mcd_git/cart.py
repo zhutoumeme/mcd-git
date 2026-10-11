@@ -209,6 +209,10 @@ def build_line(
         line["mods"] = single_mods.values()
         notes.extend(single_mods.notes)
     line["notes"] = notes
+    offer = menu_item.get("offer")
+    if offer:
+        # 条件优惠（如「¥37.00 需随单购麦金卡」）：单价已按原价，这里只留说明；旧状态里没有这个键，读取一律 .get
+        line["offerNote"] = offer["note"]
     return line, unmatched
 
 

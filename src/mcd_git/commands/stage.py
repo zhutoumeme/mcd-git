@@ -91,6 +91,8 @@ def run_add(ctx: Context, args: Any) -> Result:
                 row.append("  [" + " · ".join(parts) + "]", style=R.DIM)
             if line.get("notes"):
                 row.append("  " + " ".join(line["notes"]), style=R.TAG)
+            if line.get("offerNote"):
+                row.append(f"  （{line['offerNote']}）", style=R.DIM)
             console.print(row)
         for w in warnings:
             console.print(Text.assemble(("warning: ", "yellow"), w))
@@ -226,6 +228,9 @@ def run_ls_remote(ctx: Context, args: Any) -> Result:
             "original": i["original"],
             "discountType": i.get("discountType"),
             "category": (i.get("categories") or [""])[0],
+            # price 已经是不附加条件就能拿到的价；条件优惠价单独给
+            "offerPrice": (i.get("offer") or {}).get("price"),
+            "offerNote": (i.get("offer") or {}).get("note"),
         }
         for i in items
     ]
@@ -238,7 +243,9 @@ def run_ls_remote(ctx: Context, args: Any) -> Result:
             line.append(R.pad(row["type"], 6), style=R.DIM)
             line.append(R.pad(R.clip(row["name"], 22), 24))
             line.append(R.lpad(fmt(row["price"]), 8))
-            if row["original"] and row["price"] is not None and row["original"] > row["price"]:
+            if row["offerNote"]:
+                line.append(f"  {row['offerNote']}", style=R.DIM)
+            elif row["original"] and row["price"] is not None and row["original"] > row["price"]:
                 line.append(f"  原价 {fmt(row['original'])} {row.get('discountType') or ''}".rstrip(), style=R.DIM)
             console.print(line)
         if not rows:

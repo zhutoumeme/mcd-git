@@ -66,6 +66,8 @@ def line_json(line: Line) -> Dict[str, Any]:
         out["choices"] = [{"round": r["name"], "items": [c["name"] for c in r["items"]]} for r in line["rounds"]]
     if line.get("coupon"):
         out["coupon"] = line["coupon"].get("title")
+    if line.get("offerNote"):
+        out["offerNote"] = line["offerNote"]
     return out
 
 
