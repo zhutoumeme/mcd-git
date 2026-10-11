@@ -205,10 +205,10 @@ def test_ls_remote_groups_by_category_without_keyword(runner: Runner) -> None:
     offer_rows = [i for i, line in enumerate(lines) if OFFER_NAME in line]
     assert len(offer_rows) == 1  # 挂在两个分类里，只在第一个出现
     assert lines.index("## 人气热卖（2）") < offer_rows[0] < lines.index("## 超值套餐（4）")
-    # 分组时条件说明照样在（夹具里的超长名把名字列撑宽，120 列下这行会折行，见 FEAT-003 偏差 ①，所以放到 160 列看）
-    _, wide = runner.run("ls-remote", mock=True, width=160)
-    offer_line = next(line for line in wide.splitlines() if OFFER_NAME in line)
-    assert "## 人气热卖（2）" in wide and "¥66.00" in offer_line and OFFER_NOTE in offer_line
+    # 分组时条件说明照样在；夹具里有超长名，名字列给行尾说明留了宽度，120 列下带说明的行也不折行
+    offer_line = next(line for line in lines if OFFER_NAME in line)
+    assert "¥66.00" in offer_line and OFFER_NOTE in offer_line
+    assert all(cell_len(line) <= 120 for line in lines)
     assert lines.index("## 其他（1）") < next(i for i, line in enumerate(lines) if LONG_CODE in line)
     assert "hint: git mcd ls-remote <关键词> 搜索" in out
 
@@ -235,6 +235,8 @@ def test_ls_remote_name_column_follows_terminal_width(runner: Runner) -> None:
     row = next(line for line in out.splitlines() if LONG_CODE in line)
     assert LONG_NAME not in row and "…" in row and "¥99.00" in row
     assert cell_len(row) <= 80
+    offer_row = next(line for line in out.splitlines() if OFFER_CODE in line)
+    assert OFFER_NOTE in offer_row and cell_len(offer_row) <= 80  # 带条件说明的行也不超宽
 
 
 def test_ls_remote_pages_only_on_tty_longer_than_screen(runner: Runner, pager_calls: List[bool]) -> None:
@@ -271,7 +273,40 @@ def test_coupon_matching_product_need_not_be_first(tmp_path: Any) -> None:
     result = plan(None, api, REMOTE, [line], api.menu(REMOTE), [coupon], new_id=lambda code: f"new{next(counter):04d}")
     assert result["changed"] and result["lines"][0]["coupon"]["title"] == "示例·多商品券"
     assert result["after"] == 600 and result["calls"] == 2
-    assert result["coupons"] == {"available": 1, "matched": 1, "unmatched": []}
+    assert result["coupons"] == {"available": 1, "matched": 1, "unmatched": [], "unresolved": []}
+
+
+# 名字对得上中薯条、但券商品是查不到详情的虚拟 code（demo 菜单里没有 7777，query-meal-detail 返回 60006）
+NO_DETAIL_COUPON = {
+    "title": "示例·查不到详情的薯条券",
+    "couponId": "c0ffee00000000000000000000000099",
+    "couponCode": "DEMO0099",
+    "tradeDateTime": "2026-10-01 00:00:00-2026-11-30 23:59:59",
+    "products": [{"productCode": "7777", "productName": "中薯条"}],
+}
+
+
+def test_coupon_name_matches_but_detail_fails_is_not_unmatched(tmp_path: Any) -> None:
+    line, _ = build_line(line_id="line000", code="2001", menu_item=world.CATALOG["pickup"]["2001"], detail=world.detail_payload("pickup", "2001"))
+    coupon = {"title": NO_DETAIL_COUPON["title"], "couponId": "x", "couponCode": "y", "start": None, "end": None, "products": [{"code": "7777", "name": "中薯条"}]}
+    api = McdApi(DemoClient(tmp_path, now=DEMO_NOW))
+    counter = iter(range(1000))
+    result = plan(None, api, REMOTE, [line], api.menu(REMOTE), [coupon], new_id=lambda code: f"new{next(counter):04d}")
+    assert not result["changed"]
+    stat = result["coupons"]
+    assert stat["available"] == 1 and stat["matched"] == 1 and stat["unmatched"] == []
+    assert stat["unresolved"] == [{"title": NO_DETAIL_COUPON["title"], "products": ["中薯条"]}]
+
+
+def test_rebase_says_why_a_matching_coupon_was_not_tried(runner: Runner) -> None:
+    assert runner.run("init", "--city", "示例市", "--keyword", "码农路", "--pick", "1", mock=True)[0] == 0
+    assert runner.run("add", "中薯条", mock=True)[0] == 0
+    runner.hooks["query-store-coupons"] = lambda a, w: _ok([copy.deepcopy(NO_DETAIL_COUPON)])
+    code, out = runner.run("rebase", mock=True)
+    assert code == 0 and "都对不上" not in out
+    assert "1 张券对得上购物车里的餐品，但查不到券商品详情或到了查询上限（每次最多查 3 个），这次没试：「示例·查不到详情的薯条券」" in out
+    code, data = runner.json("rebase", mock=True)
+    assert data["data"]["coupons"]["matched"] == 1 and [c["title"] for c in data["data"]["coupons"]["unresolved"]] == [NO_DETAIL_COUPON["title"]]
 
 
 def test_rebase_explains_when_no_coupon_fits(runner: Runner) -> None:
@@ -281,8 +316,9 @@ def test_rebase_explains_when_no_coupon_fits(runner: Runner) -> None:
     assert "本店 3 张券都对不上购物车里的餐品（券里是：巨无霸套餐、中薯条、热拿铁）" in out
     code, data = runner.json("--demo", "rebase")
     stat = data["data"]["coupons"]
-    assert stat["available"] == 3 and stat["matched"] == 0
+    assert stat["available"] == 3 and stat["matched"] == 0 and stat["unresolved"] == []
     assert [c["products"] for c in stat["unmatched"]] == [["巨无霸套餐"], ["中薯条"], ["热拿铁"]]
+    assert "查不到券商品详情" not in out
 
 
 def test_rebase_stays_quiet_when_a_coupon_fits(runner: Runner) -> None:

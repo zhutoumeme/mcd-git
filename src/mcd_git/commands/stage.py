@@ -239,10 +239,19 @@ def run_ls_remote(ctx: Context, args: Any) -> Result:
     groups = _menu_groups(menu, rows) if not args.keyword and menu.categories else [(None, rows)]
     tips = ["git mcd ls-remote <关键词> 搜索"] if not args.keyword and rows else []
 
+    def tail(row: Dict[str, Any]) -> str:
+        """价格后面的淡色说明：条件优惠价，或者促销的原价。"""
+        if row["offerNote"]:
+            return f"  {row['offerNote']}"
+        if row["original"] and row["price"] is not None and row["original"] > row["price"]:
+            return f"  原价 {fmt(row['original'])} {row.get('discountType') or ''}".rstrip()
+        return ""
+
     def render(console: Console) -> None:
         console.print(f"From {remote_url(remote)}", style=R.DIM)
         longest = max([R.cell_len(row["name"]) for row in rows] + [0])
-        name_w = min(longest, max(22, console.width - 12 - 6 - 8 - 2))
+        tail_w = max([R.cell_len(tail(row)) for row in rows] + [0])  # 给行尾说明留宽度，带说明的行不折行
+        name_w = min(longest, max(22, console.width - 12 - 6 - 8 - 2 - tail_w))
         for title, members in groups:
             if title is not None:
                 console.print(f"## {title}（{len(members)}）", style=R.DIM)
@@ -252,10 +261,9 @@ def run_ls_remote(ctx: Context, args: Any) -> Result:
                 line.append(R.pad(row["type"], 6), style=R.DIM)
                 line.append(R.pad(R.clip(row["name"], name_w), name_w + 2))
                 line.append(R.lpad(fmt(row["price"]), 8))
-                if row["offerNote"]:
-                    line.append(f"  {row['offerNote']}", style=R.DIM)
-                elif row["original"] and row["price"] is not None and row["original"] > row["price"]:
-                    line.append(f"  原价 {fmt(row['original'])} {row.get('discountType') or ''}".rstrip(), style=R.DIM)
+                note = tail(row)
+                if note:
+                    line.append(note, style=R.DIM)
                 console.print(line)
         if not rows:
             console.print("（没有匹配的餐品）", style=R.DIM)

@@ -219,20 +219,25 @@ def plan(
 
     queue: List[Candidate] = list(squashes)
     detail_budget = [MAX_COUPON_DETAILS]
-    matched = set()
+    matched = set()  # 券商品和购物车里的餐品对得上（按 code 或规范化名字）
+    resolved = set()  # 对上之后真生成了带券的写法
     for shape in squashes + [base]:
         for n, coupon in enumerate(coupons):
+            if _coupon_targets(shape, coupon):
+                matched.add(n)
             candidate = _with_coupon(api, remote, menu, shape, coupon, new_id, detail_budget)
             if candidate:
-                matched.add(n)
+                resolved.add(n)
             if candidate and candidate.key not in seen:
                 seen.add(candidate.key)
                 queue.append(candidate)
-    unmatched = [
-        {"title": coupon.get("title") or "", "products": [str(p.get("name") or "") for p in coupon.get("products") or [] if p and p.get("name")]}
-        for n, coupon in enumerate(coupons)
-        if n not in matched
-    ]
+
+    def brief(coupon: Dict[str, Any]) -> Dict[str, Any]:
+        return {"title": coupon.get("title") or "", "products": [str(p.get("name") or "") for p in coupon.get("products") or [] if p and p.get("name")]}
+
+    unmatched = [brief(coupon) for n, coupon in enumerate(coupons) if n not in matched]
+    # 对上了但没试成：券商品是虚拟 code，查 detail 失败或到了 MAX_COUPON_DETAILS 上限
+    unresolved = [brief(coupon) for n, coupon in enumerate(coupons) if n in matched and n not in resolved]
 
     tried = [base]
     capped = False
@@ -281,6 +286,6 @@ def plan(
         "capped": capped,
         "rejected": [{"label": c.label, "error": c.error} for c in tried if c.error],
         "overBudget": budget is not None and (best.price or 0) > budget,
-        # 券用不上的原因：available 张券里只有 matched 张对得上购物车里的餐品
-        "coupons": {"available": len(coupons), "matched": len(matched), "unmatched": unmatched},
+        # 券用不上的原因：available 张券里只有 matched 张对得上购物车里的餐品；对上的里面 unresolved 是没查到券商品详情、没试成的
+        "coupons": {"available": len(coupons), "matched": len(matched), "unmatched": unmatched, "unresolved": unresolved},
     }

@@ -12,7 +12,7 @@ from ..cart import cart_fingerprint, summary
 from ..context import Context, Result
 from ..errors import GitMcdError, McdError
 from ..money import fmt, yuan_to_fen
-from ..optimizer import plan
+from ..optimizer import MAX_COUPON_DETAILS, plan
 from ..state import next_line_id
 from .common import line_json
 
@@ -116,6 +116,13 @@ def run(ctx: Context, args: Any) -> Result:
                 names += [n for n in c["products"] if n not in names]
             listed = f"（券里是：{'、'.join(names[:3])}{'…' if len(names) > 3 else ''}）" if names else ""
             console.print(f"本店 {coupon_stat['available']} 张券都对不上购物车里的餐品{listed}", style=R.DIM)
+        unresolved = coupon_stat.get("unresolved") or []
+        if unresolved:
+            titles = "、".join(f"「{c['title']}」" for c in unresolved[:3]) + ("…" if len(unresolved) > 3 else "")
+            console.print(
+                f"{len(unresolved)} 张券对得上购物车里的餐品，但查不到券商品详情或到了查询上限（每次最多查 {MAX_COUPON_DETAILS} 个），这次没试：{titles}",
+                style=R.DIM,
+            )
         if result["capped"]:
             console.print(Text.assemble(("warning: ", "yellow"), "到了 20 次算价上限，后面的方案没试，可能不是全局最优"))
         if result["overBudget"]:
