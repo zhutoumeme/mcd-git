@@ -2,7 +2,8 @@
 from __future__ import annotations
 
 import copy
-from typing import Any, Dict, List
+import os
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from rich.console import Console
 from rich.text import Text
@@ -235,20 +236,58 @@ def run_ls_remote(ctx: Context, args: Any) -> Result:
         for i in items
     ]
 
-    def draw(console: Console) -> None:
+    groups = _menu_groups(menu, rows) if not args.keyword and menu.categories else [(None, rows)]
+    tips = ["git mcd ls-remote <关键词> 搜索"] if not args.keyword and rows else []
+
+    def render(console: Console) -> None:
         console.print(f"From {remote_url(remote)}", style=R.DIM)
-        for row in rows:
-            line = Text()
-            line.append(R.pad(row["code"], 12), style=R.HASH)
-            line.append(R.pad(row["type"], 6), style=R.DIM)
-            line.append(R.pad(R.clip(row["name"], 22), 24))
-            line.append(R.lpad(fmt(row["price"]), 8))
-            if row["offerNote"]:
-                line.append(f"  {row['offerNote']}", style=R.DIM)
-            elif row["original"] and row["price"] is not None and row["original"] > row["price"]:
-                line.append(f"  原价 {fmt(row['original'])} {row.get('discountType') or ''}".rstrip(), style=R.DIM)
-            console.print(line)
+        longest = max([R.cell_len(row["name"]) for row in rows] + [0])
+        name_w = min(longest, max(22, console.width - 12 - 6 - 8 - 2))
+        for title, members in groups:
+            if title is not None:
+                console.print(f"## {title}（{len(members)}）", style=R.DIM)
+            for row in members:
+                line = Text()
+                line.append(R.pad(row["code"], 12), style=R.HASH)
+                line.append(R.pad(row["type"], 6), style=R.DIM)
+                line.append(R.pad(R.clip(row["name"], name_w), name_w + 2))
+                line.append(R.lpad(fmt(row["price"]), 8))
+                if row["offerNote"]:
+                    line.append(f"  {row['offerNote']}", style=R.DIM)
+                elif row["original"] and row["price"] is not None and row["original"] > row["price"]:
+                    line.append(f"  原价 {fmt(row['original'])} {row.get('discountType') or ''}".rstrip(), style=R.DIM)
+                console.print(line)
         if not rows:
             console.print("（没有匹配的餐品）", style=R.DIM)
+        R.hints(console, tips)
+
+    def draw(console: Console) -> None:
+        # 估算行数：From + 每组标题 + 每样一行 + hint；超过一屏才走分页器（同 git，LESS=FRX：保留颜色、不满一屏自动退出）
+        height = 1 + len(rows) + sum(1 for title, _ in groups if title is not None) + len(tips) + (0 if rows else 1)
+        if console.is_terminal and height > console.height:
+            os.environ.setdefault("LESS", "FRX")
+            with console.pager(styles=True):
+                render(console)
+        else:
+            render(console)
 
     return Result({"remote": remote_url(remote), "meals": rows}, draw)
+
+
+def _menu_groups(menu: Any, rows: List[Dict[str, Any]]) -> List[Tuple[Optional[str], List[Dict[str, Any]]]]:
+    """按菜单分类顺序分组；同一 code 只放在它第一次出现的分类里，没进任何分类的放最后「其他」。"""
+    by_code = {row["code"]: row for row in rows}
+    seen: Set[str] = set()
+    groups: List[Tuple[Optional[str], List[Dict[str, Any]]]] = []
+    for cname, codes in menu.categories:
+        members = []
+        for code in codes:
+            if code in by_code and code not in seen:
+                seen.add(code)
+                members.append(by_code[code])
+        if members:
+            groups.append((cname or "其他", members))
+    rest = [row for row in rows if row["code"] not in seen]
+    if rest:
+        groups.append(("其他", rest))
+    return groups
