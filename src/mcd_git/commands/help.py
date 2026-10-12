@@ -34,6 +34,7 @@ COMMANDS: List[Tuple[str, str, bool]] = [
     ("fetch", "今日活动、可领券（只读）", False),
     ("pull", "领券：一次领全部可领券", True),
     ("card [--style 样式]", "1024 吃麦贡献图（天际线 / 小票 / 格子）", False),
+    ("completion <shell>", "打印命令补全脚本（bash / zsh / fish）", False),
 ]
 
 
