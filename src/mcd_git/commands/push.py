@@ -46,7 +46,7 @@ def register(sub: Any, common: Any) -> None:
     p.add_argument("--remark", metavar="<备注>", help="订单备注（仅麦乐送，最多 50 字）")
     p.add_argument("--dry-run", action="store_true", help="只看确认摘要，不下单")
     p.add_argument("--confirm", metavar="<commit>", help="用户已同意：按预览里给的 commit 哈希下单")
-    p.add_argument("--qr", metavar="{half,full,fancy[=名字]}", default="half", help="二维码画法：half 紧凑(默认)/full 更大更清楚/fancy 麦当劳主题码(随机汉堡/薯条/麦乐鸡/甜筒/派/金拱门，可用 fancy=名字 指定)")
+    p.add_argument("--qr", metavar="{full,half,fancy[=名字]}", default="full", help="二维码画法：full 整格(默认，各终端都扫得出)/half 更紧凑，但部分终端（如 macOS Terminal.app）可能扫不出/fancy 麦当劳主题码(随机汉堡/薯条/麦乐鸡/甜筒/派/金拱门，可用 fancy=名字 指定)")
     p.add_argument("-f", "--force", action="store_true", help=argparse.SUPPRESS)
     p.set_defaults(func=run)
 
@@ -245,7 +245,7 @@ def render_summary(console: Console, s: Dict[str, Any], *, demo: bool) -> None:
 UNKNOWN_RESULT_HINT = "不确定订单有没有建成：先运行 git mcd log 看最新订单，不要直接重试（避免重复下单）"
 
 
-def _place(ctx: Context, head: Dict[str, Any], args_: Dict[str, Any], s: Dict[str, Any], qr_style: str = "half") -> Result:
+def _place(ctx: Context, head: Dict[str, Any], args_: Dict[str, Any], s: Dict[str, Any], qr_style: str = "full") -> Result:
     api = ctx.api()
     scope = head["remote"]
     approval = gate.issue("create-order", args_)
@@ -302,7 +302,7 @@ def _place(ctx: Context, head: Dict[str, Any], args_: Dict[str, Any], s: Dict[st
         else:
             console.print(Text.assemble("订单 ", (R.mask_order_id(order_id), R.HASH), " · ", (record["statusLabel"], "bold yellow"), f" · 请在 {deadline} 前付款"))
         if pay_url:
-            R.pay_block(console, pay_url, demo=ctx.demo, big_qr=(qr_style == "full"), style=qr_style, env=ctx.env)
+            R.pay_block(console, pay_url, demo=ctx.demo, style=qr_style, env=ctx.env)
             R.hints(console, ["付完运行 git mcd show 查看取餐码"])
         elif not free:
             R.hints(console, ["没拿到支付链接：打开麦当劳 App 的订单页付款", "付完运行 git mcd show 查看取餐码"])
@@ -364,7 +364,7 @@ def run(ctx: Context, args: Any) -> Result:
         )
     if args.dry_run and args.confirm:
         raise GitMcdError("--dry-run 和 --confirm 不能一起用")
-    validate_qr(getattr(args, "qr", "half"))
+    validate_qr(getattr(args, "qr", "full"))
     state = ctx.state
     head = head_commit(state)
     if state.get("index"):
@@ -431,7 +431,7 @@ def run(ctx: Context, args: Any) -> Result:
             state["pending"] = None
             ctx.save()
             raise GitMcdError("failed to push some refs: 下单参数和预览时不一致（取餐方式或商品变了）", hint="什么都没下单；重新预览")
-        return _place(ctx, head, args_, s, getattr(args, "qr", "half"))
+        return _place(ctx, head, args_, s, getattr(args, "qr", "full"))
 
     state["pending"] = {
         "kind": "push",
@@ -451,7 +451,7 @@ def run(ctx: Context, args: Any) -> Result:
             state["pending"] = None
             ctx.save()
             return Result({"status": "aborted", "summary": s}, lambda console: console.print("没有下单。"))
-        return _place(ctx, head, args_, s, getattr(args, "qr", "half"))
+        return _place(ctx, head, args_, s, getattr(args, "qr", "full"))
 
     def draw_preview(console: Console) -> None:
         render_summary(console, s, demo=ctx.demo)

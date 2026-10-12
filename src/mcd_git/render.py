@@ -172,6 +172,9 @@ FANCY_TEMPLATES = ("burger", "fries", "nuggets", "cone", "pie", "arch")
 # 给用户看的中文名（底部提示里带上当前是哪个图案）
 FANCY_LABELS = {"burger": "汉堡", "fries": "薯条", "nuggets": "麦乐鸡", "cone": "甜筒", "pie": "派", "arch": "金拱门"}
 _FANCY_QUIET = 2  # fancy 静区（和整格一致）：白色静区是画出来的格子，2 个模块够
+# `--qr` 画法（单一来源：校验、帮助、补全脚本都用它）。full 整格是默认：不依赖字形，各终端都扫得出
+QR_STYLES = ("full", "half", "fancy")
+QR_STYLE_VALUES = QR_STYLES + tuple("fancy=" + t for t in FANCY_TEMPLATES)
 
 _PAY_HOSTS = ("m.mcd.cn",)
 _ORDER_ID = re.compile(r"[0-9A-Za-z_-]{1,64}")
@@ -184,12 +187,12 @@ class FancyTemplateError(ValueError):
 
 
 def parse_qr_style(raw: Optional[str]) -> Tuple[str, Optional[str]]:
-    """解析 `--qr` 取值：half / full / fancy / fancy=名字（也接受 fancy:名字）。
+    """解析 `--qr` 取值：full（默认）/ half / fancy / fancy=名字（也接受 fancy:名字）。
 
-    返回 (mode, template)：mode 是 half/full/fancy；template 只在 fancy 指定了名字时非空，否则 None（随机）。
+    返回 (mode, template)：mode 是 full/half/fancy；template 只在 fancy 指定了名字时非空，否则 None（随机）。
     名字非法时抛 FancyTemplateError，并在消息里列出可选名。
     """
-    text = (raw or "half").strip()
+    text = (raw or "full").strip()
     for sep in ("=", ":"):
         if text.startswith("fancy" + sep):
             name = text[len("fancy") + 1:].strip().lower()
@@ -255,27 +258,25 @@ def pay_block(
     pay_url: str,
     *,
     demo: bool = False,
-    big_qr: bool = False,
-    style: str = "half",
+    style: str = "full",
     rng: Optional[random.Random] = None,
     env: Optional[dict] = None,
 ) -> None:
     """push / show 共用：二维码 + 支付链接 + 怎么付的提示。
 
     二维码优先画「扫了拉起麦当劳 App 付款」的那条链接（和收银页里的二维码一样）；认不出就退回支付链接本身。
-    默认半块、紧凑；big_qr（`--qr full`）时画更大的整格二维码，适合半块扫不出的终端；
-    style="fancy" 或 "fancy=名字"（`--qr fancy` / `--qr fancy=名字`）画麦当劳主题码：6 个麦当劳元素模板随机出
-    一个（或指定一个），终端够宽成功时提示当前是哪个图案、太窄退回普通码并提示。
+    style 是 `--qr` 的取值：默认 full 整格（各终端都扫得出），终端放不下整格时自动退回半块并提示原因；
+    half 更紧凑，但部分终端（如 macOS Terminal.app）可能扫不出（显式 half 不出退回提示）；
+    "fancy" 或 "fancy=名字" 画麦当劳主题码：6 个麦当劳元素模板随机出一个（或指定一个），
+    终端够宽成功时提示当前是哪个图案、太窄退回普通码并提示。
     rng/env 可注入，让随机图案在测试 / 截图里固定复现。
     """
     mode, template = parse_qr_style(style)
-    fancy = mode == "fancy"
-    chosen = resolve_fancy_template(template, rng=rng, env=env) if fancy else "burger"
+    chosen = resolve_fancy_template(template, rng=rng, env=env) if mode == "fancy" else "burger"
     app_url = app_pay_url(pay_url)
     data = app_url or pay_url
-    console.print(
-        qr_text(data, color=console.color_system is not None, width=console.width, big=big_qr, fancy=fancy, template=chosen),
-        no_wrap=True, crop=False)
+    drawn, border, fallback = qr_layout(data, color=console.color_system is not None, width=console.width, style=mode)
+    console.print(_draw_qr(data, drawn, border, chosen), no_wrap=True, crop=False)
     console.print(Text.assemble("支付链接：", (pay_url, link(pay_url))))
     if demo:
         console.print("（demo：演示链接，不会扣款）", style=DIM)
@@ -285,14 +286,17 @@ def pay_block(
     else:
         tips = ["用手机扫码或打开麦当劳 App 完成支付（mcd-git 不会替你付款）",
                 "扫不出来就直接打开上面的支付链接，或到麦当劳 App 订单页付款"]
-    if fancy and console.color_system is not None:
-        # 阈值单一来源：和 qr_text 里一样用 _FANCY_QUIET + high=True 的边长判断是否真的画成了 fancy
-        n = len(qr_matrix(data, _FANCY_QUIET, high=True))
-        if console.width is None or console.width >= n * 2:
-            tips.insert(0, f"麦当劳主题码·{FANCY_LABELS[chosen]}，和普通码一样扫")
-        else:
-            tips.insert(0, "终端太窄，麦当劳主题码已退回普通二维码")
-    hints(console, tips)
+    notices: List[str] = []
+    if drawn == "fancy":
+        notices.append(f"麦当劳主题码·{FANCY_LABELS[chosen]}，和普通码一样扫")
+    elif fallback and "fancy" in fallback:
+        notices.append("终端太窄，麦当劳主题码已退回普通二维码")
+    if fallback and "full" in fallback:
+        need = len(qr_matrix(data, QR_QUIET_FULL)) * 2
+        notices.append(
+            f"终端只有 {console.width} 列，放不下整格二维码（要 {need} 列），已退回更紧凑的半块画法；"
+            "部分终端（如 macOS Terminal.app）半块可能扫不出，把窗口拉宽后再运行 git mcd show 重新出码")
+    hints(console, notices + tips)
 
 
 def qr_matrix(data: str, border: int = QR_QUIET, *, high: bool = False) -> List[List[bool]]:
@@ -329,46 +333,54 @@ def _fancy_lines(matrix: List[List[bool]], pattern: List[List[int]]) -> List[Tex
     return rows
 
 
-def qr_mode(modules: int, width: Optional[int], color: bool, big: bool = False) -> str:
-    """选画法：'half' 上下半块「▀」+ 前景 / 背景色（一行两个模块行，默认，最省地方）；
-    'full' 每个模块两个空格 + 背景色（一行一个模块行，不依赖字形，`--qr full` 时用，适合半块扫不出的终端）；
-    'plain' 没颜色时的 qrencode 风格。modules 是含静区的边长。
-    big 为真且终端够宽（width ≥ 边长 × 2）才用 full；否则一律 half（没颜色是 plain）。"""
+def qr_layout(data: str, *, color: bool, width: Optional[int], style: str = "full") -> Tuple[str, int, Optional[str]]:
+    """二维码画法决策（单一来源，qr_text 和 pay_block 都用它）：返回 (mode, border, fallback)。
+
+    mode 是实际画法：'fancy' 麦当劳主题码 / 'full' 每个模块两个带背景色的空格（默认，不依赖字形）/
+    'half' 上下半块「▀」+ 前景 / 背景色（一行两个模块行，最紧凑）/ 'plain' 没颜色时的 qrencode 风格。
+    border 是静区模块数；fallback 记从哪种请求画法退回：None / 'fancy' / 'full' / 'fancy+full'。
+    规则：没颜色一律 plain（fancy 也不生效）；fancy 放不下（width < 边长×2）先退 full；full 放不下退 half；
+    half 连静区 4 都放不下（width < 边长）时退到静区 2。width 为 None 表示不限宽。
+    """
+    if style not in QR_STYLES:
+        raise ValueError(f"未知二维码画法：{style!r}")
     if not color:
-        return "plain"
-    if big and width is not None and width >= modules * 2:
-        return "full"
-    return "half"
+        return "plain", QR_QUIET, None
+    fallback: Optional[str] = None
+    if style == "fancy":
+        n = len(qr_matrix(data, _FANCY_QUIET, high=True))
+        if width is None or width >= n * 2:
+            return "fancy", _FANCY_QUIET, None
+        fallback, style = "fancy", "full"
+    if style == "full":
+        n = len(qr_matrix(data, QR_QUIET_FULL))  # 整格画法用窄静区：白色静区是画出来的，不用留 4
+        if width is None or width >= n * 2:
+            return "full", QR_QUIET_FULL, fallback
+        fallback = "fancy+full" if fallback else "full"
+    size = len(qr_matrix(data, QR_QUIET))
+    border = _QR_QUIET_MIN if width is not None and width < size else QR_QUIET
+    return "half", border, fallback
 
 
-def qr_text(data: str, *, color: bool = True, border: int = QR_QUIET, width: Optional[int] = None, big: bool = False, fancy: bool = False, template: str = "burger") -> Text:
-    """画终端二维码。
+def qr_text(data: str, *, color: bool = True, width: Optional[int] = None, style: str = "full", template: str = "burger") -> Text:
+    """画终端二维码，style 只接受 'full' / 'half' / 'fancy'，实际画法由 qr_layout 决定。
 
-    默认半块「▀」画法：一个字符放上下两个模块，高度减半，是终端里最紧凑的画法（约 17 行高），手机能扫。
-    `big=True`（命令行 `--qr full`）且终端够宽时，每个模块画成两个带背景色的空格、不依赖字形，整码更大更清楚，
-    适合半块在某些终端扫不出的情况。显式指定黑白色，深浅主题和 SVG 导出都能扫。
-    `fancy=True`（命令行 `--qr fancy`）且有颜色时画麦当劳主题码：麦门金配色 + 正中像素 Logo（template 指定
-    是 6 个麦当劳元素中的哪个，默认 burger）、纠错 H，固定整格（不受 big/width 放大影响）；
-    终端太窄（width < 边长×2）时退回普通 half 画法（不画 Logo）。
+    默认 full 整格：每个模块画成两个带背景色的空格、不依赖字形，各终端都扫得出；终端放不下时自动退回半块。
+    half 半块「▀」：一个字符放上下两个模块，高度减半，更紧凑，但部分终端（如 macOS Terminal.app）可能扫不出。
+    fancy 麦当劳主题码：麦门金配色 + 正中像素 Logo（template 指定 6 个麦当劳元素中的哪个，默认 burger）、纠错 H；
+    终端太窄时先退回整格、再不行退回半块（不画 Logo）。显式指定黑白色，深浅主题和 SVG 导出都能扫。
     没颜色（管道、NO_COLOR）时按 qrencode -t UTF8 的习惯，用方块画浅色模块，适合深色背景终端。
     """
-    if fancy and color:
-        matrix = qr_matrix(data, _FANCY_QUIET, high=True)
-        n = len(matrix)
-        if width is None or width >= n * 2:
-            return Text("\n").join(_fancy_lines(matrix, _FANCY_PATTERNS[template]))
-        # 终端太窄：退回普通 half（不画 Logo），由调用方给退回提示
-        fancy = False
-    size_full = len(qr_matrix(data, QR_QUIET_FULL))
-    mode = qr_mode(size_full, width, color, big)
-    if mode == "full":
-        matrix = qr_matrix(data, QR_QUIET_FULL)  # 整格画法用窄静区：白色静区是画出来的，不用留 4
-    else:
-        matrix = qr_matrix(data, border)
+    mode, border, _ = qr_layout(data, color=color, width=width, style=style)
+    return _draw_qr(data, mode, border, template)
+
+
+def _draw_qr(data: str, mode: str, border: int, template: str) -> Text:
+    """按 qr_layout 定下的画法和静区出图。"""
+    if mode == "fancy":
+        return Text("\n").join(_fancy_lines(qr_matrix(data, border, high=True), _FANCY_PATTERNS[template]))
+    matrix = qr_matrix(data, border)
     size = len(matrix[0]) if matrix else 0
-    if mode == "half" and width is not None and width < size and border > _QR_QUIET_MIN:
-        matrix = qr_matrix(data, _QR_QUIET_MIN)
-        size = len(matrix[0]) if matrix else 0
     rows: List[Text] = []
     if mode == "full":
         for row in matrix:

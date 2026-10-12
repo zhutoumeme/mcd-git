@@ -1,4 +1,4 @@
-"""0.2.1 终端二维码（plan.md T24～T27）：静区 4、宽终端整格背景色画法、窄终端退回半块。
+"""终端二维码：0.2.4 起默认整格（静区 2），放不下退回半块并提示；half 可选（静区 4）；无颜色 plain；fancy 主题码。
 链接是合成的：和真实支付链接同形态（https://m.mcd.cn/mcp/scanToPay?orderId= + 28 位数字，67 字节）。
 """
 from __future__ import annotations
@@ -7,6 +7,7 @@ import io
 import os
 from typing import List, Tuple
 
+import pytest
 import qrcode
 from rich.cells import cell_len
 from rich.console import Console
@@ -94,51 +95,76 @@ def test_qr_matrix_has_quiet_zone_of_four() -> None:
     assert _strip(matrix, 4) == _bare_matrix(URL)
 
 
-# ---------------------------------------------------------------- T26 默认半块（0.2.3：默认画法，最紧凑）
+# ---------------------------------------------------------------- 0.2.4 默认整格（静区 2）：各终端都扫得出
 
 
-def test_half_is_the_default_and_most_compact() -> None:
-    assert R.qr_mode(37, 200, True, False) == "half"  # 默认 big=False 永远 half
-    assert R.qr_mode(37, 200, True) == "half"
-    text = R.qr_text(URL, color=True, width=200)  # 不传 big
-    lines = text.split("\n")
-    assert len(lines) == 21 and all(cell_len(line.plain) == 41 for line in lines)  # 比整格 41×82 小得多
-    decoded = _decode_half(text)
-    assert decoded[-1] == [False] * 41  # 最后一行的下半格补浅色
-    assert decoded[:41] == R.qr_matrix(URL)
-
-
-def test_half_mode_falls_back_to_quiet_two_when_even_half_does_not_fit() -> None:
-    text = R.qr_text(URL, color=True, width=40)
-    lines = text.split("\n")
-    assert len(lines) == 19 and all(cell_len(line.plain) == 37 for line in lines)
-    assert _decode_half(text)[:37] == R.qr_matrix(URL, 2)
-
-
-# ---------------------------------------------------------------- T25 big=full 显式开大图（静区 2）
-
-
-def test_big_full_mode_opt_in_draws_each_module_as_two_background_cells() -> None:
+def test_full_is_the_default_and_draws_each_module_as_two_background_cells() -> None:
     assert R.QR_QUIET_FULL == 2
-    assert R.qr_mode(37, 74, True, True) == "full"
-    text = R.qr_text(URL, color=True, width=74, big=True)
+    assert R.qr_layout(URL, color=True, width=200) == ("full", 2, None)
+    text = R.qr_text(URL, width=200)  # 不传 style
     lines = text.split("\n")
     assert len(lines) == 37 and all(cell_len(line.plain) == 74 for line in lines)
     assert _decode_full(text) == R.qr_matrix(URL, 2)
     assert _quiet(_decode_full(text), 2)
 
 
-def test_big_full_falls_back_to_half_when_terminal_too_narrow() -> None:
-    assert R.qr_mode(37, 73, True, True) == "half"  # big 但放不下 → 退回 half
+def test_full_exactly_fits_at_twice_the_side() -> None:
+    assert R.qr_layout(URL, color=True, width=74) == ("full", 2, None)
+    lines = R.qr_text(URL, color=True, width=74).split("\n")
+    assert len(lines) == 37 and all(cell_len(line.plain) == 74 for line in lines)
+
+
+def test_default_full_falls_back_to_half_when_terminal_too_narrow() -> None:
+    assert R.qr_layout(URL, color=True, width=73) == ("half", 4, "full")  # 差一列就退回半块
+    text = R.qr_text(URL, color=True, width=73)
+    lines = text.split("\n")
+    assert len(lines) == 21 and all(cell_len(line.plain) == 41 for line in lines)
+    assert _decode_half(text)[:41] == R.qr_matrix(URL)
+    assert R.qr_layout(URL, color=True, width=40) == ("half", 2, "full")  # 半块静区 4 也放不下 → 静区 2
+    assert len(R.qr_text(URL, color=True, width=40).split("\n")) == 19
+
+
+# ---------------------------------------------------------------- half 可选：更紧凑（静区 4，放不下退静区 2）
+
+
+def test_half_is_opt_in_and_compact() -> None:
+    assert R.qr_layout(URL, color=True, width=200, style="half") == ("half", 4, None)  # 显式 half 不算退回
+    text = R.qr_text(URL, color=True, width=200, style="half")
+    lines = text.split("\n")
+    assert len(lines) == 21 and all(cell_len(line.plain) == 41 for line in lines)
+    decoded = _decode_half(text)
+    assert decoded[-1] == [False] * 41  # 最后一行的下半格补浅色
+    assert decoded[:41] == R.qr_matrix(URL)
+
+
+def test_half_mode_falls_back_to_quiet_two_when_even_half_does_not_fit() -> None:
+    assert R.qr_layout(URL, color=True, width=40, style="half") == ("half", 2, None)
+    text = R.qr_text(URL, color=True, width=40, style="half")
+    lines = text.split("\n")
+    assert len(lines) == 19 and all(cell_len(line.plain) == 37 for line in lines)
+    assert _decode_half(text)[:37] == R.qr_matrix(URL, 2)
 
 
 def test_plain_mode_keeps_qrencode_style_with_quiet_four() -> None:
-    assert R.qr_mode(41, 200, False) == "plain"
-    text = R.qr_text(URL, color=False, width=200)
-    assert not text.spans
-    lines = text.plain.split("\n")
-    assert len(lines) == 21 and all(len(line) == 41 for line in lines)
-    assert _decode_plain(text)[:41] == R.qr_matrix(URL)
+    for style in R.QR_STYLES:  # 没颜色时不论哪种画法都是 plain
+        assert R.qr_layout(URL, color=False, width=200, style=style) == ("plain", 4, None)
+        text = R.qr_text(URL, color=False, width=200, style=style)
+        assert not text.spans
+        lines = text.plain.split("\n")
+        assert len(lines) == 21 and all(len(line) == 41 for line in lines)
+        assert _decode_plain(text)[:41] == R.qr_matrix(URL)
+
+
+def test_qr_style_constants_and_defaults() -> None:
+    from mcd_git.commands.common import validate_qr
+
+    assert R.QR_STYLES == ("full", "half", "fancy")
+    assert R.QR_STYLE_VALUES == ("full", "half", "fancy") + tuple("fancy=" + t for t in R.FANCY_TEMPLATES)
+    assert R.parse_qr_style(None) == ("full", None)
+    assert R.parse_qr_style("") == ("full", None)
+    assert validate_qr(None) == "full"
+    with pytest.raises(ValueError):
+        R.qr_layout(URL, color=True, width=200, style="big")
 
 
 # ---------------------------------------------------------------- 0.2.3：二维码和收银页一样，扫了拉起 App
@@ -156,28 +182,52 @@ def test_app_pay_url_matches_the_cashier_page_rule() -> None:
         assert R.app_pay_url(bad) is None
 
 
-def test_pay_block_default_half_encodes_app_link_and_keeps_pay_link_text() -> None:
-    pay = "https://m.mcd.cn/mcp/scanToPay?orderId=" + "1030" * 7
-    buf = io.StringIO()
-    console = Console(file=buf, force_terminal=True, color_system="truecolor", width=120, highlight=False)
-    R.pay_block(console, pay)  # 默认 half
-    text = Text.from_ansi(buf.getvalue())
-    qr_lines = [line for line in text.split("\n") if "▀" in line.plain]
-    assert len(qr_lines) == 21  # 默认半块、静区 4：21 行，而不是整格的 41 行
-    assert _decode_half(Text("\n").join(qr_lines))[:41] == R.qr_matrix(R.app_pay_url(pay))  # 二维码是 App 链接
-    assert "支付链接：" + pay in text.plain  # 文字链接仍是原支付链接（浏览器打开）
-    assert "会直接打开麦当劳 App 付款" in text.plain
+PAY = "https://m.mcd.cn/mcp/scanToPay?orderId=" + "1030" * 7
+FALLBACK_FULL = "放不下整格二维码"
 
 
-def test_pay_block_big_qr_uses_full_mode() -> None:
-    pay = "https://m.mcd.cn/mcp/scanToPay?orderId=" + "1030" * 7
+def _pay_block(width: int, **kwargs: object) -> Text:
     buf = io.StringIO()
-    console = Console(file=buf, force_terminal=True, color_system="truecolor", width=120, highlight=False)
-    R.pay_block(console, pay, big_qr=True)
-    text = Text.from_ansi(buf.getvalue())
+    console = Console(file=buf, force_terminal=True, color_system="truecolor", width=width, highlight=False)
+    R.pay_block(console, PAY, **kwargs)  # type: ignore[arg-type]
+    return Text.from_ansi(buf.getvalue())
+
+
+def _flat(text: Text) -> str:
+    return text.plain.replace("\n", "")  # 窄终端里提示会折行，按整段比对
+
+
+def test_pay_block_default_full_encodes_app_link_and_keeps_pay_link_text() -> None:
+    text = _pay_block(120)  # 默认 full
     qr_lines = [line for line in text.split("\n") if line.plain and set(line.plain) == {" "}]
-    assert len(qr_lines) == 37  # 整格画法、静区 2
-    assert _decode_full(Text("\n").join(qr_lines)) == R.qr_matrix(R.app_pay_url(pay), 2)
+    assert len(qr_lines) == 37 and "▀" not in text.plain  # 整格画法、静区 2
+    assert _decode_full(Text("\n").join(qr_lines)) == R.qr_matrix(R.app_pay_url(PAY), 2)  # 二维码是 App 链接
+    assert "支付链接：" + PAY in text.plain  # 文字链接仍是原支付链接（浏览器打开）
+    assert "hint: 用手机扫上面的二维码，会直接打开麦当劳 App 付款（mcd-git 不会替你付款）" in text.plain
+    assert "hint: 扫不出来：在浏览器里打开支付链接，或到麦当劳 App 订单页付款" in text.plain
+    assert FALLBACK_FULL not in text.plain
+
+
+def test_pay_block_narrow_falls_back_to_half_with_one_line_notice() -> None:
+    text = _pay_block(60)
+    qr_lines = [line for line in text.split("\n") if "▀" in line.plain]
+    assert len(qr_lines) == 21  # 60 < 74 放不下整格 → half；60 ≥ 41 半块静区 4 放得下
+    flat = _flat(text)
+    notice = ("终端只有 60 列，放不下整格二维码（要 74 列），已退回更紧凑的半块画法；"
+              "部分终端（如 macOS Terminal.app）半块可能扫不出，把窗口拉宽后再运行 git mcd show 重新出码")
+    assert notice in flat
+    assert "macOS Terminal.app" in flat and "git mcd show" in flat
+    # 退回提示排在 tips 最前，原有两条提示逐字保留
+    assert flat.index(notice) < flat.index("用手机扫上面的二维码")
+    assert "用手机扫上面的二维码，会直接打开麦当劳 App 付款（mcd-git 不会替你付款）" in flat
+    assert "扫不出来：在浏览器里打开支付链接，或到麦当劳 App 订单页付款" in flat
+
+
+def test_pay_block_explicit_half_has_no_fallback_notice() -> None:
+    for width in (120, 60):
+        text = _pay_block(width, style="half")
+        assert "▀" in text.plain
+        assert FALLBACK_FULL not in _flat(text)
 
 
 # ---------------------------------------------------------------- T27 push
@@ -209,12 +259,49 @@ def test_push_without_color_uses_plain_qr_and_adds_fallback_hint(runner: Runner)
     assert hints[-1] == "hint: 付完运行 git mcd show 查看取餐码"
 
 
-def test_push_defaults_to_compact_half_qr(runner: Runner) -> None:
-    # 默认（不带 --qr）在宽终端也用半块：紧凑、不占满屏
+def test_push_defaults_to_full_qr(runner: Runner) -> None:
+    # 默认（不带 --qr）用整格：不依赖「▀」字形，macOS Terminal.app 也扫得出
     argv = _confirmed_push(runner)
     code, text = _color_run(runner, argv, 120)
+    assert code == 0 and "▀" not in text.plain
+    blank = [line for line in text.split("\n") if line.plain and set(line.plain) == {" "}]
+    assert len(blank) >= 37
+    assert "扫不出来" in text.plain and FALLBACK_FULL not in text.plain
+
+
+def test_push_qr_half_opts_into_compact_code(runner: Runner) -> None:
+    argv = _confirmed_push(runner) + ["--qr", "half"]
+    code, text = _color_run(runner, argv, 120)
     assert code == 0 and "▀" in text.plain
-    assert "扫不出来" in text.plain
+    assert FALLBACK_FULL not in _flat(text)
+
+
+def test_push_narrow_terminal_falls_back_to_half_with_notice(runner: Runner) -> None:
+    argv = _confirmed_push(runner)
+    code, text = _color_run(runner, argv, 60)
+    assert code == 0 and "▀" in text.plain
+    assert FALLBACK_FULL in _flat(text) and "macOS Terminal.app" in _flat(text)
+
+
+def test_show_pending_order_defaults_to_full_qr(runner: Runner, monkeypatch: pytest.MonkeyPatch) -> None:
+    from mcd_git.demo.client import DemoClient
+
+    def still_pending(self: DemoClient, args: dict) -> dict:  # demo 默认查单即「已付款」；这里让订单保持待支付
+        db = self._load_db()
+        return self._view(self._find(db, str(args.get("orderId") or "")))
+
+    monkeypatch.setattr(DemoClient, "_t_query_order", still_pending)
+    runner.run(*_confirmed_push(runner))
+    code, text = _color_run(runner, ["--demo", "show"], 120)
+    assert code == 0 and "待支付" in text.plain
+    blank = [line for line in text.split("\n") if line.plain and set(line.plain) == {" "}]
+    assert len(blank) >= 37 and "▀" not in text.plain
+
+
+def test_push_qr_bogus_lists_choices(runner: Runner) -> None:
+    code, data = runner.json(*_confirmed_push(runner), "--qr", "bogus")
+    assert code != 0 and "bogus" in data["error"]["message"]
+    assert data["error"]["hints"][0].startswith("可选：full / half / fancy / fancy=名字")
 
 
 def test_push_qr_full_opts_into_big_code(runner: Runner) -> None:
@@ -301,7 +388,7 @@ def test_every_template_draws_full_cells_and_matches_high_matrix_outside_logo() 
     size = len(next(iter(R._FANCY_PATTERNS.values()))) + 2  # 11
     lo = (n - size) // 2
     for name, pat in R._FANCY_PATTERNS.items():
-        text = R.qr_text(APP_URL, color=True, width=120, fancy=True, template=name)
+        text = R.qr_text(APP_URL, color=True, width=120, style="fancy", template=name)
         lines = text.split("\n")
         assert len(lines) == n and all(cell_len(line.plain) == n * 2 for line in lines), name  # 整格
         assert all(set(line.plain) == {" "} for line in lines), name  # 无「▀」
@@ -356,14 +443,20 @@ def test_random_is_seed_reproducible_and_covers_all_templates() -> None:
     assert seen == set(R.FANCY_TEMPLATES)
 
 
-def test_fancy_falls_back_to_half_when_terminal_too_narrow() -> None:
-    text = R.qr_text(APP_URL, color=True, width=80, fancy=True)  # width < 45*2=90 → 退回 half
-    assert "▀" in text.plain
-    assert "da291c" not in _bg_colors(text)  # 退回普通 half，没有麦当劳红
+def test_fancy_falls_back_to_full_first_then_half() -> None:
+    # 80 < 45*2=90 放不下 fancy，但 ≥ 37*2=74 → 先退整格，不是 half
+    assert R.qr_layout(APP_URL, color=True, width=80, style="fancy") == ("full", 2, "fancy")
+    text = R.qr_text(APP_URL, color=True, width=80, style="fancy")
+    assert "▀" not in text.plain and len(text.split("\n")) == 37
+    assert _decode_full(text) == R.qr_matrix(APP_URL, 2)
+    assert "da291c" not in _bg_colors(text)  # 退回普通码，没有麦当劳红
+    # 60 连整格都放不下 → half
+    assert R.qr_layout(APP_URL, color=True, width=60, style="fancy") == ("half", 4, "fancy+full")
+    assert "▀" in R.qr_text(APP_URL, color=True, width=60, style="fancy").plain
 
 
 def test_fancy_without_color_is_plain() -> None:
-    text = R.qr_text(APP_URL, color=False, width=120, fancy=True)  # 没颜色 fancy 不生效
+    text = R.qr_text(APP_URL, color=False, width=120, style="fancy")  # 没颜色 fancy 不生效
     assert not text.spans
 
 
@@ -388,14 +481,19 @@ def test_pay_block_fancy_env_pins_template() -> None:
     assert "麦当劳主题码·薯条，和普通码一样扫" in text.plain
 
 
-def test_pay_block_fancy_narrow_falls_back_with_notice() -> None:
-    pay = "https://m.mcd.cn/mcp/scanToPay?orderId=" + "1030" * 7
-    buf = io.StringIO()
-    console = Console(file=buf, force_terminal=True, color_system="truecolor", width=80, highlight=False)
-    R.pay_block(console, pay, style="fancy")
-    text = Text.from_ansi(buf.getvalue())
-    assert "终端太窄，麦当劳主题码已退回普通二维码" in text.plain
+def test_pay_block_fancy_narrow_falls_back_to_full_with_notice() -> None:
+    text = _pay_block(80, style="fancy")
+    assert "终端太窄，麦当劳主题码已退回普通二维码" in _flat(text)
+    assert "▀" not in text.plain  # 80 列放得下整格
+    assert FALLBACK_FULL not in _flat(text)
+
+
+def test_pay_block_fancy_very_narrow_falls_back_to_half_with_both_notices() -> None:
+    text = _pay_block(60, style="fancy")
+    flat = _flat(text)
     assert "▀" in text.plain
+    assert "终端太窄，麦当劳主题码已退回普通二维码" in flat and FALLBACK_FULL in flat
+    assert flat.index("终端太窄，麦当劳主题码") < flat.index(FALLBACK_FULL) < flat.index("用手机扫上面的二维码")
 
 
 def test_push_qr_fancy(runner: Runner) -> None:
