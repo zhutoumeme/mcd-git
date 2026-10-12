@@ -93,7 +93,7 @@ def run(ctx: Context, args: Any) -> Result:
                 for p in (src.get("order") or {}).get("products") or []
             ]
         api = ctx.api()
-        menu = api.menu(remote)
+        menu = ctx.menu(remote)
         for p in products:
             code = p["code"] if p["code"] in menu.items else menu.by_name(p["name"])
             if code is None:

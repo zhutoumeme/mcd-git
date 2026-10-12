@@ -176,6 +176,10 @@ def main(
 ) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     env = os.environ if env is None else env
+    if argv[:1] == ["__complete"]:  # 隐藏的补全入口：不进 argparse（不出现在帮助和对照表里），只读本机缓存
+        from .complete import run as complete_run
+
+        return complete_run(argv[1:], env=env, out=(console.file if console is not None else sys.stdout), now=now)
     out = console or _console(env)
     err_out = err_console or (console if console is not None else _console(env, stderr=True))
     head = argv[: argv.index("--")] if "--" in argv else argv

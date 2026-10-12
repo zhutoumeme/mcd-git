@@ -33,8 +33,8 @@ Homepage = "https://github.com/zhutoumeme/mcd-git"
 
 [project.scripts]
 # git-mcd 放进 PATH 后，git 会把 `git mcd ...` 分发给它
-git-mcd = "mcd_git.cli:main"
-mcd-git = "mcd_git.cli:main"
+git-mcd = "mcd_git.entry:main"
+mcd-git = "mcd_git.entry:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

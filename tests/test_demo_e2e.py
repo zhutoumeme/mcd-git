@@ -276,8 +276,9 @@ def test_graph_lanes() -> None:
 
 def test_entry_points_declared() -> None:
     text = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
-    assert re.search(r'^git-mcd = "mcd_git\.cli:main"$', text, re.M)
-    assert re.search(r'^mcd-git = "mcd_git\.cli:main"$', text, re.M)
+    # 0.2.4 起入口是 entry:main（__complete 补全热路径绕开 cli）；旧安装指向 cli:main 也照样能用
+    assert re.search(r'^git-mcd = "mcd_git\.entry:main"$', text, re.M)
+    assert re.search(r'^mcd-git = "mcd_git\.entry:main"$', text, re.M)
 
 
 def test_python_module_entry(tmp_path: Path) -> None:

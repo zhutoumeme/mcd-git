@@ -8,7 +8,8 @@ from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional
 
 from rich.console import Console
 
-from .api import MODES, McdApi, normalize_store
+from . import menucache
+from .api import MODES, McdApi, Menu, normalize_store
 from .errors import GitMcdError
 from .ledger import Ledger, from_history
 from .state import BRANCH_LABELS, StateStore, meal_branch, state_root
@@ -70,6 +71,17 @@ class Context:
         if self._api is None:
             self._api = McdApi(self.client)
         return self._api
+
+    def menu(self, remote: Dict[str, Any]) -> Menu:
+        """query-meals，顺手把名称 / code / 套餐单品写进本机菜单缓存给命令行补全用（不多调任何 MCP）。
+        缓存尽力而为：写不进去也不影响当前命令。"""
+        menu = self.api().menu(remote)
+        try:
+            meals = [{"code": c, "name": i["name"], "type": "套餐" if menu.is_combo(c) else "单品"} for c, i in menu.items.items()]
+            menucache.write(self.store.root, remote, meals, self.now)
+        except (OSError, ValueError, TypeError):
+            pass
+        return menu
 
     @property
     def mcp_calls(self) -> Dict[str, int]:

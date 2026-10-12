@@ -59,7 +59,7 @@ def run_add(ctx: Context, args: Any) -> Result:
         raise GitMcdError(f"每样一次最多 {MAX_QTY} 份", hint="给团队点餐的功能还在路线图里")
     remote = ctx.require_remote()
     api = ctx.api()
-    menu = api.menu(remote)
+    menu = ctx.menu(remote)
     codes = [resolve(menu, query) for query in args.meals]  # 先全部解析，有一个不对就整条不生效
     no = list(args.no) + (["酸黄瓜"] if args.no_pickle else [])
     built = []
@@ -215,7 +215,7 @@ def run_reset(ctx: Context, args: Any) -> Result:
 
 def run_ls_remote(ctx: Context, args: Any) -> Result:
     remote = ctx.require_remote()
-    menu = ctx.api().menu(remote)
+    menu = ctx.menu(remote)
     items = list(menu.items.values())
     if args.keyword:
         q = normalize(args.keyword)

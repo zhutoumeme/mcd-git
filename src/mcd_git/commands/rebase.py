@@ -43,7 +43,7 @@ def run(ctx: Context, args: Any) -> Result:
         if budget is None or budget <= 0:
             raise GitMcdError(f"--budget {args.budget} 不是有效金额")
     api = ctx.api()
-    menu = api.menu(remote)
+    menu = ctx.menu(remote)
     coupons: List[Dict[str, Any]] = []
     coupon_error = None
     if not args.no_coupon:
