@@ -1,5 +1,18 @@
 # 更新日志
 
+## 0.2.4（2026-10-12）
+
+### 修复
+
+- 默认支付二维码改回整格画法（纠错 M、静区 2，demo 链接约 74 列 × 37 行，每个模块两个带背景色的空格），修复 macOS Terminal.app 下默认的半块码扫不出来。`push` 与 `show` 的 `--qr` 取值改为 `full`（默认）/ `half` / `fancy` / `fancy=名字`；`half` 更紧凑，但部分终端（如 macOS Terminal.app）可能扫不出。
+- 终端放不下整格码（宽度不足边长的两倍）时自动退回半块画法，并提示半块在部分终端可能扫不出、可以把窗口拉宽后运行 `git mcd show` 重新出码；显式 `--qr half` 不出这条提示。`fancy` 放不下时先退整格，整格也放不下才退半块（两条提示都出）。管道 / `NO_COLOR` 下仍是 qrencode 风格；二维码下面的文字支付链接和提示不变。
+
+### 新增
+
+- `git mcd completion bash|zsh|fish`：打印命令补全脚本，子命令、选项、`--qr` / `--style` 等取值都能补，zsh 候选带中文说明。安装：`eval "$(mcd-git completion zsh)"`（或 `bash`，macOS 自带 bash 3.2 可用）；fish 写进 `~/.config/fish/completions/`。脚本由 argparse 的定义自动导出，以后加命令不用另改。
+- 餐品名补全：`add`、`ls-remote` 补本店菜单里的餐品名，`restore --staged` 补购物车里的餐品；前缀匹配排前面，包含匹配排后面（「鸡腿」能补出麦辣鸡腿堡、板烧鸡腿堡），多个候选时只列出、不吞掉已输入的字；带空格、括号、引号的名字插入后转义正确。菜单读本机缓存 `menu-cache.json`（权限 600，只存 code、名称、类型、门店、取餐方式和写入时间，不存价格和地址），24 小时有效、换门店后失效；只在 `add` / `ls-remote` / `rebase` / `cherry-pick` 本来就要查菜单（`query-meals`）时顺手写入，不新增 MCP 调用，按 TAB 只读本机文件、绝不联网。`--demo` 第一次就能补演示菜单。缓存不可用时 zsh 提示「先运行 git mcd ls-remote 刷新菜单」或「先运行 git mcd init 选门店」，bash 什么都不补。
+- `git mcd` 入口的补全（本机实测）：zsh 5.9 下 `git mcd <TAB>` 和 `git mc<TAB>` 直接可用（系统自带的 `_git` 会调用我们的 `_git-mcd`）；bash 下 `git mcd <TAB>` 要先加载 git 自带的 `git-completion.bash` 才生效，macOS 自带 bash 默认不加载，没加载时用 `mcd-git <TAB>`。fish 的脚本照写，但本机没装 fish，未实测。
+
 ## 0.2.3（2026-10-11）
 
 ### 变化

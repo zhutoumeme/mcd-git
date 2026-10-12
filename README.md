@@ -103,7 +103,7 @@ git mcd card --with-savings            # 卡片上多一项「用券省下 ¥X�
 | `diff` | 像 unified diff 一样逐行看差价：菜单价 vs 应付，或用券前 vs 用券后 | 否 |
 | `rebase` | 单品凑成套餐（squash）、换上最省的一张券（coupon），每个方案都真实算价 | 否 |
 | `commit -m <说明>` | 锁定这一单：本地快照 + 核价，哈希由内容决定 | 否 |
-| `push` | **真正下单**，出支付链接和二维码；支持 `--at 12:20` 预约、`--locker` 取餐柜、`--no-tableware`、`--remark`、`--qr half/full/fancy[=名字]` | ✎ 会，先确认 |
+| `push` | **真正下单**，出支付链接和二维码；支持 `--at 12:20` 预约、`--locker` 取餐柜、`--no-tableware`、`--remark`、`--qr full/half/fancy[=名字]` | ✎ 会，先确认 |
 | `log --graph` | 吃麦提交历史，按时段画分支图 | 否 |
 | `log --stat` | 吃麦统计：每单列出餐品、实付和省下的钱，最后汇总单数、金额、时段分布和最常点；支持 `-n`、`--since`、`--until` | 否 |
 | `show [HEAD]` | 订单状态、取餐码、取餐柜、外送进度（只在你运行时查一次） | 否 |
@@ -112,6 +112,7 @@ git mcd card --with-savings            # 卡片上多一项「用券省下 ¥X�
 | `fetch` | 今日活动、可领的券（只读） | 否 |
 | `pull` | 领券：先列出可领券，确认后一次领取全部（接口不支持只领几张） | ✎ 会，先确认 |
 | `card` | 1024 吃麦贡献图：终端预览 + 本机 SVG，`--style skyline / receipt / grid` 选天际线、小票或格子（见上面「1024 特别版」） | 否 |
+| `completion <shell>` | 打印命令补全脚本（bash / zsh / fish），见下面「命令补全」 | 否 |
 
 所有命令都支持 `--demo`（合成数据，不需要 Token）和 `--json`（给 Agent 和脚本用）。对照表随时看：`git mcd help`。
 
@@ -177,7 +178,7 @@ git mcd --demo card --style receipt                      # 年度吃麦小票，
 
 ### push：确认后才下单，出支付二维码
 
-终端里先给确认摘要再问 y/N。Agent、管道或 `--json` 等非交互环境只出摘要，用户同意后再用 `--confirm <commit 哈希>` 执行。mcd-git 只生成待支付订单，**不会替你付款**。二维码默认用紧凑的半块画法、扫了直接拉起麦当劳 App 付款（和收银页里的码一样）；半块扫不出就加 `--qr full` 画更大的整格码；想要点花样可以 `--qr fancy` 画麦当劳主题码（麦门金配色 + 正中像素麦当劳元素 Logo，机器照样识别，终端太窄会自动退回普通码）——`fancy` 每次从汉堡、薯条、麦乐鸡、甜筒、派、金拱门 6 个图案里随机出一个，想固定某一个就写 `--qr fancy=burger`（也支持 fries / nuggets / cone / pie / arch）。扫不出来就直接打开下面的支付链接，或到麦当劳 App 订单页付款。
+终端里先给确认摘要再问 y/N。Agent、管道或 `--json` 等非交互环境只出摘要，用户同意后再用 `--confirm <commit 哈希>` 执行。mcd-git 只生成待支付订单，**不会替你付款**。二维码扫了直接拉起麦当劳 App 付款（和收银页里的码一样），默认用整格画法（每个模块两个带背景色的空格），各终端都扫得出；`--qr half` 用半块字符画，高度减半更紧凑，但部分终端（如 macOS Terminal.app）可能扫不出；终端太窄放不下整格时会自动退回半块并提示，拉宽窗口后运行 `git mcd show` 可以重新出码。想要点花样可以 `--qr fancy` 画麦当劳主题码（麦门金配色 + 正中像素麦当劳元素 Logo，机器照样识别，终端太窄会自动退回普通码）——`fancy` 每次从汉堡、薯条、麦乐鸡、甜筒、派、金拱门 6 个图案里随机出一个，想固定某一个就写 `--qr fancy=burger`（也支持 fries / nuggets / cone / pie / arch）。扫不出来就直接打开下面的支付链接，或到麦当劳 App 订单页付款。
 
 ![git mcd push](assets/push.svg)
 
@@ -220,6 +221,28 @@ git mcd --demo card --style receipt                      # 年度吃麦小票，
 对照表用 `git mcd help` 看（`git mcd -h` 和不带参数的 `git mcd` 也行）。注意别在 `mcd` 后面直接跟 `--help`，git 会把它拦截成 `git help mcd` 去找 man 手册。子命令的帮助照常可用，比如 `git mcd push -h`。
 
 ![git mcd help](assets/help.svg)
+
+## 命令补全
+
+`git mcd completion <shell>` 打印补全脚本，子命令、选项、`--qr fancy=名字`、`card --style` 这些取值都能按 TAB 补，餐品名也能补。在 shell 配置里加一行：
+
+```bash
+# zsh：写进 ~/.zshrc
+eval "$(mcd-git completion zsh)"
+# bash：写进 ~/.bashrc（macOS 自带的 bash 3.2 也能用）
+eval "$(mcd-git completion bash)"
+# fish：写成补全文件；想让 git-mcd 也能补，再写一份 git-mcd.fish
+mcd-git completion fish > ~/.config/fish/completions/mcd-git.fish
+```
+
+**餐品名补全**：`add`、`ls-remote` 补本店菜单里的餐品，`restore --staged` 补购物车里的餐品。前缀匹配的排在前面，包含匹配的排在后面（输「鸡腿」能补出麦辣鸡腿堡、板烧鸡腿堡）；有多个候选时只列出来，不改你已经输入的字。菜单读的是本机缓存 `~/.config/mcd-git/menu-cache.json`，所以先跑一次 `git mcd ls-remote`（或 `add`）。缓存 24 小时有效，换了门店要重新 `ls-remote`。缓存只在这些命令本来就要查菜单时顺手写，不多调接口；按 TAB 只读本机文件，不联网。缓存里只有餐品 code、名称、类型和门店，不存价格和地址，权限 600。`--demo` 第一次就能补演示菜单。缓存不可用时 zsh 会提示先运行 `git mcd ls-remote` 或 `git mcd init`，bash 什么都不补。
+
+**`git mcd <TAB>` 能不能补，取决于 shell 和 git 补全的配置**（下面是 macOS 上实测的结果）：
+
+- **zsh**：系统自带的 git 补全（`_git`）会调用 mcd-git 的补全，`git mcd <TAB>` 和 `git mc<TAB>` 都能直接用，不需要额外配置。
+- **bash**：要先加载 git 自带的 `git-completion.bash`，`git mcd <TAB>` 才会生效，macOS 自带 bash 默认不加载。需要的话在 `eval` 那行之前加：`source /Library/Developer/CommandLineTools/usr/share/git-core/git-completion.bash`（Homebrew 装的 git 是 `$(brew --prefix)/etc/bash_completion.d/git-completion.bash`）。
+- **fish**：本机没装 fish，还没实测。`git mcd` 能不能补取决于 fish 自带的 git 补全。
+- 保底的办法是用 `mcd-git` 入口：`mcd-git <TAB>` 在 bash 和 zsh 里都能补（`mcd-git` 和 `git mcd` 完全等价）。
 
 ## 接入真实账户（3 步）
 
@@ -310,7 +333,7 @@ Token 我会自己配置（环境变量 MCD_MCP_TOKEN，或配置文件；macOS/
 
 ## 路线图
 
-- **P1**：`stash` / `stash pop` 暂存购物车；`rebase -i` 手动挑方案；预约时段在本地先校验。
+- **P1**：`stash` / `stash pop` 暂存购物车；`rebase -i` 手动挑方案；预约时段在本地先校验；餐品名拼音首字母补全（比如 `jwb` → 巨无霸）。
 - **P2**：`ship --team` 发版庆功的团餐方案（下单仍走 push）；`push --at next-gap` 读本地 .ics 找会议空档。
 
 欢迎提 Issue 和 PR，新命令请保持「只读命令零副作用、写操作必须过确认闸」这条规矩。
