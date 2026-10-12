@@ -85,9 +85,10 @@ def test_real_mode_writes_cache_without_extra_mcp_calls(runner: Runner) -> None:
     assert status == "ok" and meals and any(m["name"] == "巨无霸" for m in meals)
 
 
-def test_cache_write_failure_does_not_break_add(runner: Runner, monkeypatch: pytest.MonkeyPatch) -> None:
+@pytest.mark.parametrize("error", [OSError("磁盘满了"), KeyError("storeCode"), AttributeError("x")])
+def test_cache_write_failure_does_not_break_add(runner: Runner, monkeypatch: pytest.MonkeyPatch, error: Exception) -> None:
     def broken(*args: Any, **kwargs: Any) -> None:
-        raise OSError("磁盘满了")
+        raise error
 
     monkeypatch.setattr(menucache, "write", broken)
     code, out = runner.run("--demo", "add", "巨无霸")

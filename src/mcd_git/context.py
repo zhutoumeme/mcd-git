@@ -79,7 +79,7 @@ class Context:
         try:
             meals = [{"code": c, "name": i["name"], "type": "套餐" if menu.is_combo(c) else "单品"} for c, i in menu.items.items()]
             menucache.write(self.store.root, remote, meals, self.now)
-        except (OSError, ValueError, TypeError):
+        except (OSError, ValueError, TypeError, KeyError, AttributeError):
             pass
         return menu
 
