@@ -14,9 +14,9 @@ Output assets/demo.gif
 Set Shell "bash"
 Set FontSize 14
 Set Width 1000
-# 0.2.1 起终端够宽时二维码一个模块占两格、一行一个模块行（demo 链接 41 行）：
-# 高度要放得下 push 结果 + 整个二维码 + hint（约 52 行）
-Set Height 880
+# 0.2.4 起默认整格二维码：一个模块占两格、一行一个模块行（demo 链接 37 行 × 74 列）。
+# 高度要放得下 push 命令、确认摘要、整个二维码和 hint（约 60 行）
+Set Height 1060
 Set Padding 18
 Set Framerate 24
 Set TypingSpeed 14ms
