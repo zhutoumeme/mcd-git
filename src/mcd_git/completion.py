@@ -314,7 +314,7 @@ _mcd_git() {
 }
 complete -F _mcd_git mcd-git git-mcd
 
-# git mcd 入口：只有加载了 git 自带的 git-completion.bash 才会被调用（它对未知子命令找 _git_<子命令>）。
+# 兼容入口：git mcd 只有在加载 Git 自带的 git-completion.bash 后才会被调用（它对未知子命令找 _git_<子命令>）。
 # words / cword 已由它按 -n =: 重组；它注册时带了 -o nospace，所以完整候选后面自己补空格
 _git_mcd() {
   local -a __mcd_w
@@ -342,7 +342,7 @@ def render_bash(spec: Dict[str, Any]) -> str:
         "bash",
         [
             "安装（macOS 自带 bash 3.2 也能用）：echo 'eval \"$(mcd-git completion bash)\"' >> ~/.bash_profile",
-            "mcd-git <TAB> 总是可用；git mcd <TAB> 只有在加载了 git 自带的 git-completion.bash 之后才生效。",
+            "mcd-git <TAB> 是保证支持、推荐的人工入口；git mcd <TAB> 只是可选兼容，需先加载 Git 自带的 git-completion.bash。",
         ],
     )
     data = [
@@ -416,7 +416,7 @@ _mcd-git() {
     if [[ $cur == -* ]]; then
       _describe -t options '全局选项' __mcd_git_global_descs
     else
-      _describe -t commands 'git mcd 命令' __mcd_git_cmd_descs
+      _describe -t commands 'mcd-git 命令' __mcd_git_cmd_descs
     fi
     return
   fi
@@ -445,7 +445,7 @@ _mcd-git() {
   kind=$(__mcd_git_poskind $sub)
   case $kind in
     meals|staged) __mcd_git_zcache $kind $demo ;;
-    commands) _describe -t commands 'git mcd 命令' __mcd_git_cmd_descs ;;
+    commands) _describe -t commands 'mcd-git 命令' __mcd_git_cmd_descs ;;
     values:*)
       local -a vals expl
       vals=(${=${kind#values:}})
@@ -454,7 +454,7 @@ _mcd-git() {
   esac
 }
 
-# git mcd 入口：系统 _git 对 `git mcd …` 会调用 _git-mcd（此时 words[1] = mcd，和 _mcd-git 的 words[1] = 程序名同构）
+# 兼容入口：git mcd 只有在 Git 自带补全已加载并转调 _git-mcd 时才会工作
 _git-mcd() { _mcd-git "$@" }
 
 if (( ! $+functions[compdef] )); then
@@ -482,7 +482,7 @@ def render_zsh(spec: Dict[str, Any]) -> str:
         "zsh",
         [
             "安装：echo 'eval \"$(mcd-git completion zsh)\"' >> ~/.zshrc（放在 compinit 之后；没有 compinit 会自动加载）",
-            "mcd-git <TAB> 与 git mcd <TAB> 都可用（后者靠系统 _git 调用 _git-mcd）。",
+            "mcd-git <TAB> 是保证支持、推荐的人工入口；git mcd <TAB> 只是可选兼容，依赖系统 _git 调用 _git-mcd。",
         ],
     )
     data = [
@@ -558,7 +558,7 @@ def render_fish(spec: Dict[str, Any]) -> str:
         "fish",
         [
             "安装：mcd-git completion fish > ~/.config/fish/completions/mcd-git.fish",
-            "git mcd <TAB> 是否生效取决于 fish 自带的 git 补全会不会转调 git-mcd 的补全。",
+            "mcd-git <TAB> 是保证支持、推荐的人工入口；git mcd <TAB> 只是可选兼容，取决于 fish 自带 Git 补全是否转发。",
         ],
     )
     lines = [head, "", _FISH_HELPERS]
@@ -579,7 +579,7 @@ def render_fish(spec: Dict[str, Any]) -> str:
             lines.append(f"complete -c mcd-git -n {fish_quote(cond)} -a {fish_quote(' '.join(n for n, _ in spec['commands']))}")
         elif pos["kind"] == "values":
             lines.append(f"complete -c mcd-git -n {fish_quote(cond)} -a {fish_quote(' '.join(pos['values']))}")
-    lines += ["", "# git mcd：把 git-mcd 的补全包装成 mcd-git 的（fish 的 git 补全会不会转调它取决于 fish 版本，未实测）", "complete -c git-mcd -w mcd-git", ""]
+    lines += ["", "# 兼容入口：git mcd 复用 mcd-git 的实现；是否被 Fish 的 Git 补全转发取决于本机配置", "complete -c git-mcd -w mcd-git", ""]
     return "\n".join(lines)
 
 
@@ -765,7 +765,7 @@ def render_powershell(spec: Dict[str, Any]) -> str:
         "powershell",
         [
             "安装：mcd-git completion powershell > $HOME\\mcd-git-completion.ps1; . $HOME\\mcd-git-completion.ps1",
-            "脚本使用 Register-ArgumentCompleter；菜单候选只读本机缓存，调用失败时静默返回。",
+            "安装脚本后优先用 mcd-git <TAB>；git mcd <TAB> 只是可选兼容，取决于 Git 自带补全配置。",
         ],
     )
     return head + "\n\n" + _POWERSHELL_BODY.replace("__MCD_GIT_SPEC_JSON__", payload)

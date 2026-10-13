@@ -16,8 +16,8 @@ mcd-git 把麦当劳中国 MCP Server 包装成 git 风格的命令：`add` 放�
   # 没有 uv：
   pip install "git+https://github.com/zhutoumeme/mcd-git"
   ```
-  装好后运行 `git mcd help` 确认（也可以用等价的 `mcd-git help`）。看命令对照表一律用 `git mcd help`；不要在 `mcd` 后面直接跟 `--help`，那样会被 git 拦截去找 man 手册。单个子命令的帮助用 `git mcd <命令> -h`。真人用户需要 TAB 补全时，按 README 的平台说明运行 `mcd-git completion powershell` / `bash` / `zsh` / `fish`，再重载对应 shell；Agent 不需要安装或调用补全脚本。
-- **跨平台补全边界**：本 Skill 的 Agent 不按 TAB、不解析 shell 补全候选，也不把 `completion` 当作业务流程；始终只执行 `git mcd --json`，再根据 JSON 结果继续。`mcd-git` / `git-mcd` 是保证的补全入口；`git mcd` 依赖 Git 自带的 bash/zsh/fish 补全转发，Windows PowerShell 不保证 Git 转发。菜单补全只读最近的本机缓存，缓存缺失或过期时不联网；需要最新菜单时才按业务流程调用 `git mcd ls-remote --json`。
+  装好后运行 `git mcd help` 确认（也可以用等价的 `mcd-git help`）。看命令对照表一律用 `git mcd help`；不要在 `mcd` 后面直接跟 `--help`，那样会被 git 拦截去找 man 手册。单个子命令的帮助用 `git mcd <命令> -h`。**人工在终端操作和补全时优先用 `mcd-git`；Agent 自动化仍走 `git mcd --json`。**真人用户需要 TAB 补全时，按 README 的平台说明运行 `mcd-git completion powershell` / `bash` / `zsh` / `fish`，再重载对应 shell；Agent 不需要安装或调用补全脚本。
+- **跨平台补全边界**：本 Skill 的 Agent 不按 TAB、不解析 shell 补全候选，也不把 `completion` 当作业务流程；始终只执行 `git mcd --json`，再根据 JSON 结果继续。人工在终端操作和补全时优先用 `mcd-git`；`git-mcd` 是等价兼容入口，`git mcd` 只是可选兼容，依赖 Git 自带的 bash/zsh/fish 补全转发，Windows PowerShell 不保证 Git 转发。菜单补全只读最近的本机缓存，缓存缺失或过期时不联网；需要最新菜单时才按业务流程调用 `git mcd ls-remote --json`。
 - **Token 由用户自己配置**：环境变量 `MCD_MCP_TOKEN`（所有平台首选），或配置文件（macOS / Linux 用 `~/.config/mcd-mcp/token`，Windows 用 `%APPDATA%\mcd-mcp\token`，也支持 `XDG_CONFIG_HOME`）。不要让用户把 Token 发进对话，不要读取、打印或改写 Token 文件。命令报「没有找到麦当劳 MCP Token」时，告诉用户去 open.mcd.cn 控制台申请并自己写进上面的位置（命令的报错 hint 会按平台给出具体命令和路径）。
 - **没有 Token 时**可以加 `--demo` 演示全流程（合成数据，不会真的下单），并明确告诉用户这是演示。
 

@@ -29,8 +29,8 @@ SCOPE_KEYS = ("mode", "beType", "orderType", "beCode")
 MEAL_TYPES = ("套餐", "单品")
 PAYLOAD_KEYS = {"version", "storeCode", "scope", "writtenAt", "meals"}
 
-HINT_REFRESH = "先运行 git mcd ls-remote 刷新菜单"
-HINT_INIT = "先运行 git mcd init 选门店"
+HINT_REFRESH = "先运行 mcd-git ls-remote 刷新菜单"
+HINT_INIT = "先运行 mcd-git init 选门店"
 HINTS = {
     "missing": HINT_REFRESH,
     "expired": HINT_REFRESH,

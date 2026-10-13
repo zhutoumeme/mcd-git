@@ -8,7 +8,7 @@
   <img src="assets/badges/unofficial.svg" alt="非官方 参赛作品">
 </p>
 
-`git mcd add` 放进购物车，`git mcd rebase` 自动凑套餐、挑最省的券，`git mcd push` 才真正下单，终端里直接出支付二维码。基于麦当劳中国 MCP Server（`mcp.mcd.cn`）。
+`mcd-git add` 放进购物车，`mcd-git rebase` 自动凑套餐、挑最省的券，`mcd-git push` 才真正下单，终端里直接出支付二维码；需要 Git 子命令语义时也可使用 `git mcd`。基于麦当劳中国 MCP Server（`mcp.mcd.cn`）。
 
 ![git mcd 演示：status → add → diff → rebase → commit → push 出二维码 → log --graph](assets/demo.gif)
 
@@ -16,7 +16,7 @@
 
 ## 一套引擎，两个入口
 
-- **开发者**：在终端里敲 `git mcd`。`git-mcd` 在 PATH 里，git 就会把 `git mcd …` 交给它，任何目录都能用，不碰你代码仓库的 `.git`。
+- **开发者**：在终端里优先敲 `mcd-git`，人工操作和命令补全都以它为推荐入口。`git-mcd` 在 PATH 里时，也可以使用 Git 的 `git mcd …` 子命令语义；它不会碰你代码仓库的 `.git`。
 - **普通用户**：把 [SKILL.md](SKILL.md) 装进 WorkBuddy / Claude Code / Kiro，用大白话点餐，Agent 在后台跑 `git mcd --json`。
 
 一段 Agent 对话（demo 数据）：
@@ -63,12 +63,12 @@ Agent：（git mcd push --at 12:20 --locker --no-tableware --confirm bfc651c --j
 终端里先出预览（终端画不出 3D，天际线和格子都用格子预览；小票直接打印文字版），同时在本机写一个 SVG：自包含（不引用外部字体、图片和脚本，重复的图形用 `<defs>` + `<use>` 复用），跟着系统切换浅色 / 深色，二三十 KB。同样的数据每次生成的文件都一样。
 
 ```bash
-git mcd --demo card                    # 先用合成数据看看效果（上面这张就是），写到当前目录的 mcd-contributions-skyline.svg
-git mcd card                           # 用你自己的记录，默认麦门天际线，从你最早一单画起
-git mcd card --style receipt           # 年度吃麦小票，默认写到 mcd-contributions-receipt.svg
-git mcd card --style grid              # 平面格子，默认写到 mcd-contributions-grid.svg
-git mcd card -o ~/Desktop/mcd.svg      # 换个地方写
-git mcd card --with-savings            # 卡片上多一项「用券省下 ¥X」（默认不出现任何金额）
+mcd-git --demo card                    # 先用合成数据看看效果（上面这张就是），写到当前目录的 mcd-contributions-skyline.svg
+mcd-git card                           # 用你自己的记录，默认麦门天际线，从你最早一单画起
+mcd-git card --style receipt           # 年度吃麦小票，默认写到 mcd-contributions-receipt.svg
+mcd-git card --style grid              # 平面格子，默认写到 mcd-contributions-grid.svg
+mcd-git card -o ~/Desktop/mcd.svg      # 换个地方写
+mcd-git card --with-savings            # 卡片上多一项「用券省下 ¥X」（默认不出现任何金额）
 ```
 
 默认文件名按样式区分（`mcd-contributions-skyline.svg` / `-receipt.svg` / `-grid.svg`），三种样式各写各的、连跑两种不会互相覆盖；用 `-o` 指定路径时完全听你的。节前（今天还没到 10-24）卡片会把右边界提前延伸到 10-24 那一周，提前标出「即将到来的程序员节」（天际线插旗、小票红圈、格子描边），不用等到当天才看得到。
@@ -78,11 +78,11 @@ git mcd card --with-savings            # 卡片上多一项「用券省下 ¥X�
 **贴到 GitHub 个人主页**（全程在本机手动完成）：
 
 1. 建一个和用户名同名的仓库 `<用户名>/<用户名>`，GitHub 会把它的 README 显示在你的个人主页上；
-2. 在本机运行 `git mcd card -o <那个仓库的目录>/mcd-contributions.svg`；
+2. 在本机运行 `mcd-git card -o <那个仓库的目录>/mcd-contributions.svg`；
 3. 在那个仓库的 README.md 里加一行 `<img src="mcd-contributions.svg" alt="过去一年吃麦贡献图">`；
 4. 自己 `git add`、`git commit`、`git push`。
 
-**不要用 GitHub Actions 定时生成。** MCP Token 不能放进 CI（服务规则不允许把凭证托管到第三方平台），也不允许自动化调用。想更新就在本机再跑一次 `git mcd card`。
+**不要用 GitHub Actions 定时生成。** MCP Token 不能放进 CI（服务规则不允许把凭证托管到第三方平台），也不允许自动化调用。想更新就在本机再跑一次 `mcd-git card`。
 
 **卡片上有什么**：日期级的格子（或汉堡、点阵）、总单数、最常点（小票是 TOP 5 和次数）、最常时段，以及数据范围（比如「数据：麦当劳最近 10 单 + 本机记录，最早到 2026-10-21」）。没有门店、地址、订单号、手机号、具体下单时刻和总消费；只有加了 `--with-savings` 才显示省下的钱。公开之前自己再看一眼。
 
@@ -92,7 +92,7 @@ git mcd card --with-savings            # 卡片上多一项「用券省下 ¥X�
 
 ## git 命令 ↔ 点餐动作
 
-| git mcd | 点餐动作 | 会改动你的账户吗 |
+| mcd-git / git mcd | 点餐动作 | 会改动你的账户吗 |
 |---|---|---|
 | `init` | 选门店和取餐方式（到店 / 得来速 / 麦乐送），相当于设置远端 | 否 |
 | `status` | 当前分支（按时段：breakfast / lunch / tea / dinner）、购物车、可用券、待支付订单 | 否 |
@@ -114,14 +114,14 @@ git mcd card --with-savings            # 卡片上多一项「用券省下 ¥X�
 | `card` | 1024 吃麦贡献图：终端预览 + 本机 SVG，`--style skyline / receipt / grid` 选天际线、小票或格子（见上面「1024 特别版」） | 否 |
 | `completion <shell>` | 打印命令补全脚本（bash / zsh / fish / powershell），见下面「命令补全」 | 否 |
 
-所有命令都支持 `--demo`（合成数据，不需要 Token）和 `--json`（给 Agent 和脚本用）。对照表随时看：`git mcd help`。
+所有命令都支持 `--demo`（合成数据，不需要 Token）和 `--json`（给 Agent 和脚本用）。人工对照表随时看：`mcd-git help`；`git mcd help` 仍保留为 Git 子命令兼容写法。
 
 ## 30 秒试玩，无需 Token
 
 装了 uv 的话，一行就能跑：
 
 ```bash
-uvx --from git+https://github.com/zhutoumeme/mcd-git git-mcd --demo status
+uvx --from git+https://github.com/zhutoumeme/mcd-git mcd-git --demo status
 ```
 
 想多玩几步，就装上它（需要 Python 3.9+）：
@@ -129,30 +129,30 @@ uvx --from git+https://github.com/zhutoumeme/mcd-git git-mcd --demo status
 ```bash
 pip install "git+https://github.com/zhutoumeme/mcd-git"   # 或 uv tool install git+https://github.com/zhutoumeme/mcd-git
 
-git mcd --demo status
-git mcd --demo add 巨无霸 中薯条 中可乐 --no-pickle
-git mcd --demo diff
-git mcd --demo rebase
-git mcd --demo commit -m "发版前的午饭"
-git mcd --demo push --at 12:20 --locker --no-tableware   # 终端里会问 y/N
-git mcd --demo log --graph
-git mcd --demo log --stat                                # 吃麦统计：每单餐品、实付、省了多少，按时段汇总
-git mcd --demo show
-git mcd --demo cherry-pick HEAD
-git mcd --demo pull                                      # 领券，终端里会问 y/N
-git mcd --demo card                                      # 吃麦贡献图（麦门天际线），写到当前目录的 mcd-contributions-skyline.svg
-git mcd --demo card --style receipt                      # 年度吃麦小票，终端里也会打印一张
+mcd-git --demo status
+mcd-git --demo add 巨无霸 中薯条 中可乐 --no-pickle
+mcd-git --demo diff
+mcd-git --demo rebase
+mcd-git --demo commit -m "发版前的午饭"
+mcd-git --demo push --at 12:20 --locker --no-tableware   # 终端里会问 y/N
+mcd-git --demo log --graph
+mcd-git --demo log --stat                                # 吃麦统计：每单餐品、实付、省了多少，按时段汇总
+mcd-git --demo show
+mcd-git --demo cherry-pick HEAD
+mcd-git --demo pull                                      # 领券，终端里会问 y/N
+mcd-git --demo card                                      # 吃麦贡献图（麦门天际线），写到当前目录的 mcd-contributions-skyline.svg
+mcd-git --demo card --style receipt                      # 年度吃麦小票，终端里也会打印一张
 ```
 
-装完会有两个等价的命令：`git-mcd`（git 会把 `git mcd` 分发给它）和 `mcd-git`。demo 的状态单独放在 `~/.config/mcd-git/demo/`，想从头再来就 `git mcd --demo init --pick 1`。嫌每条都敲 `--demo` 麻烦，可以先 `export MCD_GIT_DEMO=1`（首屏动图就是这么录的）。
+装完会有两个等价的命令：`mcd-git`（人工直接操作和补全的推荐入口）和 `git-mcd`（Git 会把 `git mcd` 分发给它）。demo 的状态单独放在 `~/.config/mcd-git/demo/`，想从头再来就 `mcd-git --demo init --pick 1`。嫌每条都敲 `--demo` 麻烦，可以先 `export MCD_GIT_DEMO=1`（首屏动图就是这么录的）。
 
 ## 命令一览
 
 ### init：选门店，相当于设置远端
 
-不带参数列收藏门店；按地标搜要同时给城市和关键词：`git mcd init --city 南京 --keyword 新街口`（只给其中一个，麦当劳接口都不认）。门店列表按终端宽度显示全名。接口一次大约只给 5 家，`--limit 3` 只列前 3 家（只在本地截取，不会多调接口）；想看别的店就换个更具体的地标。
+不带参数列收藏门店；按地标搜要同时给城市和关键词：`mcd-git init --city 南京 --keyword 新街口`（只给其中一个，麦当劳接口都不认）。门店列表按终端宽度显示全名。接口一次大约只给 5 家，`--limit 3` 只列前 3 家（只在本地截取，不会多调接口）；想看别的店就换个更具体的地标。
 
-![git mcd init](assets/init.svg)
+![mcd-git init](assets/init.svg)
 
 ### status：看看现在什么情况
 
@@ -168,7 +168,7 @@ git mcd --demo card --style receipt                      # 年度吃麦小票，
 
 ### rebase：凑套餐 + 挑券，省下来的才是真的
 
-`rebase` 只在购物车里的单品正好能凑满套餐（主食、小食、饮料都在）时才 squash，绝不为了便宜往购物车里多塞东西。一单只能用一张券，而且券和账户自带的折扣可能互斥，所以每个方案都会真实调一次 `calculate-price`，每条命令最多 20 次。不满意就 `git mcd reset ORIG_HEAD`。
+`rebase` 只在购物车里的单品正好能凑满套餐（主食、小食、饮料都在）时才 squash，绝不为了便宜往购物车里多塞东西。一单只能用一张券，而且券和账户自带的折扣可能互斥，所以每个方案都会真实调一次 `calculate-price`，每条命令最多 20 次。不满意就 `mcd-git reset ORIG_HEAD`。
 
 ![git mcd rebase](assets/rebase.svg)
 
@@ -178,7 +178,7 @@ git mcd --demo card --style receipt                      # 年度吃麦小票，
 
 ### push：确认后才下单，出支付二维码
 
-终端里先给确认摘要再问 y/N。Agent、管道或 `--json` 等非交互环境只出摘要，用户同意后再用 `--confirm <commit 哈希>` 执行。mcd-git 只生成待支付订单，**不会替你付款**。二维码扫了直接拉起麦当劳 App 付款（和收银页里的码一样），默认用整格画法（每个模块两个带背景色的空格），各终端都扫得出；`--qr half` 用半块字符画，高度减半更紧凑，但部分终端（如 macOS Terminal.app）可能扫不出；终端太窄放不下整格时会自动退回半块并提示，拉宽窗口后运行 `git mcd show` 可以重新出码。想要点花样可以 `--qr fancy` 画麦当劳主题码（麦门金配色 + 正中像素麦当劳元素 Logo，机器照样识别，终端太窄会自动退回普通码）——`fancy` 每次从汉堡、薯条、麦乐鸡、甜筒、派、金拱门 6 个图案里随机出一个，想固定某一个就写 `--qr fancy=burger`（也支持 fries / nuggets / cone / pie / arch）。扫不出来就直接打开下面的支付链接，或到麦当劳 App 订单页付款。
+终端里先给确认摘要再问 y/N。Agent、管道或 `--json` 等非交互环境只出摘要，用户同意后用 `--confirm <commit 哈希>` 执行。mcd-git 只生成待支付订单，**不会替你付款**。二维码扫了直接拉起麦当劳 App 付款（和收银页里的码一样），默认用整格画法（每个模块两个带背景色的空格），各终端都扫得出；`--qr half` 用半块字符画，高度减半更紧凑，但部分终端（如 macOS Terminal.app）可能扫不出；终端太窄放不下整格时会自动退回半块并提示，拉宽窗口后运行 `mcd-git show` 可以重新出码。想要点花样可以 `--qr fancy` 画麦当劳主题码（麦门金配色 + 正中像素麦当劳元素 Logo，机器照样识别，终端太窄会自动退回普通码）——`fancy` 每次从汉堡、薯条、麦乐鸡、甜筒、派、金拱门 6 个图案里随机出一个，想固定某一个就写 `--qr fancy=burger`（也支持 fries / nuggets / cone / pie / arch）。扫不出来就直接打开下面的支付链接，或到麦当劳 App 订单页付款。
 
 ![git mcd push](assets/push.svg)
 
@@ -202,7 +202,7 @@ git mcd --demo card --style receipt                      # 年度吃麦小票，
 
 ### pull：领券，同样先确认
 
-像 `git pull` 一样 fetch + merge：先列出麦麦省里可领的券，你确认后调一次 `auto-bind-coupons` 把它们领进账户。这个接口没有参数，只能一次领全部、不能只挑其中几张，所以摘要里会把要领的每一张都列出来。终端里回答 y 就立即领取，领的是那一刻的全部可领券，摘要放了很久的话先回答 N 再重新运行一次。非交互环境只出摘要，用户同意后再用 `--confirm <指纹>` 执行；确认时会重新拉一次列表，和预览时不一样就拒绝。没有可领的券时输出 `Already up to date.`。领到之后，下单前跑一次 `git mcd rebase` 就会自动挑最省的那张。
+像 `git pull` 一样 fetch + merge：先列出麦麦省里可领的券，你确认后调一次 `auto-bind-coupons` 把它们领进账户。这个接口没有参数，只能一次领全部、不能只挑其中几张，所以摘要里会把要领的每一张都列出来。终端里回答 y 就立即领取，领的是那一刻的全部可领券，摘要放了很久的话先回答 N 再重新运行一次。非交互环境只出摘要，用户同意后再用 `--confirm <指纹>` 执行；确认时会重新拉一次列表，和预览时不一样就拒绝。没有可领的券时输出 `Already up to date.`。领到之后，下单前跑一次 `mcd-git rebase` 就会自动挑最省的那张。
 
 ![git mcd pull](assets/pull.svg)
 
@@ -210,21 +210,21 @@ git mcd --demo card --style receipt                      # 年度吃麦小票，
 
 终端里一周一列：有颜色时一格一个小方块，管道和 `NO_COLOR` 下用 `· ░ ▒ ▓ █` 分档。终端画不出 3D，默认的麦门天际线也用这份格子预览；卡片本身写成 SVG，见上面「1024 特别版」。
 
-![git mcd card](assets/card.svg)
+![mcd-git card](assets/card.svg)
 
 `--style receipt` 在终端里直接打印一张文字小票：
 
-![git mcd card --style receipt](assets/card-receipt.svg)
+![mcd-git card --style receipt](assets/card-receipt.svg)
 
 ### help：对照表
 
-对照表用 `git mcd help` 看（`git mcd -h` 和不带参数的 `git mcd` 也行）。注意别在 `mcd` 后面直接跟 `--help`，git 会把它拦截成 `git help mcd` 去找 man 手册。子命令的帮助照常可用，比如 `git mcd push -h`。
+对照表优先用 `mcd-git help` 看；Git 子命令兼容写法是 `git mcd help`、`git mcd -h` 和不带参数的 `git mcd`。注意不要写 `git mcd --help`：git 会把它拦截成 `git help mcd` 去找 man 手册。子命令的帮助优先写成 `mcd-git push -h`，`git mcd push -h` 仍可用。
 
 ![git mcd help](assets/help.svg)
 
 ## 命令补全
 
-`mcd-git completion <shell>` 会生成补全脚本，子命令、选项、`--qr` / `card --style` 的取值以及餐品名都能按 TAB 补。**保证的补全入口是 `mcd-git`（或等价的 `git-mcd`）；`git mcd` 是否补全还取决于该平台是否加载 Git 自带的补全脚本。**PowerShell 不保证 Git 会把 `git mcd` 转发给这个补全器。以下命令均只安装本机脚本，不访问 MCP。
+`mcd-git completion <shell>` 会生成补全脚本，子命令、选项、`--qr` / `card --style` 的取值以及餐品名都能按 TAB 补。**人工在终端操作和补全时，`mcd-git <TAB>` 是保证支持、推荐的入口**；`git-mcd <TAB>` 是等价兼容入口。`git mcd <TAB>` 只作为可选兼容：它依赖平台是否加载并转发 Git 自带补全脚本，不是 mcd-git 能保证的入口；PowerShell 尤其不保证 Git 转发。以下命令均只安装本机脚本，不访问 MCP。
 
 ### macOS：Zsh（默认 shell）
 
@@ -245,7 +245,7 @@ mcd-git completion zsh >/tmp/mcd-git.zsh
 ```bash
 # 安装：macOS 自带 bash 3.2 也支持
 printf '\n# mcd-git completion\neval "$(mcd-git completion bash)"\n' >> ~/.bash_profile
-# 若要让 git mcd 也补，先加载 Git 自带补全（mcd-git 入口不依赖这一行）
+# 可选兼容：若要让 git mcd 也补，先加载 Git 自带补全（mcd-git 入口不依赖这一行）
 source /Library/Developer/CommandLineTools/usr/share/git-core/git-completion.bash 2>/dev/null || true
 # 重载
 source ~/.bash_profile
@@ -268,7 +268,7 @@ mcd-git --demo <TAB>
 mcd-git --demo add 巨<TAB>
 ```
 
-若 Linux 没有 Git 补全，安装发行版的 `bash-completion` 后再 source 它；这只影响 `git mcd <TAB>`，不影响保证可用的 `mcd-git <TAB>`。
+若 Linux 没有 Git 补全，安装发行版的 `bash-completion` 后再 source 它；这只影响可选兼容入口 `git mcd <TAB>`，不影响保证可用的 `mcd-git <TAB>`。
 
 ### Fish
 
@@ -282,7 +282,7 @@ source ~/.config/fish/completions/mcd-git.fish
 mcd-git --demo add 巨<TAB>
 ```
 
-`git-mcd <TAB>` 会复用 mcd-git 脚本；`git mcd <TAB>` 是否生效取决于 Fish 自带的 Git 补全是否转发它。
+`git-mcd <TAB>` 也会复用 mcd-git 脚本；若要尝试兼容入口 `git mcd <TAB>`，是否生效取决于 Fish 自带的 Git 补全是否转发它。
 
 ### Windows：Git Bash
 
@@ -293,7 +293,7 @@ printf '\n# mcd-git completion\neval "$(mcd-git completion bash)"\n' >> ~/.bashr
 [ -f /usr/share/bash-completion/completions/git ] && source /usr/share/bash-completion/completions/git
 # 重载
 source ~/.bashrc
-# 测试：保证入口是 mcd-git；git mcd 需要 Git 自带补全已加载
+# 测试：首选入口是 mcd-git；兼容入口 git mcd 需要 Git 自带补全已加载
 mcd-git --demo <TAB>
 mcd-git --demo add 巨<TAB>
 ```
@@ -346,7 +346,7 @@ PowerShell 补全注册给 `mcd-git` 和 `git-mcd`；不保证 `git mcd` 的 Git
 
 二维码 `fancy` 的名字可写成 `--qr fancy=burger`；PowerShell 的候选列表也提供 `fancy:burger`，这是补全脚本为避免等号解析而显示的等价分隔形式。
 
-`git mcd` 的补全不是 mcd-git 自己能保证的：Zsh 通常由系统 `_git` 转调，Bash / Git Bash / WSL 需要先加载 Git 自带的 `git-completion.bash`，Fish 依赖其 Git 补全实现；没有这些配置时请使用 `mcd-git <TAB>`。
+`git mcd` 的补全仅是可选兼容，不是 mcd-git 自己能保证的：Zsh 通常由系统 `_git` 转调，Bash / Git Bash / WSL 需要先加载 Git 自带的 `git-completion.bash`，Fish 依赖其 Git 补全实现；没有这些配置时请使用保证支持的 `mcd-git <TAB>`。
 
 ## 接入真实账户（3 步）
 
@@ -381,7 +381,7 @@ PowerShell 补全注册给 `mcd-git` 和 `git-mcd`；不保证 `git mcd` 的 Git
    ```
 
    也支持用 `XDG_CONFIG_HOME` 指定配置根目录（会在它下面找 `mcd-mcp/token`）。
-3. **选门店开点**：`git mcd init` 列收藏门店，或 `git mcd init --city 上海 --keyword 人民广场` 按地标搜；得来速加 `--mode drive`，麦乐送用 `--mode delivery`。之后的用法和 demo 一模一样。
+3. **选门店开点**：`mcd-git init` 列收藏门店，或 `mcd-git init --city 上海 --keyword 人民广场` 按地标搜；得来速加 `--mode drive`，麦乐送用 `--mode delivery`。之后的用法和 demo 一模一样。
 
 [mcp-config.example.json](mcp-config.example.json) 是比赛要求的脱敏配置示例，只有 `${MCD_MCP_TOKEN}` 占位符。mcd-git 自己不需要它，想让其他 MCP 客户端直连时可以照着配。
 
@@ -393,7 +393,7 @@ PowerShell 补全注册给 `mcd-git` 和 `git-mcd`；不保证 `git mcd` 的 Git
 
 ```text
 请帮我安装 mcd-git 这个点麦当劳的 Skill：
-1. 运行 uv tool install git+https://github.com/zhutoumeme/mcd-git（没有 uv 就用 pip install "git+https://github.com/zhutoumeme/mcd-git"），然后运行 git mcd help 确认装好了；
+1. 运行 uv tool install git+https://github.com/zhutoumeme/mcd-git（没有 uv 就用 pip install "git+https://github.com/zhutoumeme/mcd-git"），然后运行 `mcd-git help` 确认装好了；
 2. 把 https://github.com/zhutoumeme/mcd-git 仓库根目录的 SKILL.md 装进你的 Skill 目录（Claude Code 是 ~/.claude/skills/mcd-git/SKILL.md，Kiro 是 ~/.kiro/skills/mcd-git/SKILL.md，WorkBuddy 在「技能」里导入）；
 3. 以后我说要点麦当劳，就按 SKILL.md 用 git mcd --json 操作。下单、取消和领券前必须把确认摘要给我看，我明确同意后才能加 --confirm。
 Token 我会自己配置（环境变量 MCD_MCP_TOKEN，或配置文件；macOS/Linux 在 ~/.config/mcd-mcp/token，Windows 在 %APPDATA%\mcd-mcp\token），不用在对话里发给你。没有 Token 时先用 --demo 给我演示。
@@ -403,21 +403,21 @@ Token 我会自己配置（环境变量 MCD_MCP_TOKEN，或配置文件；macOS/
 
 - **写操作只有三个**：`create-order`（push）、`cancel-order`（revert）、`auto-bind-coupons`（pull），都要经过确认闸：预览 → 用户同意 → `--confirm`。积分兑换、抽奖、派对订单、新建地址这些写操作，代码里一律拦截，不调用；确认闸签发的许可也只对它对应的那一个 tool 有效。
 - **确认闸由代码执行**：`--confirm` 必须对得上 10 分钟内的预览（同一个 commit、同样的参数）；真正下单前重新算价，应付金额和下单参数的指纹都要和预览时一致；`pull --confirm` 要对得上可领券列表的指纹，领之前重新拉一次列表，变了就拒绝；同一份确认只能用一次；`push --force`、`pull --force` 一律拒绝。
-- **结果未知不重试**：网络超时、响应不完整、返回看不懂、按了 Ctrl+C，这些情况都不会自动重发 `create-order`，会提示先 `git mcd log` 核对，避免重复下单；`pull` 同样不会重发 `auto-bind-coupons`，会提示先 `git mcd status` 或 `git mcd fetch` 核对。
+- **结果未知不重试**：网络超时、响应不完整、返回看不懂、按了 Ctrl+C，这些情况都不会自动重发 `create-order`，会提示先 `mcd-git log` 核对，避免重复下单；`pull` 同样不会重发 `auto-bind-coupons`，会提示先 `mcd-git status` 或 `mcd-git fetch` 核对。
 - **低频、手动**：每条命令由你触发；领券每次都由你手动触发，只领你自己账户的券，不做定时或循环领取；`calculate-price` 每条命令最多 20 次，带缓存；遇到 429 只对只读请求退避重试。
 - **隐私**：Token 只在请求头里，只发给 `https://mcp.mcd.cn`（地址写死在代码里，不能用环境变量改）；收货地址只保留 addressId 和打码提示；状态文件在 `~/.config/mcd-git/`（目录 700、文件 600），本机订单账本 `ledger.json` 也在这里，只存贡献图要用的字段（见「1024 特别版」）；给命令补全用的菜单缓存 `menu-cache.json` 也在这里，只有餐品 code、名称、类型和门店，按 TAB 只读它、不联网；`card` 生成的 SVG 只写在你的电脑上，mcd-git 不会替你上传。
 
 ## 目标用户
 
-- **天天开终端的开发者**：不想切到手机上凑券、比价，`git mcd status && git mcd rebase` 一气呵成。
+- **天天开终端的开发者**：不想切到手机上凑券、比价，`mcd-git status && mcd-git rebase` 一气呵成。
 - **想让 Agent 代点餐、但每一步都要看得见管得住的人**：Agent 只能用带确认闸的命令，下单前一定会先出确认摘要，参数或价格一变就作废；先问你这一步由 SKILL.md 约束 Agent。
-- **常点固定几样的人**：`git mcd cherry-pick HEAD && git mcd commit -m 再来一单 && git mcd push` 就是再来一单；预约、取餐柜、不要餐具一条命令说清楚。
+- **常点固定几样的人**：`mcd-git cherry-pick HEAD && mcd-git commit -m 再来一单 && mcd-git push` 就是再来一单；预约、取餐柜、不要餐具一条命令说清楚。
 
 它解决两件事：自己算「单点还是套餐、用哪张券」太费劲；把下单交给 Agent 又怕它自作主张。
 
 ## FAQ
 
-**真的会下单吗？** 只有 `push` 并且你确认之后才会。生成的是待支付订单，付款要你自己在支付页或麦当劳 App 里完成。付款窗口是下单后 15 分钟（用真实账户实测过），不想要了就 `git mcd revert` 取消。
+**真的会下单吗？** 只有 `push` 并且你确认之后才会。生成的是待支付订单，付款要你自己在支付页或麦当劳 App 里完成。付款窗口是下单后 15 分钟（用真实账户实测过），不想要了就 `mcd-git revert` 取消。
 
 **会读写我的代码仓库吗？** 不会。mcd-git 不碰任何 `.git` 目录，状态只放在 `~/.config/mcd-git/`。唯一会往别处写文件的是 `card`：只在你指定的位置写一个 SVG（默认当前目录的 `mcd-contributions-<样式>.svg`，比如天际线是 `mcd-contributions-skyline.svg`、小票是 `mcd-contributions-receipt.svg`），写完会显示完整路径（比如 `已写入 ~/mcd-contributions-skyline.svg`），`--json` 的 `data.path` 是绝对路径。
 
@@ -425,7 +425,7 @@ Token 我会自己配置（环境变量 MCD_MCP_TOKEN，或配置文件；macOS/
 
 **价格准吗？** 一切以 `calculate-price` 的实时结果为准。`commit` 时核一次价，`push` 预览和确认时各核一次，价格变了会拦下来让你重新确认。
 
-**去酸黄瓜、少冰这类特制一定生效吗？** mcd-git 只接受 `query-meal-detail` 里真实存在的选项，按 MCP 的参数格式传过去。但算价接口既不校验也不回显特制，真实订单里会不会照做还没实测过。下单后用 `git mcd show` 核对子项名称，以门店实际出餐为准。
+**去酸黄瓜、少冰这类特制一定生效吗？** mcd-git 只接受 `query-meal-detail` 里真实存在的选项，按 MCP 的参数格式传过去。但算价接口既不校验也不回显特制，真实订单里会不会照做还没实测过。下单后用 `mcd-git show` 核对子项名称，以门店实际出餐为准。
 
 **为什么一单只能用一张券？** 这是 MCP 的规则：两张券会返回「暂不支持多张券使用」（600022）。
 

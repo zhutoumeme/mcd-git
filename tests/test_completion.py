@@ -96,6 +96,13 @@ def test_scripts_contain_every_command_and_value(spec: Dict[str, Any], shell: st
     assert "__complete" in script
 
 
+def test_scripts_mark_mcd_git_as_primary_and_git_mcd_as_compatibility(spec: Dict[str, Any]) -> None:
+    for shell in completion.SHELLS:
+        script = completion.render(shell, spec)
+        assert "mcd-git <TAB>" in script
+        assert "git mcd <TAB> 只是可选兼容" in script
+
+
 def test_powershell_script_has_native_registration_and_safe_menu_call(spec: Dict[str, Any]) -> None:
     script = completion.render("powershell", spec)
     assert "Register-ArgumentCompleter" in script

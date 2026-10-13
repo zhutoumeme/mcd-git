@@ -64,16 +64,16 @@ def test_demo_completes_without_cache(runner: Runner, monkeypatch: pytest.Monkey
 
 def test_real_mode_without_cache_is_quiet_and_zsh_hints(runner: Runner, monkeypatch: pytest.MonkeyPatch) -> None:
     _forbid_mcp(monkeypatch)
-    assert _complete(runner, "meals", "--shell", "zsh", "--", "巨") == ["\t先运行 git mcd init 选门店"]
+    assert _complete(runner, "meals", "--shell", "zsh", "--", "巨") == ["\t先运行 mcd-git init 选门店"]
     _home().mkdir(parents=True)
     (_home() / "state.json").write_text(json.dumps({"remote": REMOTE}), encoding="utf-8")
     assert _complete(runner, "meals", "--shell", "bash", "--", "巨") == []
-    assert _complete(runner, "meals", "--shell", "zsh", "--", "巨") == ["\t先运行 git mcd ls-remote 刷新菜单"]
+    assert _complete(runner, "meals", "--shell", "zsh", "--", "巨") == ["\t先运行 mcd-git ls-remote 刷新菜单"]
     assert _complete(runner, "meals", "--shell", "fish", "--", "巨") == []
     assert _complete(runner, "meals", "--shell", "powershell", "--", "巨") == []
     assert _complete(runner, "meals", "--", "巨") == []
     (_home() / "state.json").write_text("{坏了", encoding="utf-8")  # 坏的 state.json 也不能报错
-    assert _complete(runner, "meals", "--shell", "zsh", "--", "巨") == ["\t先运行 git mcd init 选门店"]
+    assert _complete(runner, "meals", "--shell", "zsh", "--", "巨") == ["\t先运行 mcd-git init 选门店"]
     assert _complete(runner, "bogus", "--shell", "zsh") == []
 
 
@@ -96,9 +96,9 @@ def test_store_switch_and_expiry_drop_candidates(runner: Runner, monkeypatch: py
     _forbid_mcp(monkeypatch)
     _seed_real(_home(), [{"code": "1", "name": "巨无霸", "type": "单品"}], FIXED_NOW)
     assert _complete(runner, "meals", "--shell", "bash", "--", "巨") == ["巨无霸"]
-    assert _complete(runner, "meals", "--shell", "zsh", "--", "巨", now=FIXED_NOW + timedelta(hours=25)) == ["\t先运行 git mcd ls-remote 刷新菜单"]
+    assert _complete(runner, "meals", "--shell", "zsh", "--", "巨", now=FIXED_NOW + timedelta(hours=25)) == ["\t先运行 mcd-git ls-remote 刷新菜单"]
     (_home() / "state.json").write_text(json.dumps({"remote": dict(REMOTE, storeCode="999")}), encoding="utf-8")
-    assert _complete(runner, "meals", "--shell", "zsh", "--", "巨") == ["\t先运行 git mcd ls-remote 刷新菜单"]
+    assert _complete(runner, "meals", "--shell", "zsh", "--", "巨") == ["\t先运行 mcd-git ls-remote 刷新菜单"]
     assert _complete(runner, "meals", "--shell", "bash", "--", "巨") == []
 
 
@@ -151,7 +151,7 @@ def test_module_entry_is_silent_on_missing_cache(tmp_path: Path) -> None:
         [sys.executable, "-m", "mcd_git", "__complete", "meals", "--shell", "zsh", "--", "巨"],
         capture_output=True, text=True, env=_sub_env(tmp_path / "cfg"), timeout=30, stdin=subprocess.DEVNULL,
     )
-    assert (proc.returncode, proc.stdout, proc.stderr) == (0, "\t先运行 git mcd init 选门店\n", "")
+    assert (proc.returncode, proc.stdout, proc.stderr) == (0, "\t先运行 mcd-git init 选门店\n", "")
 
 
 # ---------------------------------------------------------------- bash 转义往返
