@@ -112,7 +112,7 @@ git mcd card --with-savings            # 卡片上多一项「用券省下 ¥X�
 | `fetch` | 今日活动、可领的券（只读） | 否 |
 | `pull` | 领券：先列出可领券，确认后一次领取全部（接口不支持只领几张） | ✎ 会，先确认 |
 | `card` | 1024 吃麦贡献图：终端预览 + 本机 SVG，`--style skyline / receipt / grid` 选天际线、小票或格子（见上面「1024 特别版」） | 否 |
-| `completion <shell>` | 打印命令补全脚本（bash / zsh / fish），见下面「命令补全」 | 否 |
+| `completion <shell>` | 打印命令补全脚本（bash / zsh / fish / powershell），见下面「命令补全」 | 否 |
 
 所有命令都支持 `--demo`（合成数据，不需要 Token）和 `--json`（给 Agent 和脚本用）。对照表随时看：`git mcd help`。
 
@@ -224,25 +224,123 @@ git mcd --demo card --style receipt                      # 年度吃麦小票，
 
 ## 命令补全
 
-`git mcd completion <shell>` 打印补全脚本，子命令、选项、`--qr fancy=名字`、`card --style` 这些取值都能按 TAB 补，餐品名也能补。在 shell 配置里加一行：
+`mcd-git completion <shell>` 会生成补全脚本，子命令、选项、`--qr` / `card --style` 的取值以及餐品名都能按 TAB 补。**保证的补全入口是 `mcd-git`（或等价的 `git-mcd`）；`git mcd` 是否补全还取决于该平台是否加载 Git 自带的补全脚本。**PowerShell 不保证 Git 会把 `git mcd` 转发给这个补全器。以下命令均只安装本机脚本，不访问 MCP。
+
+### macOS：Zsh（默认 shell）
 
 ```bash
-# zsh：写进 ~/.zshrc
-eval "$(mcd-git completion zsh)"
-# bash：写进 ~/.bashrc（macOS 自带的 bash 3.2 也能用）
-eval "$(mcd-git completion bash)"
-# fish：写成补全文件；想让 git-mcd 也能补，再写一份 git-mcd.fish
-mcd-git completion fish > ~/.config/fish/completions/mcd-git.fish
+# 安装：写入 ~/.zshrc；已有同一行时不要重复追加
+printf '\n# mcd-git completion\neval "$(mcd-git completion zsh)"\n' >> ~/.zshrc
+# 重载
+source ~/.zshrc
+# 测试（输入命令后按 TAB；--demo 不需要 Token）
+mcd-git --demo <TAB>
+mcd-git --demo add 巨<TAB>
+# 可选：检查脚本能否生成
+mcd-git completion zsh >/tmp/mcd-git.zsh
 ```
 
-**餐品名补全**：`add`、`ls-remote` 补本店菜单里的餐品，`restore --staged` 补购物车里的餐品。前缀匹配的排在前面，包含匹配的排在后面（输「鸡腿」能补出麦辣鸡腿堡、板烧鸡腿堡）；有多个候选时只列出来，不改你已经输入的字。菜单读的是本机缓存 `~/.config/mcd-git/menu-cache.json`，所以先跑一次 `git mcd ls-remote`（或 `add`）。缓存 24 小时有效，换了门店要重新 `ls-remote`。缓存只在这些命令本来就要查菜单时顺手写，不多调接口；按 TAB 只读本机文件，不联网。缓存里只有餐品 code、名称、类型和门店，不存价格和地址，权限 600。`--demo` 第一次就能补演示菜单。缓存不可用时 zsh 会提示先运行 `git mcd ls-remote` 或 `git mcd init`，bash 什么都不补。
+### macOS：Bash 3.2
 
-**`git mcd <TAB>` 能不能补，取决于 shell 和 git 补全的配置**（下面是 macOS 上实测的结果）：
+```bash
+# 安装：macOS 自带 bash 3.2 也支持
+printf '\n# mcd-git completion\neval "$(mcd-git completion bash)"\n' >> ~/.bash_profile
+# 若要让 git mcd 也补，先加载 Git 自带补全（mcd-git 入口不依赖这一行）
+source /Library/Developer/CommandLineTools/usr/share/git-core/git-completion.bash 2>/dev/null || true
+# 重载
+source ~/.bash_profile
+# 测试
+a=$(mcd-git completion bash); test -n "$a" && echo 'bash completion script: OK'
+mcd-git --demo <TAB>
+```
 
-- **zsh**：系统自带的 git 补全（`_git`）会调用 mcd-git 的补全，`git mcd <TAB>` 和 `git mc<TAB>` 都能直接用，不需要额外配置。
-- **bash**：要先加载 git 自带的 `git-completion.bash`，`git mcd <TAB>` 才会生效，macOS 自带 bash 默认不加载。需要的话在 `eval` 那行之前加：`source /Library/Developer/CommandLineTools/usr/share/git-core/git-completion.bash`（Homebrew 装的 git 是 `$(brew --prefix)/etc/bash_completion.d/git-completion.bash`）。
-- **fish**：本机没装 fish，还没实测。`git mcd` 能不能补取决于 fish 自带的 git 补全。
-- 保底的办法是用 `mcd-git` 入口：`mcd-git <TAB>` 在 bash 和 zsh 里都能补（`mcd-git` 和 `git mcd` 完全等价）。
+### Linux：Bash
+
+```bash
+# 安装并写入 ~/.bashrc
+printf '\n# mcd-git completion\neval "$(mcd-git completion bash)"\n' >> ~/.bashrc
+# Git 自带补全通常由 bash-completion 提供；路径因发行版而异
+if [ -f /usr/share/bash-completion/completions/git ]; then source /usr/share/bash-completion/completions/git; fi
+# 重载
+source ~/.bashrc
+# 测试
+mcd-git --demo <TAB>
+mcd-git --demo add 巨<TAB>
+```
+
+若 Linux 没有 Git 补全，安装发行版的 `bash-completion` 后再 source 它；这只影响 `git mcd <TAB>`，不影响保证可用的 `mcd-git <TAB>`。
+
+### Fish
+
+```fish
+# 安装
+mkdir -p ~/.config/fish/completions
+mcd-git completion fish > ~/.config/fish/completions/mcd-git.fish
+# 重载当前 shell（或退出后重新打开 fish）
+source ~/.config/fish/completions/mcd-git.fish
+# 测试
+mcd-git --demo add 巨<TAB>
+```
+
+`git-mcd <TAB>` 会复用 mcd-git 脚本；`git mcd <TAB>` 是否生效取决于 Fish 自带的 Git 补全是否转发它。
+
+### Windows：Git Bash
+
+```bash
+# 安装：写入 Git Bash 的 ~/.bashrc
+printf '\n# mcd-git completion\neval "$(mcd-git completion bash)"\n' >> ~/.bashrc
+# Git Bash 的 git-completion.bash 路径随安装位置变化，常见路径如下
+[ -f /usr/share/bash-completion/completions/git ] && source /usr/share/bash-completion/completions/git
+# 重载
+source ~/.bashrc
+# 测试：保证入口是 mcd-git；git mcd 需要 Git 自带补全已加载
+mcd-git --demo <TAB>
+mcd-git --demo add 巨<TAB>
+```
+
+### Windows：WSL Bash
+
+```bash
+# 在 WSL 内执行，写入 WSL 用户自己的 ~/.bashrc
+printf '\n# mcd-git completion\neval "$(mcd-git completion bash)"\n' >> ~/.bashrc
+sudo apt-get update && sudo apt-get install -y bash-completion  # 只需安装一次
+source /usr/share/bash-completion/bash_completion 2>/dev/null || true
+# 重载
+source ~/.bashrc
+# 测试
+mcd-git --demo <TAB>
+mcd-git --demo add 巨<TAB>
+```
+
+WSL 与 Windows Git Bash 是两个独立的 shell 环境，各自安装、各自重载；`mcd-git` 必须在当前环境的 PATH 中。
+
+### Windows：PowerShell 5.1 / PowerShell 7
+
+```powershell
+# 安装：先创建 profile 文件，再把生成脚本追加进去
+New-Item -ItemType File -Force $PROFILE | Out-Null
+mcd-git completion powershell >> $PROFILE
+# 重载当前 PowerShell
+. $PROFILE
+# 测试：输入后按 TAB
+mcd-git --demo <TAB>
+mcd-git --demo add 巨<TAB>
+```
+
+关闭 PowerShell 窗口并重新打开后 profile 会自动加载。若脚本因执行策略被阻止，可仅为当前用户允许本地脚本（可选排障）：
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+. $PROFILE
+```
+
+PowerShell 补全注册给 `mcd-git` 和 `git-mcd`；不保证 `git mcd` 的 Git 转发补全。PowerShell 里二维码取值会列出 `fancy:burger` 这种冒号形式；命令本身也接受与其他 shell 一致的 `--qr fancy=burger`，不要把补全显示的冒号误当成餐品名。
+
+**餐品名与离线边界**：`add`、`ls-remote` 补本店菜单，`restore --staged` 补购物车。前缀匹配优先，包含匹配随后（输入「鸡腿」可列出麦辣鸡腿堡、板烧鸡腿堡）；多候选时只列出，不吞掉已输入文字。候选只读 `~/.config/mcd-git/menu-cache.json`（Windows 默认 `%APPDATA%\\mcd-git\\menu-cache.json`），缓存 24 小时有效，换店需重新运行 `mcd-git ls-remote`。按 TAB 不联网；缓存缺失或过期时不调用 MCP，zsh 会提示先刷新菜单，bash / Fish / PowerShell 静默没有餐品候选。`--demo` 可先生成演示缓存。
+
+二维码 `fancy` 的名字可写成 `--qr fancy=burger`；PowerShell 的候选列表也提供 `fancy:burger`，这是补全脚本为避免等号解析而显示的等价分隔形式。
+
+`git mcd` 的补全不是 mcd-git 自己能保证的：Zsh 通常由系统 `_git` 转调，Bash / Git Bash / WSL 需要先加载 Git 自带的 `git-completion.bash`，Fish 依赖其 Git 补全实现；没有这些配置时请使用 `mcd-git <TAB>`。
 
 ## 接入真实账户（3 步）
 

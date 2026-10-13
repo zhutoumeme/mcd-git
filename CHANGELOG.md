@@ -1,5 +1,13 @@
 # 更新日志
 
+## 0.2.5（2026-10-13）
+
+### 文档
+
+- 补齐 macOS Bash、Linux Bash、Zsh、Fish、Windows Git Bash、WSL 和 Windows PowerShell 的补全安装、重载与验证命令；PowerShell 说明了 profile 创建、`RemoteSigned` 排障和 `fancy:` 补全显示形式。
+- 明确 `mcd-git` / `git-mcd` 是保证的补全入口，`git mcd` 依赖 Git 自带 bash/zsh/fish 补全，PowerShell 不保证 Git 转发；菜单补全只读本机最近缓存，缓存不可用时不联网。
+- SKILL 明确 Agent 不按 TAB、不调用 `completion` 作为业务流程，继续只用 `git mcd --json`。
+
 ## 0.2.4（2026-10-12）
 
 ### 修复
