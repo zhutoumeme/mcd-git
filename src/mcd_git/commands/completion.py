@@ -1,4 +1,4 @@
-"""git mcd completion <shell>：把 bash / zsh / fish 补全脚本打印到标准输出。"""
+"""git mcd completion <shell>：把 bash / zsh / fish / PowerShell 补全脚本打印到标准输出。"""
 from __future__ import annotations
 
 from typing import Any
@@ -12,10 +12,10 @@ def register(sub: Any, common: Any) -> None:
     p = sub.add_parser(
         "completion",
         parents=[common],
-        help="打印命令补全脚本（bash / zsh / fish）",
+        help="打印命令补全脚本（bash / zsh / fish / powershell）",
         description="把 shell 补全脚本打印到标准输出，写进 shell 配置一次即可。详见 README「命令补全」。",
     )
-    p.add_argument("shell", choices=("bash", "zsh", "fish"), metavar="<shell>", help="bash / zsh / fish")
+    p.add_argument("shell", choices=("bash", "zsh", "fish", "powershell"), metavar="<shell>", help="bash / zsh / fish / powershell")
     p.set_defaults(func=run)
 
 

@@ -1,4 +1,4 @@
-"""0.2.4 隐藏的补全入口 `__complete`：只读本机缓存、绝不调 MCP、不加载 rich / 网络模块；
+"""0.2.5 隐藏的补全入口 `__complete`：只读本机缓存、绝不调 MCP、不加载 rich / 网络模块；
 bash 一行一个转义好的名称，zsh / fish 是「值\\t说明」，zsh 在没候选时给一行提示。"""
 from __future__ import annotations
 
@@ -70,6 +70,7 @@ def test_real_mode_without_cache_is_quiet_and_zsh_hints(runner: Runner, monkeypa
     assert _complete(runner, "meals", "--shell", "bash", "--", "巨") == []
     assert _complete(runner, "meals", "--shell", "zsh", "--", "巨") == ["\t先运行 git mcd ls-remote 刷新菜单"]
     assert _complete(runner, "meals", "--shell", "fish", "--", "巨") == []
+    assert _complete(runner, "meals", "--shell", "powershell", "--", "巨") == []
     assert _complete(runner, "meals", "--", "巨") == []
     (_home() / "state.json").write_text("{坏了", encoding="utf-8")  # 坏的 state.json 也不能报错
     assert _complete(runner, "meals", "--shell", "zsh", "--", "巨") == ["\t先运行 git mcd init 选门店"]
@@ -84,6 +85,7 @@ def test_real_mode_reads_cache_written_by_ls_remote(runner: Runner, monkeypatch:
     lines = _complete(runner, "meals", "--shell", "zsh", "--", "麦辣")
     assert lines == ["麦辣鸡腿堡\t单品 · 1002", "麦辣鸡腿堡套餐\t套餐 · 9900001002"]
     assert _complete(runner, "meals", "--shell", "fish", "--", "麦辣") == lines
+    assert _complete(runner, "meals", "--shell", "powershell", "--", "麦辣") == lines
     assert _complete(runner, "meals", "--shell", "bash", "--", "麦辣") == ["麦辣鸡腿堡", "麦辣鸡腿堡套餐"]
     assert _complete(runner, "meals", "--shell", "zsh", "--", "990000100")[0] == "9900001001\t巨无霸套餐 · 套餐"
     assert _complete(runner, "meals", "--shell", "bash", "--", "990000100") == []  # bash 只给名称
@@ -179,6 +181,17 @@ def test_bash_escape_round_trips_through_bash_and_resolve(name: str) -> None:
     assert back == name.strip()
     menu = Menu({"meals": {"9001": {"name": name, "currentPrice": "10"}, "1001": {"name": "巨无霸", "currentPrice": "24"}}})
     assert resolve(menu, back) == "9001"
+
+
+def test_powershell_format_preserves_structured_names() -> None:
+    items = [
+        {"name": "堡堡 双层(大)", "code": "7001", "type": "套餐", "kind": "name"},
+        {"name": "堡堡Tom's \"Best\"", "code": "7002", "type": "单品", "kind": "name"},
+    ]
+    assert menucache.format_lines(items, "powershell") == [
+        "堡堡 双层(大)\t套餐 · 7001",
+        "堡堡Tom's \"Best\"\t单品 · 7002",
+    ]
 
 
 def test_bash_escape_keeps_non_ascii_and_safe_ascii() -> None:

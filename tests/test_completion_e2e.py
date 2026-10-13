@@ -1,4 +1,4 @@
-"""0.2.4 补全端到端（opt-in：MCD_GIT_SHELL_E2E=1）：用 pty 起真实交互 shell，真按 TAB，读屏看命令行上插入了什么。
+"""0.2.5 补全端到端（opt-in：MCD_GIT_SHELL_E2E=1）：用 pty 起真实交互 shell，真按 TAB，读屏看命令行上插入了什么。
 
 - bash 用 macOS 自带 /bin/bash（3.2）；zsh 用 /bin/zsh -f；fish 本机没装，不测。
 - PATH 最前是调本仓库源码的 wrapper，先断言 PATH 里的 mcd-git 就是它（版本号 = 源码里的 __version__、
@@ -24,12 +24,24 @@ from typing import Any, Dict, Iterator, List, Tuple
 
 import pytest
 
-from mcd_git import __version__, menucache
+from mcd_git import __version__, completion, menucache
 from mcd_git.api import Menu
 from mcd_git.commands.common import resolve
 from mcd_git.state import CN_TZ
 
 pytestmark = pytest.mark.skipif(os.environ.get("MCD_GIT_SHELL_E2E") != "1" or os.name == "nt", reason="pty 端到端是 opt-in：MCD_GIT_SHELL_E2E=1")
+
+
+def test_powershell_script_loads_if_pwsh_is_available(tmp_path: Path) -> None:
+    pwsh = shutil.which("pwsh")
+    if pwsh is None:
+        pytest.skip("本机没有 pwsh，跳过 PowerShell 加载实测")
+    path = tmp_path / "mcd-git-completion.ps1"
+    path.write_text(completion.render("powershell"), encoding="utf-8")
+    quoted = str(path).replace("'", "''")
+    proc = subprocess.run([pwsh, "-NoProfile", "-Command", f". '{quoted}'"], capture_output=True, text=True, timeout=30)
+    assert proc.returncode == 0, proc.stderr
+
 
 ROOT = Path(__file__).resolve().parents[1]
 STEP = 5.0  # 每一步最多等几秒

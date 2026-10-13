@@ -1,4 +1,4 @@
-"""0.2.4 `mcd-git completion {bash,zsh,fish}`：脚本从 argparse 自动导出；bash 行为用 macOS 自带 /bin/bash（3.2）实跑；
+"""0.2.5 `mcd-git completion {bash,zsh,fish,powershell}`：脚本从 argparse 自动导出；bash 行为用 macOS 自带 /bin/bash（3.2）实跑；
 餐品名经 `mcd-git __complete` 只读本机缓存补全。fish 本机没装就跳过。"""
 from __future__ import annotations
 
@@ -79,7 +79,7 @@ def test_value_sources(spec: Dict[str, Any]) -> None:
     assert opt("card", "-o")["arg"] == "file"
     assert opt("init", "--city")["arg"] == "free"
     assert opt("push", "--dry-run")["arg"] == "none"
-    assert spec["subs"]["completion"]["positional"] == {"dest": "shell", "kind": "values", "values": ["bash", "zsh", "fish"]}
+    assert spec["subs"]["completion"]["positional"] == {"dest": "shell", "kind": "values", "values": ["bash", "zsh", "fish", "powershell"]}
     assert spec["subs"]["add"]["positional"]["kind"] == "meals"
     assert spec["subs"]["restore"]["positional"]["kind"] == "staged"
     assert spec["subs"]["reset"]["positional"]["kind"] is None
@@ -96,7 +96,30 @@ def test_scripts_contain_every_command_and_value(spec: Dict[str, Any], shell: st
     assert "__complete" in script
 
 
-def test_bash_script_avoids_bash4_only_syntax(spec: Dict[str, Any]) -> None:
+def test_powershell_script_has_native_registration_and_safe_menu_call(spec: Dict[str, Any]) -> None:
+    script = completion.render("powershell", spec)
+    assert "Register-ArgumentCompleter" in script
+    assert "CompletionResult" in script
+    assert "Get-Command mcd-git" in script
+    assert "$arguments = @('__complete', $Kind, '--shell', 'powershell')" in script
+    assert "& $command @arguments" in script
+    for name in render.FANCY_TEMPLATES:
+        assert f"fancy={name}" in script
+        assert f"fancy:{name}" in script
+    assert "mcd-git" in script and "git-mcd" in script
+
+
+def test_powershell_script_loads_when_pwsh_is_available(spec: Dict[str, Any], tmp_path: Path) -> None:
+    pwsh = shutil.which("pwsh")
+    if pwsh is None:
+        pytest.skip("本机没有 pwsh，仅做离线文本断言")
+    path = tmp_path / "mcd-git-completion.ps1"
+    path.write_text(completion.render("powershell", spec), encoding="utf-8")
+    quoted = str(path).replace("'", "''")
+    proc = subprocess.run([pwsh, "-NoProfile", "-Command", f". '{quoted}'"], capture_output=True, text=True, timeout=30)
+    assert proc.returncode == 0, proc.stderr
+
+
     script = completion.render("bash", spec)
     for bad in ("declare -A", "mapfile", "readarray", "compopt", ",,}", "^^}", ";&", "[[ -v", "local -n", "[-1]", "printf %q"):
         assert bad not in script, bad
@@ -170,7 +193,7 @@ def test_bash_completes_commands_options_and_values(bash_script: Path, shell_env
     assert _bash(bash_script, shell_env, "mcd-git", "card", "--style", "r") == ["receipt"]
     assert _bash(bash_script, shell_env, "mcd-git", "init", "--mode", "") == ["delivery", "drive", "pickup"]
     assert set(_bash(bash_script, shell_env, "mcd-git", "help", "")) == set(sub.choices)
-    assert _bash(bash_script, shell_env, "mcd-git", "completion", "") == ["bash", "zsh", "fish"]
+    assert _bash(bash_script, shell_env, "mcd-git", "completion", "") == ["bash", "zsh", "fish", "powershell"]
     assert _bash(bash_script, shell_env, "mcd-git", "commit", "-m", "") == []  # 自由文本不补
     assert _bash(bash_script, shell_env, "mcd-git", "bogus", "") == []
 

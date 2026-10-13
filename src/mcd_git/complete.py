@@ -14,7 +14,7 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence
 from . import menucache, state
 
 KINDS = ("meals", "staged")
-SHELLS = ("bash", "zsh", "fish")
+SHELLS = ("bash", "zsh", "fish", "powershell")
 _TRUE = ("1", "true", "yes", "on")
 
 

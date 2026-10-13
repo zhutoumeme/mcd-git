@@ -1,4 +1,4 @@
-"""`mcd-git completion {bash,zsh,fish}`：从 argparse 自动导出补全脚本（不在热路径，只在这个命令里运行）。
+"""`mcd-git completion {bash,zsh,fish,powershell}`：从 argparse 自动导出补全脚本（不在热路径，只在这个命令里运行）。
 
 子命令、全局选项、各子命令的选项与取值全部从 cli.build_parser() 读出来，不手写清单；只有两张小表是手写的：
 VALUE_HINTS（--qr 的取值，argparse 里它是自由字符串、在 validate_qr 里校验）和 POSITIONAL_KINDS（哪些位置参数
@@ -12,6 +12,8 @@ bash 脚本必须兼容 macOS 自带的 bash 3.2：不用 declare -A / mapfile /
 from __future__ import annotations
 
 import argparse
+import copy
+import json
 import re
 import unicodedata
 from typing import Any, Dict, List, Optional, Sequence, Tuple
@@ -19,7 +21,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 from . import __version__
 from . import render as R
 
-SHELLS = ("bash", "zsh", "fish")
+SHELLS = ("bash", "zsh", "fish", "powershell")
 
 # 手写的小表（唯一不从 argparse 导出的部分）
 VALUE_HINTS: Dict[str, Tuple[str, ...]] = {"--qr": R.QR_STYLE_VALUES}
@@ -581,6 +583,200 @@ def render_fish(spec: Dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+# ---------------------------------------------------------------- PowerShell
+
+_POWERSHELL_BODY = r'''
+$ErrorActionPreference = 'SilentlyContinue'
+
+function __mcd_git_ps_result {
+    param([string]$Value, [string]$ToolTip)
+    if ([string]::IsNullOrEmpty($ToolTip)) { $ToolTip = $Value }
+    [System.Management.Automation.CompletionResult]::new(
+        $Value,
+        $Value,
+        [System.Management.Automation.CompletionResultType]::ParameterValue,
+        $ToolTip
+    )
+}
+
+function __mcd_git_ps_find_option {
+    param($Options, [string]$Name)
+    foreach ($option in @($Options)) {
+        if (@($option.strings) -contains $Name) { return $option }
+    }
+    return $null
+}
+
+function __mcd_git_ps_values {
+    param($Option)
+    $values = @($Option.values)
+    # render.FANCY_TEMPLATES 是 fancy= 与 fancy: 两种写法的共同单一来源。
+    if (@($Option.strings) -contains '--qr') {
+        $values += @('fancy:burger', 'fancy:fries', 'fancy:nuggets', 'fancy:cone', 'fancy:pie', 'fancy:arch')
+    }
+    @($values | Select-Object -Unique)
+}
+
+function __mcd_git_ps_menu {
+    param([string]$Kind, [string]$Prefix, [bool]$Demo)
+    $command = Get-Command mcd-git -ErrorAction SilentlyContinue | Select-Object -First 1
+    if (-not $command) { return }
+    # 用参数数组传递餐名和前缀，中文、空格、单双引号不会被再次解析。
+    $arguments = @('__complete', $Kind, '--shell', 'powershell')
+    if ($Demo) { $arguments += '--demo' }
+    $arguments += @('--', $Prefix)
+    try {
+        & $command @arguments 2>$null | ForEach-Object {
+            $text = [string]$_
+            $tab = $text.IndexOf([char]9)
+            if ($tab -ge 0) {
+                $value = $text.Substring(0, $tab)
+                $tip = $text.Substring($tab + 1)
+            } else {
+                $value = $text
+                $tip = $text
+            }
+            if (-not [string]::IsNullOrEmpty($value)) {
+                __mcd_git_ps_result $value $tip
+            }
+        }
+    } catch {
+        # 补全失败必须静默，不能影响正在输入的命令。
+    }
+}
+
+$__mcd_git_spec = @'
+__MCD_GIT_SPEC_JSON__
+'@ | ConvertFrom-Json
+
+$__mcd_git_ps_completer = {
+    param($wordToComplete, $commandAst, $cursorPosition)
+
+    function __mcd_git_ps_unquote([string]$Value) {
+        if ($null -eq $Value) { return '' }
+        $Value.Trim([char[]](39, 34))
+    }
+
+    $current = __mcd_git_ps_unquote ([string]$wordToComplete)
+    $rawArgs = @($commandAst.CommandElements | Select-Object -Skip 1 | ForEach-Object { $_.Extent.Text })
+    $args = @($rawArgs | ForEach-Object { __mcd_git_ps_unquote ([string]$_) })
+    $prior = @($args)
+    if ($args.Count -gt 0 -and (__mcd_git_ps_unquote ([string]$args[-1])) -eq $current) {
+        $prior = if ($args.Count -gt 1) { @($args[0..($args.Count - 2)]) } else { @() }
+    }
+
+    $commands = @($script:__mcd_git_spec.commands)
+    $commandNames = @($commands | ForEach-Object { [string]$_.name })
+    $sub = $null
+    $skipValue = $false
+    foreach ($token in @($prior)) {
+        if ($skipValue) { $skipValue = $false; continue }
+        if ($token.StartsWith('-')) {
+            $optionName = $token
+            $equals = $token.IndexOf('=')
+            if ($equals -ge 0) { $optionName = $token.Substring(0, $equals) }
+            $option = __mcd_git_ps_find_option $script:__mcd_git_spec.global_opts $optionName
+            if ($option -and [bool]$option.takes_value -and $equals -lt 0) { $skipValue = $true }
+        } elseif ($null -eq $sub -and $commandNames -contains $token) {
+            $sub = $token
+        }
+    }
+
+    if ($null -eq $sub) {
+        if ($current.StartsWith('-')) {
+            foreach ($option in @($script:__mcd_git_spec.global_opts)) {
+                foreach ($name in @($option.strings)) {
+                    if ([string]$name -like "$current*") { __mcd_git_ps_result ([string]$name) ([string]$option.help) }
+                }
+            }
+        } else {
+            foreach ($commandInfo in $commands) {
+                if ([string]$commandInfo.name -like "$current*") {
+                    __mcd_git_ps_result ([string]$commandInfo.name) ([string]$commandInfo.help)
+                }
+            }
+        }
+        return
+    }
+
+    $subInfoProperty = $script:__mcd_git_spec.subs.PSObject.Properties[$sub]
+    if (-not $subInfoProperty) { return }
+    $subInfo = $subInfoProperty.Value
+    $subOptions = @($subInfo.options)
+    $previous = if ($prior.Count -gt 0) { [string]$prior[-1] } else { '' }
+
+    if ($previous.StartsWith('-') -and $previous.IndexOf('=') -lt 0) {
+        $option = __mcd_git_ps_find_option $subOptions $previous
+        if ($option -and [bool]$option.takes_value) {
+            foreach ($value in __mcd_git_ps_values $option) {
+                if ([string]$value -like "$current*") { __mcd_git_ps_result ([string]$value) ([string]$option.help) }
+            }
+            return
+        }
+    }
+
+    if ($current.StartsWith('--') -and $current.IndexOf('=') -ge 0) {
+        $equals = $current.IndexOf('=')
+        $optionName = $current.Substring(0, $equals)
+        $valuePrefix = $current.Substring($equals + 1)
+        $option = __mcd_git_ps_find_option $subOptions $optionName
+        if ($option -and [bool]$option.takes_value) {
+            foreach ($value in __mcd_git_ps_values $option) {
+                $fullValue = "$optionName=$value"
+                if ($fullValue -like "$current*") { __mcd_git_ps_result $fullValue ([string]$option.help) }
+            }
+            return
+        }
+    }
+
+    if ($current.StartsWith('-')) {
+        foreach ($option in $subOptions) {
+            foreach ($name in @($option.strings)) {
+                if ([string]$name -like "$current*") { __mcd_git_ps_result ([string]$name) ([string]$option.help) }
+            }
+        }
+        return
+    }
+
+    $positional = $subInfo.positional
+    if (-not $positional -or [string]::IsNullOrEmpty([string]$positional.kind)) { return }
+    $kind = [string]$positional.kind
+    if ($kind -eq 'meals' -or $kind -eq 'staged') {
+        __mcd_git_ps_menu $kind $current ([bool]($prior -contains '--demo'))
+    } elseif ($kind -eq 'commands') {
+        foreach ($commandInfo in $commands) {
+            if ([string]$commandInfo.name -like "$current*") { __mcd_git_ps_result ([string]$commandInfo.name) ([string]$commandInfo.help) }
+        }
+    } elseif ($kind -eq 'values') {
+        foreach ($value in @($positional.values)) {
+            if ([string]$value -like "$current*") { __mcd_git_ps_result ([string]$value) $kind }
+        }
+    }
+}
+
+Register-ArgumentCompleter -CommandName 'mcd-git', 'git-mcd' -ScriptBlock $__mcd_git_ps_completer
+'''
+
+
+def render_powershell(spec: Dict[str, Any]) -> str:
+    """生成 Windows PowerShell 5.1 可加载的原生参数补全脚本。"""
+    ps_spec = copy.deepcopy(spec)
+    ps_spec["commands"] = [{"name": name, "help": help_text} for name, help_text in ps_spec["commands"]]
+    for info in ps_spec["subs"].values():
+        for option in info["options"]:
+            if "--qr" in option["strings"]:
+                option["values"] = list(dict.fromkeys(option["values"] + [f"fancy:{name}" for name in R.FANCY_TEMPLATES]))
+    payload = json.dumps(ps_spec, ensure_ascii=False, separators=(",", ":"))
+    head = _header(
+        "powershell",
+        [
+            "安装：mcd-git completion powershell > $HOME\\mcd-git-completion.ps1; . $HOME\\mcd-git-completion.ps1",
+            "脚本使用 Register-ArgumentCompleter；菜单候选只读本机缓存，调用失败时静默返回。",
+        ],
+    )
+    return head + "\n\n" + _POWERSHELL_BODY.replace("__MCD_GIT_SPEC_JSON__", payload)
+
+
 # ----------------------------------------------------------------
 
 
@@ -588,4 +784,4 @@ def render(shell: str, spec: Optional[Dict[str, Any]] = None) -> str:
     if shell not in SHELLS:
         raise ValueError(f"不支持的 shell：{shell}")
     spec = spec or build_spec()
-    return {"bash": render_bash, "zsh": render_zsh, "fish": render_fish}[shell](spec)
+    return {"bash": render_bash, "zsh": render_zsh, "fish": render_fish, "powershell": render_powershell}[shell](spec)

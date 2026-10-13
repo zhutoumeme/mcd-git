@@ -215,7 +215,7 @@ def format_lines(items: Sequence[Mapping[str, Any]], shell: Optional[str], hint:
 
     bash：每行一个转义后的名称（不给 code、不给提示）；
     zsh：每行 'value\\tdesc'，没有候选且有提示时输出一行 '\\t提示'（value 为空，zsh 脚本转成 _message）；
-    fish / 未指定：每行 'value\\tdesc'，不输出提示（fish 只能把提示当候选插进命令行）。"""
+    fish / PowerShell / 未指定：每行 `value\tdesc`，不输出提示（shell 直接把说明作为候选描述）。"""
     if shell == "bash":
         lines: List[str] = []
         for item in items:
