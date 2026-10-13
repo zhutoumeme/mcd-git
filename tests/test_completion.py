@@ -103,23 +103,36 @@ def test_powershell_script_has_native_registration_and_safe_menu_call(spec: Dict
     assert "Get-Command mcd-git" in script
     assert "$arguments = @('__complete', $Kind, '--shell', 'powershell')" in script
     assert "& $command @arguments" in script
+    assert "values += @('fancy:burger'" not in script
     for name in render.FANCY_TEMPLATES:
         assert f"fancy={name}" in script
         assert f"fancy:{name}" in script
     assert "mcd-git" in script and "git-mcd" in script
 
 
-def test_powershell_script_loads_when_pwsh_is_available(spec: Dict[str, Any], tmp_path: Path) -> None:
-    pwsh = shutil.which("pwsh")
-    if pwsh is None:
-        pytest.skip("本机没有 pwsh，仅做离线文本断言")
+@pytest.mark.parametrize("executable_name", ("powershell", "pwsh"))
+def test_powershell_script_loads_and_executes_completion(spec: Dict[str, Any], tmp_path: Path, executable_name: str) -> None:
+    selected = os.environ.get("MCD_GIT_POWERSHELL")
+    if selected and selected != executable_name:
+        pytest.skip(f"CI 当前矩阵只验证 {selected}")
+    executable = shutil.which(executable_name)
+    if executable is None:
+        pytest.skip(f"本机没有 {executable_name}")
     path = tmp_path / "mcd-git-completion.ps1"
     path.write_text(completion.render("powershell", spec), encoding="utf-8")
     quoted = str(path).replace("'", "''")
-    proc = subprocess.run([pwsh, "-NoProfile", "-Command", f". '{quoted}'"], capture_output=True, text=True, timeout=30)
+    command = (
+        "$ErrorActionPreference = 'Stop'; "
+        f". '{quoted}'; "
+        "if ($ErrorActionPreference -ne 'Stop') { throw 'completion script changed the caller error preference' }; "
+        "$matches = @(TabExpansion2 'mcd-git pu' 10).CompletionMatches; "
+        "if (-not (@($matches | Where-Object { $_.CompletionText -eq 'push' }).Count -gt 0)) { throw 'push completion missing' }"
+    )
+    proc = subprocess.run([executable, "-NoProfile", "-Command", command], capture_output=True, text=True, timeout=30)
     assert proc.returncode == 0, proc.stderr
 
 
+def test_bash_script_avoids_macOS_incompatible_features(spec: Dict[str, Any]) -> None:
     script = completion.render("bash", spec)
     for bad in ("declare -A", "mapfile", "readarray", "compopt", ",,}", "^^}", ";&", "[[ -v", "local -n", "[-1]", "printf %q"):
         assert bad not in script, bad

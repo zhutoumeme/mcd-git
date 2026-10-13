@@ -317,9 +317,15 @@ WSL 与 Windows Git Bash 是两个独立的 shell 环境，各自安装、各自
 ### Windows：PowerShell 5.1 / PowerShell 7
 
 ```powershell
-# 安装：先创建 profile 文件，再把生成脚本追加进去
-New-Item -ItemType File -Force $PROFILE | Out-Null
-mcd-git completion powershell >> $PROFILE
+# 安装：先创建 profile 父目录和文件；带标记时重复执行不会重复追加
+$profileDirectory = Split-Path -Parent $PROFILE
+if ($profileDirectory) { New-Item -ItemType Directory -Path $profileDirectory -Force | Out-Null }
+if (-not (Test-Path -LiteralPath $PROFILE)) { New-Item -ItemType File -Path $PROFILE -Force | Out-Null }
+$marker = '# mcd-git PowerShell completion'
+if (-not (Select-String -LiteralPath $PROFILE -SimpleMatch $marker -Quiet -ErrorAction SilentlyContinue)) {
+    Add-Content -LiteralPath $PROFILE -Value $marker
+    mcd-git completion powershell | Add-Content -LiteralPath $PROFILE -Encoding UTF8
+}
 # 重载当前 PowerShell
 . $PROFILE
 # 测试：输入后按 TAB

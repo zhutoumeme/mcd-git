@@ -16,6 +16,7 @@ import re
 import select
 import shutil
 import signal
+import subprocess
 import sys
 import time
 from datetime import datetime
@@ -221,7 +222,7 @@ def _check_binary(sh: Session, world: Dict[str, Any], label: str) -> None:
     log(f"{label}：PATH 里的 mcd-git", out)
     assert str(world["bin"] / "mcd-git") in out
     assert "/.local/bin/" not in out
-    assert f"mcd-git {__version__}" in out  # FEAT-004 升版本后即 0.2.4
+    assert f"mcd-git {__version__}" in out  # 版本号与源码保持一致
     assert "HAS_COMPLETION" in out  # 已发布的 0.2.3 没有 completion 子命令
 
 

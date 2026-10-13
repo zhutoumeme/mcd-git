@@ -586,8 +586,6 @@ def render_fish(spec: Dict[str, Any]) -> str:
 # ---------------------------------------------------------------- PowerShell
 
 _POWERSHELL_BODY = r'''
-$ErrorActionPreference = 'SilentlyContinue'
-
 function __mcd_git_ps_result {
     param([string]$Value, [string]$ToolTip)
     if ([string]::IsNullOrEmpty($ToolTip)) { $ToolTip = $Value }
@@ -609,12 +607,8 @@ function __mcd_git_ps_find_option {
 
 function __mcd_git_ps_values {
     param($Option)
-    $values = @($Option.values)
-    # render.FANCY_TEMPLATES 是 fancy= 与 fancy: 两种写法的共同单一来源。
-    if (@($Option.strings) -contains '--qr') {
-        $values += @('fancy:burger', 'fancy:fries', 'fancy:nuggets', 'fancy:cone', 'fancy:pie', 'fancy:arch')
-    }
-    @($values | Select-Object -Unique)
+    # 候选只从内嵌的序列化 argparse spec 读取，避免生成器正文和 spec 漂移。
+    @($Option.values | Select-Object -Unique)
 }
 
 function __mcd_git_ps_menu {
